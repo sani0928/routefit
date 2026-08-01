@@ -1,37 +1,38 @@
 {
-    "name":  "routefit",
-    "version":  "0.1.0",
-    "private":  true,
-    "scripts":  {
-                    "dev":  "next dev",
-                    "build":  "next build",
-                    "start":  "next start",
-                    "test":  "vitest run",
-                    "test:watch":  "vitest",
-                    "db:generate":  "drizzle-kit generate",
-                    "db:migrate":  "drizzle-kit migrate"
-                },
-    "dependencies":  {
-                         "@better-auth/drizzle-adapter":  "^1.6.25",
-                         "better-auth":  "^1.6.25",
-                         "drizzle-orm":  "^0.45.2",
-                         "lucide-react":  "^1.28.0",
-                         "next":  "latest",
-                         "pg":  "^8.22.0",
-                         "react":  "latest",
-                         "react-dom":  "latest",
-                         "zod":  "latest"
-                     },
-    "devDependencies":  {
-                            "@tailwindcss/postcss":  "latest",
-                            "@types/navermaps":  "latest",
-                            "@types/node":  "latest",
-                            "@types/pg":  "^8.20.3",
-                            "@types/react":  "latest",
-                            "@types/react-dom":  "latest",
-                            "drizzle-kit":  "^0.31.10",
-                            "tailwindcss":  "latest",
-                            "typescript":  "^6.0.3",
-                            "vitest":  "latest"
-                        }
+    "name": "routefit",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "drizzle-kit migrate"
+    },
+    "dependencies": {
+        "@better-auth/drizzle-adapter": "^1.6.25",
+        "better-auth": "^1.6.25",
+        "drizzle-orm": "^0.45.2",
+        "lucide-react": "^1.28.0",
+        "next": "latest",
+        "pg": "^8.22.0",
+        "react": "latest",
+        "react-dom": "latest",
+        "zod": "latest"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "latest",
+        "@types/navermaps": "latest",
+        "@types/node": "latest",
+        "@types/pg": "^8.20.3",
+        "@types/react": "latest",
+        "@types/react-dom": "latest",
+        "dotenv": "^17.4.2",
+        "drizzle-kit": "^0.31.10",
+        "tailwindcss": "latest",
+        "typescript": "^6.0.3",
+        "vitest": "latest"
+    }
 }

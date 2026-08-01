@@ -243,6 +243,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     }
   }, [places, segments, highlightedSegmentIndex, listPlaces]);
 
-  if (!clientId) return <div className="map-placeholder"><div><strong>지도 키를 설정해 주세요</strong><p>.env.local에 NEXT_PUBLIC_NAVER_MAP_CLIENT_ID를 추가하면 지도가 표시됩니다.</p></div></div>;
+  if (!clientId) return <div className="map-placeholder"><div><strong>지도 키를 설정해 주세요</strong><p>NEXT_PUBLIC_NAVER_MAP_CLIENT_ID를 추가하면 지도가 표시됩니다.</p></div></div>;
   return <div ref={viewRef} className="map-view"><div ref={nodeRef} className="map-canvas" aria-label="NAVER 지도" /><button type="button" className={`map-location-control${isLocating ? " locating" : ""}`} aria-label={isLocating ? "현재 위치를 찾는 중" : "현재 위치로 이동"} onClick={locateCurrentPosition} disabled={isLocating}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3" /><circle cx="12" cy="12" r="5" /></svg></button><div className="map-zoom-control" aria-label="지도 확대 및 축소"><button type="button" aria-label="지도 확대" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() + 1); }}>+</button><span aria-hidden="true" /><button type="button" aria-label="지도 축소" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() - 1); }}>−</button></div></div>;
 }
