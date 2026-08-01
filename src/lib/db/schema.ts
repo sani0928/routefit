@@ -89,3 +89,9 @@ export const savedPlaces = pgTable("saved_place", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+// Better Auth's Drizzle adapter resolves its core tables by these singular model names.
+// The plural exports above remain for the rest of the application.
+export const user = users;
+export const session = sessions;
+export const account = accounts;
+export const verification = verifications;
