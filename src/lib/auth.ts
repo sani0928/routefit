@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { db, schema } from "@/lib/db";
+import { db } from "@/lib/db";
+import * as schema from "@/lib/db/schema";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -8,7 +9,19 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET ?? "routefit-local-development-secret-change-before-production",
-  database: drizzleAdapter(db, { provider: "pg", schema, camelCase: true, transaction: true }),
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    // Better Auth resolves these four keys by their singular model names.
+    schema: {
+      ...schema,
+      user: schema.users,
+      session: schema.sessions,
+      account: schema.accounts,
+      verification: schema.verifications,
+    },
+    camelCase: true,
+    transaction: true,
+  }),
   socialProviders: googleClientId && googleClientSecret ? {
     google: { clientId: googleClientId, clientSecret: googleClientSecret },
   } : {},
