@@ -18,15 +18,18 @@ interface Props {
 }
 
 type EditorMode = "create" | "edit" | null;
-const LISTS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 10;
 
 export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute }: Props) {
   const [editorMode, setEditorMode] = useState<EditorMode>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(LIST_COLORS[0]);
   const [listPage, setListPage] = useState(0);
-  const totalPages = Math.max(1, Math.ceil(lists.length / LISTS_PER_PAGE));
-  const pagedLists = useMemo(() => lists.slice(listPage * LISTS_PER_PAGE, (listPage + 1) * LISTS_PER_PAGE), [listPage, lists]);
+  const [placePage, setPlacePage] = useState(0);
+  const totalListPages = Math.max(1, Math.ceil(lists.length / ITEMS_PER_PAGE));
+  const totalPlacePages = Math.max(1, Math.ceil(places.length / ITEMS_PER_PAGE));
+  const pagedLists = useMemo(() => lists.slice(listPage * ITEMS_PER_PAGE, (listPage + 1) * ITEMS_PER_PAGE), [listPage, lists]);
+  const pagedPlaces = useMemo(() => places.slice(placePage * ITEMS_PER_PAGE, (placePage + 1) * ITEMS_PER_PAGE), [placePage, places]);
 
   useEffect(() => {
     if (!activeList) return;
@@ -34,7 +37,9 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
     setColor(activeList.color);
   }, [activeList?.id, activeList?.name, activeList?.color]);
 
-  useEffect(() => setListPage((page) => Math.min(page, totalPages - 1)), [totalPages]);
+  useEffect(() => setListPage((page) => Math.min(page, totalListPages - 1)), [totalListPages]);
+  useEffect(() => setPlacePage((page) => Math.min(page, totalPlacePages - 1)), [totalPlacePages]);
+  useEffect(() => setPlacePage(0), [activeList?.id]);
 
   function openCreate() {
     setName("");
@@ -64,22 +69,31 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
         <button className="list-detail-title" type="button" onClick={openEdit} title="리스트 편집"><span style={{ backgroundColor: activeList.color }} /><strong>{activeList.name}</strong></button>
         <button className="list-icon-button" type="button" onClick={openEdit} aria-label="리스트 편집"><Pencil size={16} /></button>
       </header>
-      <ol className="saved-place-list">{places.map((place) => <li key={place.id}>
+      {places.length > 0 && <ol className="saved-place-list">{pagedPlaces.map((place) => <li key={place.id}>
         <div><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></div>
         <div className="saved-place-actions"><button type="button" onClick={() => onAddToRoute(place)} title="방문 장소에 추가" aria-label={`${place.name} 방문 장소에 추가`}><MapPinPlus size={16} /></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div>
-      </li>)}</ol>
-      {places.length === 0 && <p className="list-empty-state">{"검색 결과 또는 방문 장소에서 저장한 장소가 여기에 표시됩니다."}</p>}
+      </li>)}</ol>}
+      {places.length === 0 && <p className="list-empty-state">저장한 장소가 여기에 표시됩니다.</p>}
+      {places.length > ITEMS_PER_PAGE && <Pagination page={placePage} totalPages={totalPlacePages} ariaLabel="저장 장소 페이지" onPageChange={setPlacePage} />}
       {editorMode === "edit" && <ListEditor mode="edit" name={name} color={color} onNameChange={setName} onColorChange={setColor} onClose={() => setEditorMode(null)} onSubmit={submit} onDelete={() => { onDeleteList(activeList.id); setEditorMode(null); }} />}
     </section>;
   }
 
   return <section className="saved-places-panel place-list-overview">
-    <header className="list-overview-header"><h2>{"장소 리스트"}</h2><div><button className="list-icon-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
+    <header className="list-overview-header"><h2>장소 리스트</h2><div><button className="list-icon-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
     <ol className="place-list-cards">{pagedLists.map((list) => <li key={list.id}><button type="button" className="place-list-card" onClick={() => onSelect(list.id)} title={list.name}><span className="list-color-dot" style={{ backgroundColor: list.color }} /><span>{list.name}</span></button></li>)}</ol>
-    {lists.length > LISTS_PER_PAGE && <nav className="list-pagination" aria-label="장소 리스트 페이지"><button type="button" onClick={() => setListPage((page) => Math.max(0, page - 1))} disabled={listPage === 0} aria-label="이전 페이지"><ChevronLeft size={16} /></button><span>{`${listPage + 1} / ${totalPages}`}</span><button type="button" onClick={() => setListPage((page) => Math.min(totalPages - 1, page + 1))} disabled={listPage === totalPages - 1} aria-label="다음 페이지"><ChevronRight size={16} /></button></nav>}
-    {lists.length === 0 && <p className="list-empty-state">{"+ 버튼으로 첫 장소 리스트를 만들어 보세요."}</p>}
+    {lists.length > ITEMS_PER_PAGE && <Pagination page={listPage} totalPages={totalListPages} ariaLabel="장소 리스트 페이지" onPageChange={setListPage} />}
+    {lists.length === 0 && <p className="list-empty-state">+ 버튼으로 첫 장소 리스트를 만들어 보세요.</p>}
     {editorMode === "create" && <ListEditor mode="create" name={name} color={color} onNameChange={setName} onColorChange={setColor} onClose={() => setEditorMode(null)} onSubmit={submit} />}
   </section>;
+}
+
+function Pagination({ page, totalPages, ariaLabel, onPageChange }: { page: number; totalPages: number; ariaLabel: string; onPageChange: (page: number) => void }) {
+  return <nav className="list-pagination" aria-label={ariaLabel}>
+    <button type="button" onClick={() => onPageChange(Math.max(0, page - 1))} disabled={page === 0} aria-label="이전 페이지"><ChevronLeft size={16} /></button>
+    <span>{`${page + 1} / ${totalPages}`}</span>
+    <button type="button" onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))} disabled={page === totalPages - 1} aria-label="다음 페이지"><ChevronRight size={16} /></button>
+  </nav>;
 }
 
 interface ListEditorProps {

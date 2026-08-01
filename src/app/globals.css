@@ -515,3 +515,10 @@
 /* Category cues in place search */
 .planner-panel .naver-search-form .search-results .search-result-add { gap:10px; }
 .planner-panel .naver-search-form .search-results .search-result-category-icon { width:18px; height:18px; flex:0 0 18px; fill:none; stroke:#70839b; stroke-width:2; }
+
+/* Keep a long saved-place collection inside the list overlay. */
+.map-list-manager .place-list-detail { display:flex; min-height:0; flex-direction:column; }
+.map-list-manager .place-list-detail .saved-place-list { min-height:0; max-height:clamp(220px,calc(100vh - 430px),340px); overflow-y:auto; padding-right:2px; scrollbar-width:none; overscroll-behavior:contain; }
+.map-list-manager .place-list-detail .saved-place-list::-webkit-scrollbar { display:none; }
+.map-list-manager .place-list-detail .list-pagination { flex:0 0 auto; }
+@media (max-width:700px) { .map-list-manager .place-list-detail .saved-place-list { max-height:calc(52vh - 120px); } }
