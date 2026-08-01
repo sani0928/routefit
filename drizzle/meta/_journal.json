@@ -8,6 +8,13 @@
       "when": 1785583282455,
       "tag": "0000_left_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785595143472,
+      "tag": "0001_curvy_sunset_bain",
+      "breakpoints": true
     }
   ]
 }

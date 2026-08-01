@@ -1,4 +1,5 @@
-import { boolean, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
 
 export const users = pgTable("user", {
   id: text("id").primaryKey(),
@@ -70,6 +71,13 @@ export const routePlanPlaces = pgTable("route_plan_place", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("route_plan_place_position_idx").on(table.routePlanId, table.position)]);
 
+export const memberWorkspaces = pgTable("member_workspace", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  returnToStart: boolean("return_to_start").notNull().default(true),
+  places: jsonb("places").$type<Place[]>().notNull().default([]),
+  fixedVisitOrders: jsonb("fixed_visit_orders").$type<FixedVisitOrder[]>().notNull().default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 export const placeLists = pgTable("place_list", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

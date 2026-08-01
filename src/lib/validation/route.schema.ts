@@ -34,7 +34,7 @@ export const optimizeSchema = z.object({
     if (ids.has(place.id)) ctx.addIssue({ code: "custom", message: "중복된 장소 ID입니다." });
     ids.add(place.id);
     const key = `${place.latitude.toFixed(6)},${place.longitude.toFixed(6)}`;
-    if (coords.has(key)) ctx.addIssue({ code: "custom", message: "동일한 좌표의 장소는 중복 등록할 수 없습니다." });
+    if (coords.has(key)) ctx.addIssue({ code: "custom", message: "동일한 장소는 중복 등록할 수 없습니다." });
     coords.add(key);
   }
 

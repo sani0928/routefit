@@ -33,11 +33,17 @@ export interface SavedPlace {
   createdAt: string;
 }
 
+export interface MemberWorkspace {
+  returnToStart: boolean;
+  places: Place[];
+  fixedVisitOrders: FixedVisitOrder[];
+  updatedAt: string;
+}
 export interface MemberState {
   authenticated: boolean;
   authConfigured: boolean;
   user?: { id: string; name: string; email: string; image?: string | null };
-  routePlans: MemberRoutePlan[];
+  workspace?: MemberWorkspace | null;
   placeLists: MemberPlaceList[];
 }
 

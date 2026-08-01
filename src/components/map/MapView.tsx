@@ -1,5 +1,6 @@
 "use client";
 
+import { List } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Place, RouteSegment } from "@/features/route-optimization/types/route.types";
 import type { SavedPlace } from "@/features/member/types";
@@ -7,7 +8,7 @@ import { routeColor } from "@/lib/route-colors";
 
 type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; onMapPlaceSelect: (place: MapPlace) => void; onCurrentLocationStart: (place: MapPlace) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; }
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; onMapPlaceSelect: (place: MapPlace) => void; onCurrentLocationStart: (place: MapPlace) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 
@@ -21,6 +22,14 @@ function createPlaceInfoContent(place: MapPlace, onAdd?: () => void) {
   address.className = "map-place-popup-address";
   address.textContent = place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`;
   container.append(name, address);
+  if (onAdd) {
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "current-location-start";
+    addButton.textContent = "방문 장소에 추가";
+    addButton.addEventListener("click", onAdd);
+    container.append(addButton);
+  }
   return container;
 }
 
@@ -43,7 +52,7 @@ function createCurrentLocationPopupContent(address: string | undefined, onSetSta
   container.append(name, addressLine, notice, startButton);
   return container;
 }
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, onMapPlaceSelect, onCurrentLocationStart, onMapError, listPlaces, onListPlaceAdd }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, onMapPlaceSelect, onCurrentLocationStart, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
@@ -244,5 +253,5 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   }, [places, segments, highlightedSegmentIndex, listPlaces]);
 
   if (!clientId) return <div className="map-placeholder"><div><strong>지도 키를 설정해 주세요</strong><p>NEXT_PUBLIC_NAVER_MAP_CLIENT_ID를 추가하면 지도가 표시됩니다.</p></div></div>;
-  return <div ref={viewRef} className="map-view"><div ref={nodeRef} className="map-canvas" aria-label="NAVER 지도" /><button type="button" className={`map-location-control${isLocating ? " locating" : ""}`} aria-label={isLocating ? "현재 위치를 찾는 중" : "현재 위치로 이동"} onClick={locateCurrentPosition} disabled={isLocating}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3" /><circle cx="12" cy="12" r="5" /></svg></button><div className="map-zoom-control" aria-label="지도 확대 및 축소"><button type="button" aria-label="지도 확대" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() + 1); }}>+</button><span aria-hidden="true" /><button type="button" aria-label="지도 축소" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() - 1); }}>−</button></div></div>;
+  return <div ref={viewRef} className="map-view"><div ref={nodeRef} className="map-canvas" aria-label="NAVER 지도" /><button type="button" className={`map-location-control${isLocating ? " locating" : ""}`} aria-label={isLocating ? "현재 위치를 찾는 중" : "현재 위치로 이동"} onClick={locateCurrentPosition} disabled={isLocating}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3" /><circle cx="12" cy="12" r="5" /></svg></button>{onListManagerToggle && <button type="button" className={`map-list-control${isListManagerOpen ? " active" : ""}`} aria-label="내 장소 관리" aria-pressed={isListManagerOpen} onClick={onListManagerToggle}><List size={18} /></button>}<div className="map-zoom-control" aria-label="지도 확대 및 축소"><button type="button" aria-label="지도 확대" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() + 1); }}>+</button><span aria-hidden="true" /><button type="button" aria-label="지도 축소" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() - 1); }}>−</button></div></div>;
 }

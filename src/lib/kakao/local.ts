@@ -7,11 +7,14 @@ interface KakaoPlaceDocument {
   x: string;
   y: string;
   distance?: string;
+  category_name?: string;
+  category_group_code?: string;
+  category_group_name?: string;
 }
 
 interface KakaoKeywordPayload { documents?: KakaoPlaceDocument[]; }
 
-export interface ExternalPlaceMatch { name: string; address: string; }
+export interface ExternalPlaceMatch { name: string; address: string; categoryName?: string; categoryGroupCode?: string; categoryGroupName?: string; }
 export interface NearbyPlaceMatch { name: string; address?: string; latitude: number; longitude: number; distanceMeters: number; }
 
 const LANDMARK_CATEGORIES = ["PO3", "CT1", "AT4", "SC4", "SW8", "MT1", "HP8", "CE7", "FD6", "AD5", "PK6"];
@@ -35,7 +38,7 @@ export async function searchKakaoPlaces(query: string): Promise<ExternalPlaceMat
   const payload = await response.json() as KakaoKeywordPayload;
   return (payload.documents ?? []).flatMap((item) => {
     const address = item.road_address_name || item.address_name;
-    return address ? [{ name: item.place_name, address }] : [];
+    return address ? [{ name: item.place_name, address, categoryName: item.category_name, categoryGroupCode: item.category_group_code, categoryGroupName: item.category_group_name }] : [];
   });
 }
 

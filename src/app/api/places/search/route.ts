@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     if (externalMatches && externalMatches.length > 0) {
       const resolved = await Promise.allSettled(externalMatches.map(async (match) => {
         const location = (await geocode(match.address))[0];
-        return location ? { ...location, name: match.name, address: match.address } : null;
+        return location ? { ...location, name: match.name, address: match.address, categoryName: match.categoryName, categoryGroupCode: match.categoryGroupCode, categoryGroupName: match.categoryGroupName } : null;
       }));
       const results = resolved.flatMap((outcome) => outcome.status === "fulfilled" && outcome.value ? [outcome.value] : []);
       if (results.length > 0) return NextResponse.json({ results, source: "KAKAO_LOCAL_THEN_NAVER_GEOCODE" });

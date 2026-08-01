@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { placeLists, routePlanPlaces, routePlans, savedPlaces } from "@/lib/db/schema";
+import { memberWorkspaces, placeLists, routePlanPlaces, routePlans, savedPlaces } from "@/lib/db/schema";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
-import type { MemberPlaceList, MemberRoutePlan, SavedPlace } from "@/features/member/types";
+import type { MemberPlaceList, MemberRoutePlan, MemberWorkspace, SavedPlace } from "@/features/member/types";
 
 const id = () => crypto.randomUUID();
 const asNumber = (value: string) => Number(value);
@@ -93,12 +93,13 @@ export async function deleteRoutePlan(userId: string, planId: string) {
   }
   return true;
 }
-export async function createPlaceList(userId: string, name: string, color: string) {
+export async function createPlaceList(userId: string, name: string, color: string): Promise<MemberPlaceList> {
   const count = await db.select({ count: sql<number>`count(*)::int` }).from(placeLists).where(eq(placeLists.userId, userId));
-  if ((count[0]?.count ?? 0) >= 50) throw new Error("장소 리스트는 최대 50개까지 만들 수 있습니다.");
-  const listId = id();
-  await db.insert(placeLists).values({ id: listId, userId, name: name.trim() || "새 리스트", color });
-  return (await getPlaceLists(userId)).find((list) => list.id === listId)!;
+  if ((count[0]?.count ?? 0) >= 50) throw new Error("A user can create up to 50 place lists.");
+  const createdAt = new Date();
+  const list = { id: id(), userId, name: name.trim() || "New list", color, createdAt, updatedAt: createdAt };
+  await db.insert(placeLists).values(list);
+  return { id: list.id, name: list.name, color: list.color as MemberPlaceList["color"], createdAt: createdAt.toISOString(), updatedAt: createdAt.toISOString(), placeCount: 0 };
 }
 
 export async function updatePlaceList(userId: string, listId: string, input: { name?: string; color?: string }) {
@@ -117,10 +118,10 @@ export async function addSavedPlace(userId: string, listId: string, place: Omit<
   const count = await db.select({ count: sql<number>`count(*)::int` }).from(savedPlaces).where(eq(savedPlaces.placeListId, listId));
   if ((count[0]?.count ?? 0) >= 100) throw new Error("리스트별 장소는 최대 100개까지 저장할 수 있습니다.");
   const existing = await db.select({ id: savedPlaces.id }).from(savedPlaces).where(and(eq(savedPlaces.placeListId, listId), eq(savedPlaces.name, place.name), eq(savedPlaces.latitude, String(place.latitude)), eq(savedPlaces.longitude, String(place.longitude)))).limit(1);
-  if (existing[0]) return existing[0];
+  if (existing[0]) return { id: existing[0].id, created: false };
   const placeId = id();
   await db.transaction(async (tx) => { await tx.insert(savedPlaces).values({ id: placeId, placeListId: listId, name: place.name, address: place.address, latitude: String(place.latitude), longitude: String(place.longitude) }); await tx.update(placeLists).set({ updatedAt: new Date() }).where(eq(placeLists.id, listId)); });
-  return { id: placeId };
+  return { id: placeId, created: true };
 }
 
 export async function deleteSavedPlace(userId: string, listId: string, placeId: string) {
@@ -128,4 +129,37 @@ export async function deleteSavedPlace(userId: string, listId: string, placeId: 
   if (!owned[0]) return false;
   const deleted = await db.delete(savedPlaces).where(and(eq(savedPlaces.id, placeId), eq(savedPlaces.placeListId, listId))).returning({ id: savedPlaces.id });
   return Boolean(deleted[0]);
+}
+
+export async function getMemberWorkspace(userId: string): Promise<MemberWorkspace | null> {
+  const rows = await db.select().from(memberWorkspaces).where(eq(memberWorkspaces.userId, userId)).limit(1);
+  const workspace = rows[0];
+  if (!workspace) return null;
+  return {
+    returnToStart: workspace.returnToStart,
+    places: workspace.places,
+    fixedVisitOrders: workspace.fixedVisitOrders,
+    updatedAt: workspace.updatedAt.toISOString(),
+  };
+}
+
+export async function saveMemberWorkspace(
+  userId: string,
+  input: Pick<MemberWorkspace, "returnToStart" | "places" | "fixedVisitOrders">,
+): Promise<MemberWorkspace> {
+  const updatedAt = new Date();
+  const rows = await db.insert(memberWorkspaces)
+    .values({ userId, ...input, updatedAt })
+    .onConflictDoUpdate({
+      target: memberWorkspaces.userId,
+      set: { ...input, updatedAt },
+    })
+    .returning();
+  const workspace = rows[0]!;
+  return {
+    returnToStart: workspace.returnToStart,
+    places: workspace.places,
+    fixedVisitOrders: workspace.fixedVisitOrders,
+    updatedAt: workspace.updatedAt.toISOString(),
+  };
 }

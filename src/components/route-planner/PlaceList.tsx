@@ -1,7 +1,7 @@
 "use client";
 
 import { DragEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { BookmarkPlus, Lock, LockOpen, Trash2 } from "lucide-react";
+import { ListPlus, Lock, LockOpen, Trash2 } from "lucide-react";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
 
 interface Props {
@@ -100,9 +100,8 @@ export function PlaceList({ places, returnToStart, fixedVisitOrders, onReturnCha
   }
 
   return <section className="place-section">
-    <div className="section-heading"><h2>방문 장소</h2><span>{places.length}개</span></div>
-    <label className="toggle place-return-toggle"><input type="checkbox" checked={returnToStart} onChange={(event) => onReturnChange(event.target.checked)} /> 출발지로 복귀</label>
-    {places.length === 0 && <p className="muted">검색 또는 지도 클릭으로 추가하세요.</p>}
+    <div className="section-heading"><h2>방문 장소</h2><label className="toggle place-return-toggle"><input type="checkbox" checked={returnToStart} onChange={(event) => onReturnChange(event.target.checked)} /> 출발지로 복귀</label></div>
+    {places.length === 0 && <p className="place-empty-hint">검색하거나 지도에서 장소를 선택하세요</p>}
     <ol className="place-list">
       {displayPlaces.map((place, index) => {
         const isReturnStop = returnToStart && index === displayPlaces.length - 1;
@@ -152,7 +151,7 @@ export function PlaceList({ places, returnToStart, fixedVisitOrders, onReturnCha
           <span className={`drag-handle${isDraggable ? "" : " placeholder"}`} aria-label={isDraggable ? "드래그하여 순서 변경" : undefined} title={isDraggable ? "드래그하여 순서 변경" : undefined}>⠿</span>
           <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{badge}</div>
           <div className="place-main"><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></div>
-          {!isReturnStop && <div className="place-actions">{canSetStayDuration && <button type="button" className={`place-order-lock icon-action${isOrderLocked ? " locked" : ""}`} aria-label={isOrderLocked ? `${index + 1}번째 방문 순서 고정 해제` : `${index + 1}번째 방문 순서 고정`} title={isOrderLocked ? "순서 고정 해제" : "현재 순서 고정"} aria-pressed={isOrderLocked} onClick={() => onFixedVisitOrderChange(place.id, index + 1)}>{isOrderLocked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}</button>}{onSavePlace && <button type="button" className="icon-action place-save-action" aria-label={`${place.name} 내 장소에 저장`} title="내 장소에 저장" onClick={() => onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, stayDurationMinutes: 0 })}><BookmarkPlus aria-hidden="true" /></button>}<button type="button" className="danger icon-action place-delete-action" aria-label={`${place.name} 삭제`} title="삭제" onClick={() => onRemove(place.id)}><Trash2 aria-hidden="true" /></button></div>}
+          {!isReturnStop && <div className="place-actions">{canSetStayDuration && <button type="button" className={`place-order-lock icon-action${isOrderLocked ? " locked" : ""}`} aria-label={isOrderLocked ? `${index + 1}번째 방문 순서 고정 해제` : `${index + 1}번째 방문 순서 고정`} title={isOrderLocked ? "순서 고정 해제" : "현재 순서 고정"} aria-pressed={isOrderLocked} onClick={() => onFixedVisitOrderChange(place.id, index + 1)}>{isOrderLocked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}</button>}{onSavePlace && <button type="button" className="icon-action place-save-action" aria-label={`${place.name} 장소 리스트에 저장`} title="장소 리스트에 저장" onClick={() => onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, stayDurationMinutes: 0 })}><ListPlus aria-hidden="true" /></button>}<button type="button" className="danger icon-action place-delete-action" aria-label={`${place.name} 삭제`} title="삭제" onClick={() => onRemove(place.id)}><Trash2 aria-hidden="true" /></button></div>}
           {isStayEditing && stayEditor && <div className={`stay-editor-flyout${stayEditor.closing ? " closing" : ""}`} style={{ top: stayEditor.top, left: stayEditor.left, width: stayEditor.width, height: stayEditor.height }}><label>머무는 시간</label><div className="stay-stepper"><button className="stay-step" type="button" aria-label="머무는 시간 5분 줄이기" onClick={() => adjustStayDuration(place.id, -5)}>−</button><output aria-live="polite">{stayDraft}분</output><button className="stay-step" type="button" aria-label="머무는 시간 5분 늘리기" onClick={() => adjustStayDuration(place.id, 5)}>+</button></div></div>}
         </li>;
       })}
