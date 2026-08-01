@@ -1,0 +1,67 @@
+"use client";
+
+import { useState, type CSSProperties } from "react";
+import type { OptimizationResponse, TrafficCongestion } from "@/features/route-optimization/types/route.types";
+import { routeColor } from "@/lib/route-colors";
+
+const formatDistance = (meters: number) => meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${meters}m`;
+const formatTime = (milliseconds: number) => { const minutes = Math.round(milliseconds / 60_000); return minutes >= 60 ? `${Math.floor(minutes / 60)}시간 ${minutes % 60}분` : `${minutes}분`; };
+const formatCalculationTime = (milliseconds: number) => milliseconds < 1_000 ? "1초 미만" : `${(milliseconds / 1_000).toFixed(1)}초`;
+const formatTrafficReferenceTime = (timestamp: string) => new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).format(new Date(timestamp));
+const segmentLabel = (index: number) => String.fromCharCode(65 + index);
+const trafficStatus = (congestion: TrafficCongestion) => ({ 0: { label: "정보 없음", className: "unknown" }, 1: { label: "원활", className: "smooth" }, 2: { label: "서행", className: "slow" }, 3: { label: "혼잡", className: "congested" } })[congestion];
+const segmentTrafficStatus = (sections: OptimizationResponse["segments"][number]["trafficSections"]) => {
+  if (sections.length === 0) return trafficStatus(0);
+  const totalDistance = sections.reduce((total, section) => total + Math.max(section.distanceMeters, 1), 0);
+  const weightedCongestion = sections.reduce((total, section) => total + section.congestion * Math.max(section.distanceMeters, 1), 0) / totalDistance;
+  return trafficStatus(Math.round(weightedCongestion) as TrafficCongestion);
+};
+
+export function RouteSummary({ result, placeCount, isCalculating, onSegmentHover, onSegmentSelect }: { result: OptimizationResponse | null; placeCount: number; isCalculating: boolean; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void }) {
+  const [expandedSegmentIndex, setExpandedSegmentIndex] = useState<number | null>(null);
+
+  if (isCalculating) {
+    return <section className="route-summary-panel route-summary-empty route-summary-calculating"><div className="result-eyebrow"><span className="status-orb calculating" />계산 중</div><h2>최적 경로를 찾고 있어요</h2><p className="result-intro">현재 교통 상황과 구간별 예상 시간을 비교하고 있습니다.</p><div className="empty-route-card calculating-route-card"><div className="empty-route-icon calculating-icon">↗</div><div><strong>이동 시간을 분석하는 중</strong><span>잠시만 기다려 주세요<span className="loading-dots" aria-label="계산 중"><i /><i /><i /></span></span></div></div><div className="calculation-progress" aria-hidden="true"><span /><span /><span /></div><p className="result-footer-note">방문 장소가 많을수록 계산에 조금 더 시간이 걸릴 수 있습니다.</p></section>;
+  }
+
+  if (!result && placeCount < 2) {
+    const remaining = 2 - placeCount;
+    return <section className="route-summary-panel route-summary-empty route-summary-requirements"><div className="result-eyebrow"><span className="status-orb" />장소 추가 필요</div><h2>{placeCount === 0 ? "방문 장소를 추가해 주세요" : "한 곳만 더 추가해 주세요"}</h2><p className="result-intro">최적 동선은 서로 다른 방문 장소가 2곳 이상일 때 계산할 수 있습니다.</p><div className="minimum-place-card"><div className="minimum-place-count"><strong>{placeCount}</strong><span>/ 2</span></div><div><strong>장소 {remaining}곳 더 필요</strong><span>{placeCount === 0 ? "출발지와 방문지를 추가해 주세요." : "다음 방문지를 추가하면 동선을 계산할 수 있어요."}</span></div></div><p className="result-footer-note">장소를 추가하면 예상 시간과 방문 순서를 확인할 수 있습니다.</p></section>;
+  }
+
+  if (!result) return <section className="route-summary-panel route-summary-empty"><div className="result-eyebrow"><span className="status-orb" />계산 대기</div><h2>오늘의 최적 동선</h2><p className="result-intro">장소를 추가하면 실시간 교통정보를 반영한 가장 효율적인 방문 순서를 안내합니다.</p><div className="empty-route-card"><div className="empty-route-icon">↗</div><div><strong>이동 시간을 줄여보세요</strong><span>동선 최적화 버튼을 눌러 시작하세요.</span></div></div><div className="empty-feature-list"><div><span>01</span><p><strong>장소 추가</strong><small>검색 또는 지도에서 선택</small></p></div><div><span>02</span><p><strong>동선 최적화</strong><small>실시간 교통 기준 계산</small></p></div><div><span>03</span><p><strong>경로 확인</strong><small>지도와 구간별 결과 제공</small></p></div></div><p className="result-footer-note">경로는 현재 교통상황을 기준으로 계산됩니다.</p></section>;
+
+  const placesById = new Map(result.orderedPlaces.map((place) => [place.id, place]));
+  const totalStayDurationMinutes = result.summary.totalStayDurationMinutes ?? 0;
+  const totalDurationMilliseconds = result.summary.totalDurationMilliseconds + totalStayDurationMinutes * 60_000;
+  let scheduleCursor = new Date(result.summary.calculatedAt).getTime();
+  const segmentSchedules = result.segments.map((segment, index) => {
+    const departureTime = scheduleCursor;
+    const arrivalTime = departureTime + segment.durationMilliseconds;
+    scheduleCursor = arrivalTime;
+    if (index < result.segments.length - 1) scheduleCursor += (placesById.get(segment.toId)?.stayDurationMinutes ?? 0) * 60_000;
+    return { departureTime, arrivalTime };
+  });
+
+  return <section className="route-summary-panel">
+    <div className="result-header"><div className="result-eyebrow"><span className="status-orb success" />최적화 완료</div><span className="result-time">계산 {formatCalculationTime(result.summary.calculationDurationMilliseconds)}</span></div>
+    <h2>가장 효율적인 경로</h2>
+    <p className="result-intro">현재 교통상황을 반영해 계산한 추천 순서입니다.</p>
+    <div className="route-hero"><p>예상 소요 시간</p><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">이동 시간 ({formatTime(result.summary.totalDurationMilliseconds)}) + 머무는 시간 ({formatTime(totalStayDurationMinutes * 60_000)})</span>}<div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div>
+    <div className="route-stops-card"><div className="stops-heading"><div><small>방문 순서</small><strong>{result.orderedPlaces.length}개 지점</strong></div><span>ROUTE</span></div><ol className="modern-route-order">{result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`} style={{ "--route-color": routeColor(index) } as CSSProperties}><span className="stop-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}</small></div></li>)}</ol></div>
+    <details className="segment-details">
+      <summary><div className="segment-summary-title"><span>구간별 상세</span><time dateTime={result.summary.calculatedAt}>교통정보 기준 {formatTrafficReferenceTime(result.summary.calculatedAt)}</time></div><b>{result.segments.length}개 구간</b></summary>
+      <ol>{result.segments.map((segment, index) => {
+        const isExpanded = expandedSegmentIndex === index;
+        const from = placesById.get(segment.fromId);
+        const to = placesById.get(segment.toId);
+        const traffic = segmentTrafficStatus(segment.trafficSections ?? []);
+        return <li key={`${segment.fromId}-${segment.toId}-${index}`} className={isExpanded ? "segment-expanded" : ""} style={{ "--route-color": routeColor(index) } as CSSProperties}>
+          <button type="button" className="segment-number" aria-label={`${segmentLabel(index)} 구간 ${isExpanded ? "접기" : "출발지와 도착지 보기"}`} aria-expanded={isExpanded} onMouseEnter={() => onSegmentHover(index)} onMouseLeave={() => onSegmentHover(null)} onFocus={() => onSegmentHover(index)} onBlur={() => onSegmentHover(null)} onClick={() => { const nextIndex = isExpanded ? null : index; setExpandedSegmentIndex(nextIndex); onSegmentSelect(nextIndex); }}>{segmentLabel(index)}</button>
+          <p>{formatDistance(segment.distanceMeters)}<small>{formatTime(segment.durationMilliseconds)}</small><em className={`traffic-status ${traffic.className}`}>{traffic.label}</em></p>
+          {isExpanded && <div className="segment-place-details"><div className="segment-place-time"><strong>{from?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[index].departureTime).toISOString())}</small></div><i aria-hidden="true">to</i><div className="segment-place-time"><strong>{to?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[index].arrivalTime).toISOString())}</small></div></div>}
+        </li>;
+      })}</ol>
+    </details>
+  </section>;
+}

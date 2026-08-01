@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { getSessionUser, unauthenticated, badRequest } from "@/lib/member/api";
+import { createRoutePlan, getRoutePlans } from "@/lib/member/repository";
+export async function POST(_: Request, context: { params: Promise<{ planId: string }> }) { const user = await getSessionUser(); if (!user) return unauthenticated(); const { planId } = await context.params; const source = (await getRoutePlans(user.id)).find((plan) => plan.id === planId); if (!source) return NextResponse.json({ error: { message: "동선을 찾을 수 없습니다." } }, { status: 404 }); try { return NextResponse.json({ plan: await createRoutePlan(user.id, `${source.name} 복제본`, source) }, { status: 201 }); } catch (error) { return badRequest(error instanceof Error ? error.message : "동선을 복제할 수 없습니다."); } }
