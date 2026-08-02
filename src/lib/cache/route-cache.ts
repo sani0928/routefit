@@ -1,12 +1,13 @@
 import type { RouteSegment } from "@/features/route-optimization/types/route.types";
+import type { RouteOption } from "@/features/route-optimization/route-options";
 
 type Entry = { expiresAt: number; value: RouteSegment };
 const cache = new Map<string, Entry>();
 const ttlMs = Math.max(300, Number(process.env.ROUTE_CACHE_TTL_SECONDS ?? 600)) * 1000;
 
-export function routeCacheKey(from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }): string {
+export function routeCacheKey(from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }, routeOption: RouteOption = "traoptimal"): string {
   const point = (p: { latitude: number; longitude: number }) => `${p.latitude.toFixed(6)},${p.longitude.toFixed(6)}`;
-  return `route:${point(from)}:${point(to)}:traoptimal`;
+  return `route:${point(from)}:${point(to)}:${routeOption}`;
 }
 
 export function getCachedRoute(key: string): RouteSegment | undefined {

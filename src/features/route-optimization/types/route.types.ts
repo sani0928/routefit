@@ -1,3 +1,5 @@
+import type { RouteOption } from "../route-options";
+
 export type PlaceType = "START" | "WAYPOINT" | "DESTINATION";
 
 export interface Place {
@@ -66,6 +68,7 @@ export interface OptimizationResponse {
     totalStayDurationMinutes: number;
     calculatedAt: string;
     calculationDurationMilliseconds: number;
+    routeOption: RouteOption;
   };
   path: [number, number][];
 }

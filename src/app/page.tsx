@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Settings } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { SavePlaceDialog } from "@/components/member/SavePlaceDialog";
@@ -10,6 +11,7 @@ import { PlaceList } from "@/components/route-planner/PlaceList";
 import { RouteSummary } from "@/components/route-planner/RouteSummary";
 import type { MemberPlaceList, MemberState, SavedPlace } from "@/features/member/types";
 import type { FixedVisitOrder, OptimizationResponse, Place } from "@/features/route-optimization/types/route.types";
+import { ROUTE_OPTIONS, ROUTE_OPTION_META, type RouteOption } from "@/features/route-optimization/route-options";
 
 type Status = "IDLE" | "BUILDING_MATRIX" | "OPTIMIZING" | "FETCHING_FINAL_ROUTE" | "SUCCESS" | "ERROR";
 type PlaceInput = Omit<Place, "id" | "type">;
@@ -46,12 +48,16 @@ export default function Home() {
   const [result, setResult] = useState<OptimizationResponse | null>(null);
   const [status, setStatus] = useState<Status>("IDLE");
   const [error, setError] = useState("");
+  const [buttonNotice, setButtonNotice] = useState("");
+  const [routeOption, setRouteOption] = useState<RouteOption>("traoptimal");
+  const [routeOptionMenuOpen, setRouteOptionMenuOpen] = useState(false);
   const [hoveredSegmentIndex, setHoveredSegmentIndex] = useState<number | null>(null);
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
   const [member, setMember] = useState<MemberState>(EMPTY_MEMBER);
   const [memberStateReady, setMemberStateReady] = useState(false);
   const [workspaceRestored, setWorkspaceRestored] = useState(false);
   const workspaceRestoredRef = useRef(false);
+  const buttonNoticeTimerRef = useRef<number | null>(null);
   const [listManagerOpen, setListManagerOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [savedPlacesByListId, setSavedPlacesByListId] = useState<Record<string, SavedPlace[]>>({});
@@ -59,6 +65,18 @@ export default function Home() {
   const start = places[0];
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
   const savedListPlaces = selectedListId ? savedPlacesByListId[selectedListId] ?? [] : [];
+  const selectedRouteOption = ROUTE_OPTION_META[routeOption];
+  function showButtonNotice(message: string) {
+    if (buttonNoticeTimerRef.current) window.clearTimeout(buttonNoticeTimerRef.current);
+    setButtonNotice(message);
+    buttonNoticeTimerRef.current = window.setTimeout(() => {
+      setButtonNotice("");
+      buttonNoticeTimerRef.current = null;
+    }, 2200);
+  }
+  useEffect(() => () => {
+    if (buttonNoticeTimerRef.current) window.clearTimeout(buttonNoticeTimerRef.current);
+  }, []);
   const loadMember = useCallback(async () => {
     try {
       const response = await fetch("/api/member/state", { cache: "no-store" });
@@ -148,12 +166,23 @@ export default function Home() {
     if (places.length >= 15) return setError("방문 장소는 최대 15곳까지 추가할 수 있습니다.");
     setPlaces((current) => normalizePlaceRoles([{ ...input, id: newId(), type: "START", stayDurationMinutes: 0 }, ...current]));
     setResult(null);
-  }  function reorderPlace(id: string, targetId: string, position: "before" | "after") {
+  }  function reorderPlace(id: string, destinationIndex: number) {
     setPlaces((current) => {
-      const from = current.findIndex((place) => place.id === id); const target = current.findIndex((place) => place.id === targetId);
-      if (from < 0 || target < 0 || from === target) return current;
-      const next = [...current]; const [moved] = next.splice(from, 1); let insertion = position === "before" ? target : target + 1;
-      if (from < target) insertion -= 1; next.splice(insertion, 0, moved); return normalizePlaceRoles(next);
+      const sourceIndex = current.findIndex((place) => place.id === id);
+      if (sourceIndex < 0 || sourceIndex === destinationIndex) return current;
+
+      const next = [...current];
+      const [moved] = next.splice(sourceIndex, 1);
+      const insertionIndex = Math.max(0, Math.min(destinationIndex, next.length));
+      next.splice(insertionIndex, 0, moved);
+      const normalized = normalizePlaceRoles(next);
+
+      setFixedVisitOrders((currentFixedOrders) => currentFixedOrders.flatMap((fixed) => {
+        const nextIndex = normalized.findIndex((place) => place.id === fixed.placeId);
+        return nextIndex < 0 ? [] : [{ ...fixed, visitOrder: nextIndex + 1 }];
+      }));
+
+      return normalized;
     });
     setResult(null);
   }
@@ -169,17 +198,42 @@ export default function Home() {
   function removePlace(id: string) { setPlaces((current) => normalizePlaceRoles(current.filter((place) => place.id !== id))); setResult(null); }
   function setStayDuration(id: string, minutes: number) { setPlaces((current) => current.map((place) => place.id === id ? { ...place, stayDurationMinutes: minutes } : place)); setResult(null); }  async function optimize() {
     if (places.length < 2 || !start) return;
+    const coordinateKeys = new Set<string>();
+    const hasDuplicatePlace = places.some((place) => {
+      const key = `${place.latitude.toFixed(6)},${place.longitude.toFixed(6)}`;
+      if (coordinateKeys.has(key)) return true;
+      coordinateKeys.add(key);
+      return false;
+    });
+    if (hasDuplicatePlace) {
+      setError("");
+      setStatus("IDLE");
+      showButtonNotice("동일한 장소는 중복 등록할 수 없습니다.");
+      return;
+    }
     const destination = returnToStart ? null : places.at(-1) ?? null;
     const waypoints = returnToStart ? places.slice(1) : places.slice(1, -1);
-    setError(""); setStatus("BUILDING_MATRIX");
+    setError("");
+    setButtonNotice("");
+    setStatus("BUILDING_MATRIX");
     try {
-      const response = await fetch("/api/routes/optimize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ start, waypoints, destination, returnToStart, fixedVisitOrders, optimizationCriterion: "DURATION" }) });
+      const response = await fetch("/api/routes/optimize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ start, waypoints, destination, returnToStart, fixedVisitOrders, optimizationCriterion: "DURATION", routeOption }) });
       setStatus("OPTIMIZING");
       const body = await response.json() as OptimizationResponse & { error?: { message?: string } };
       if (!response.ok) throw new Error(body.error?.message || "동선 계산에 실패했습니다.");
-      setStatus("FETCHING_FINAL_ROUTE"); setResult(body); setStatus("SUCCESS");
+      setStatus("FETCHING_FINAL_ROUTE");
+      setResult(body);
+      setStatus("SUCCESS");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "동선 계산에 실패했습니다."); setStatus("ERROR");
+      const message = reason instanceof Error ? reason.message : "동선 계산에 실패했습니다.";
+      if (message.includes("동일한 장소는 중복 등록할 수 없습니다.")) {
+        setError("");
+        setStatus("IDLE");
+        showButtonNotice(message);
+      } else {
+        setError(message);
+        setStatus("ERROR");
+      }
     }
   }
 
@@ -285,7 +339,28 @@ export default function Home() {
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} />
         <div className="planner-footer">
           <button className="secondary" onClick={() => { setPlaces([]); setFixedVisitOrders([]); setResult(null); setError(""); }}>전체 초기화</button>
-          <button className="primary" onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"}>동선 최적화 계산</button>
+          <div className="route-primary-group">
+            <div className="optimize-action">
+              {buttonNotice && <p className="optimize-notice" role="alert">{buttonNotice}</p>}
+              <button className={`primary route-option-${selectedRouteOption.tone}`} onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"}>동선 최적화</button>
+            </div>
+            <div className="route-option-control">
+              <button type="button" className={`route-option-settings route-option-${selectedRouteOption.tone}`} aria-label="경로 성향 설정" aria-expanded={routeOptionMenuOpen} onClick={() => setRouteOptionMenuOpen((open) => !open)}>
+                <Settings size={18} strokeWidth={2.1} />
+              </button>
+              {routeOptionMenuOpen && <div className="route-option-popover" role="menu" aria-label="경로 성향 선택">
+              <p>경로 성향</p>
+              {ROUTE_OPTIONS.map((option) => {
+                const meta = ROUTE_OPTION_META[option];
+                const selected = option === routeOption;
+                return <button key={option} type="button" role="menuitemradio" aria-checked={selected} className={`route-option-item route-option-${meta.tone}${selected ? " selected" : ""}`} onClick={() => { setRouteOption(option); setRouteOptionMenuOpen(false); setResult(null); }}>
+                  <span className="route-option-swatch" />
+                  <span><strong>{meta.label}</strong><small>{meta.description}</small></span>
+                </button>;
+              })}
+              </div>}
+            </div>
+          </div>
         </div>
         {error && <p className="error-message">{error}</p>}
       </aside>
@@ -319,7 +394,7 @@ export default function Home() {
           </section>
         )}
       </section>      <aside className="result-panel">
-        <RouteSummary result={result} placeCount={places.length} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={setSelectedSegmentIndex} />
+        <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={setSelectedSegmentIndex} />
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} onSave={(listId) => void savePlace(listId)} onClose={() => setSaveTarget(null)} />
     </main>

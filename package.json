@@ -13,6 +13,7 @@
     },
     "dependencies": {
         "@better-auth/drizzle-adapter": "^1.6.25",
+        "@dnd-kit/react": "^0.5.0",
         "better-auth": "^1.6.25",
         "drizzle-orm": "^0.45.2",
         "lucide-react": "^1.28.0",

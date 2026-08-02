@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const waypoints: Place[] = input.waypoints.map((place) => ({ ...place, type: "WAYPOINT" }));
     const destination: Place | null = input.destination ? { ...input.destination, type: "DESTINATION" } : null;
     const nodes = [start, ...waypoints, ...(destination ? [destination] : [])];
-    const matrix = await buildCostMatrix(nodes, drivingRoute);
+    const matrix = await buildCostMatrix(nodes, (from, to) => drivingRoute(from, to, input.routeOption));
     const optimized = optimizeRoute({ start, waypoints, destination, returnToStart: input.returnToStart, costs: matrix, fixedVisitOrders: input.fixedVisitOrders });
     const byId = new Map(nodes.map((place) => [place.id, place]));
     const byLeg = new Map(matrix.map((segment) => [`${segment.fromId}:${segment.toId}`, segment]));
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       if (!byLeg.get(`${fromId}:${toId}`)) throw new AppError("최종 경로 구간을 찾을 수 없습니다.", 422, "ROUTE_NOT_FOUND");
       const from = byId.get(fromId); const to = byId.get(toId);
       if (!from || !to) throw new AppError("장소 정보를 찾을 수 없습니다.", 422, "INVALID_ROUTE");
-      segments.push(await drivingRoute(from, to));
+      segments.push(await drivingRoute(from, to, input.routeOption));
     }
     const orderedPlaces = optimized.orderedPlaceIds.map((id) => byId.get(id)).filter((place): place is Place => Boolean(place));
     const visitPlaces = orderedPlaces.slice(1, -1);
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         totalStayDurationMinutes,
         calculatedAt: new Date().toISOString(),
         calculationDurationMilliseconds: Date.now() - calculationStartedAt,
+        routeOption: input.routeOption,
       },
       path: segments.flatMap((segment, index) => index === 0 ? segment.path : segment.path.slice(1)),
     });

@@ -108,7 +108,7 @@ interface ListEditorProps {
 }
 
 function ListEditor({ mode, name, color, onNameChange, onColorChange, onClose, onSubmit, onDelete }: ListEditorProps) {
-  const heading = mode === "create" ? "새 리스트" : "리스트 편집";
+  const heading = mode === "create" ? "리스트 생성" : "리스트 편집";
   return <div className="list-editor-backdrop" role="presentation" onMouseDown={onClose}>
     <form className="list-editor-dialog" onSubmit={onSubmit} onMouseDown={(event) => event.stopPropagation()}>
       <header><strong>{heading}</strong><button type="button" onClick={onClose} className="list-editor-close" aria-label="닫기"><X size={17} /></button></header>

@@ -25,6 +25,7 @@ export const optimizeSchema = z.object({
   returnToStart: z.boolean(),
   fixedVisitOrders: z.array(fixedVisitOrderSchema).max(13).default([]),
   optimizationCriterion: z.literal("DURATION").default("DURATION"),
+  routeOption: z.enum(["trafast", "traoptimal", "tracomfort"]).default("traoptimal"),
 }).superRefine((input, ctx) => {
   if (input.returnToStart && input.destination) ctx.addIssue({ code: "custom", message: "출발지 복귀 시 별도 도착지를 지정할 수 없습니다.", path: ["destination"] });
   const all = [input.start, ...input.waypoints, ...(input.destination ? [input.destination] : [])];

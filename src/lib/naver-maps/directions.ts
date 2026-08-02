@@ -1,24 +1,25 @@
 import type { Place, RouteSegment, RouteTrafficSection } from "@/features/route-optimization/types/route.types";
+import type { RouteOption } from "@/features/route-optimization/route-options";
 import { AppError } from "@/lib/errors";
 import { getCachedRoute, routeCacheKey, setCachedRoute } from "@/lib/cache/route-cache";
 import { naverFetch } from "./client";
 
 interface DirectionsSection { pointIndex?: number; pointCount?: number; distance?: number; congestion?: number; speed?: number; }
 interface DirectionsRoute { summary?: { distance?: number; duration?: number; tollFare?: number }; path?: [number, number][]; section?: DirectionsSection[]; }
-interface DirectionsPayload { code: number; message?: string; route?: { traoptimal?: DirectionsRoute[] }; }
+interface DirectionsPayload { code: number; message?: string; route?: Partial<Record<RouteOption, DirectionsRoute[]>>; }
 
-export async function drivingRoute(from: Place, to: Place): Promise<RouteSegment> {
-  const key = routeCacheKey(from, to);
+export async function drivingRoute(from: Place, to: Place, routeOption: RouteOption = "traoptimal"): Promise<RouteSegment> {
+  const key = routeCacheKey(from, to, routeOption);
   const cached = getCachedRoute(key);
   if (cached) return { ...cached, fromId: from.id, toId: to.id, trafficSections: cached.trafficSections ?? [] };
   const start = `${from.longitude},${from.latitude}`;
   const goal = `${to.longitude},${to.latitude}`;
-  const payload = await naverFetch(`/map-direction/v1/driving?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}&option=traoptimal&cartype=1`) as DirectionsPayload;
+  const payload = await naverFetch(`/map-direction/v1/driving?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}&option=${routeOption}&cartype=1`) as DirectionsPayload;
   if (payload.code !== 0) {
     const code = payload.code === 1 ? "SAME_LOCATION" : "ROUTE_NOT_FOUND";
     throw new AppError(payload.code === 1 ? "출발지와 목적지가 동일합니다." : "차량 경로를 찾을 수 없습니다.", 422, code);
   }
-  const route = payload.route?.traoptimal?.[0];
+  const route = payload.route?.[routeOption]?.[0];
   const summary = route?.summary;
   if (!route || !summary || typeof summary.duration !== "number" || typeof summary.distance !== "number") {
     throw new AppError("경로 응답 형식이 올바르지 않습니다.", 502, "INVALID_ROUTE_RESPONSE");
