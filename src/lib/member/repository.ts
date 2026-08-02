@@ -67,7 +67,7 @@ export async function setActiveRoutePlan(userId: string, planId: string) {
 export async function saveRoutePlan(userId: string, planId: string, input: { name?: string; returnToStart: boolean; places: Place[]; fixedVisitOrders: FixedVisitOrder[] }) {
   const plan = await db.select().from(routePlans).where(and(eq(routePlans.id, planId), eq(routePlans.userId, userId))).limit(1);
   if (!plan[0]) return null;
-  if (input.places.length > 15) throw new Error("방문 장소는 최대 15곳까지 저장할 수 있습니다.");
+  if (input.places.length > 15) throw new Error("방문 예정 장소는 최대 15곳까지 저장할 수 있습니다.");
   const lockedIds = new Set(input.fixedVisitOrders.map((fixed) => fixed.placeId));
   await db.transaction(async (tx) => {
     await tx.update(routePlans).set({ name: input.name?.trim() || plan[0].name, returnToStart: input.returnToStart, updatedAt: new Date() }).where(eq(routePlans.id, planId));

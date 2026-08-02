@@ -26,7 +26,7 @@ function createPlaceInfoContent(place: MapPlace, onAdd?: () => void) {
     const addButton = document.createElement("button");
     addButton.type = "button";
     addButton.className = "current-location-start";
-    addButton.textContent = "방문 장소에 추가";
+    addButton.textContent = "방문 예정 장소에 추가";
     addButton.addEventListener("click", onAdd);
     container.append(addButton);
   }

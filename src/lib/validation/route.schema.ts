@@ -10,7 +10,7 @@ export const placeSchema = coordinate.extend({
   name: z.string().trim().min(1).max(100),
   address: z.string().trim().max(300).optional(),
   type: z.enum(["START", "WAYPOINT", "DESTINATION"]).optional(),
-  stayDurationMinutes: z.number().int().min(0).max(1_440).multipleOf(5).default(0),
+  stayDurationMinutes: z.number().int().min(0).max(1_440).default(0),
 });
 
 const fixedVisitOrderSchema = z.object({

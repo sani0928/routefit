@@ -278,7 +278,7 @@ export function PlaceList({
   return (
     <section className="place-section">
       <div className="section-heading">
-        <h2>방문 장소</h2>
+        <h2>방문 예정 장소</h2>
         <label className="toggle place-return-toggle">
           <input type="checkbox" checked={returnToStart} onChange={(event) => onReturnChange(event.target.checked)} /> 출발지로 복귀
         </label>

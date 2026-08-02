@@ -178,12 +178,12 @@ export default function Home() {
     return ordered.length > 1 && ordered[0].id === ordered.at(-1)?.id ? ordered.slice(0, -1) : ordered;
   }, [places, result]);
   const addPlace = useCallback((input: PlaceInput) => {
-    if (places.length >= 15) return setError("방문 장소는 최대 15곳까지 추가할 수 있습니다.");
+    if (places.length >= 15) return setError("방문 예정 장소는 최대 15곳까지 추가할 수 있습니다.");
     setPlaces((current) => normalizePlaceRoles([...current, { ...input, id: newId(), type: "WAYPOINT", stayDurationMinutes: 0 }]));
     setResult(null); setError("");
   }, [places.length]);
   function addCurrentLocationAsStart(input: PlaceInput) {
-    if (places.length >= 15) return setError("방문 장소는 최대 15곳까지 추가할 수 있습니다.");
+    if (places.length >= 15) return setError("방문 예정 장소는 최대 15곳까지 추가할 수 있습니다.");
     setPlaces((current) => normalizePlaceRoles([{ ...input, id: newId(), type: "START", stayDurationMinutes: 0 }, ...current]));
     setResult(null);
   }  function reorderPlace(id: string, destinationIndex: number) {
@@ -414,7 +414,7 @@ export default function Home() {
           </section>
         )}
       </section>      <aside className="result-panel">
-        <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={setSelectedSegmentIndex} />
+        <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={setSelectedSegmentIndex} />
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} onSave={(listId) => void savePlace(listId)} onClose={() => setSaveTarget(null)} />
     </main>

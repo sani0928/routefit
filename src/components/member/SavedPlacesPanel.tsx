@@ -71,7 +71,7 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
       </header>
       {places.length > 0 && <ol className="saved-place-list">{pagedPlaces.map((place) => <li key={place.id}>
         <div><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></div>
-        <div className="saved-place-actions"><button type="button" onClick={() => onAddToRoute(place)} title="방문 장소에 추가" aria-label={`${place.name} 방문 장소에 추가`}><MapPinPlus size={16} /></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div>
+        <div className="saved-place-actions"><button type="button" onClick={() => onAddToRoute(place)} title="방문 예정 장소에 추가" aria-label={`${place.name} 방문 예정 장소에 추가`}><MapPinPlus size={16} /></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div>
       </li>)}</ol>}
       {places.length === 0 && <p className="list-empty-state">저장한 장소가 여기에 표시됩니다.</p>}
       {places.length > ITEMS_PER_PAGE && <Pagination page={placePage} totalPages={totalPlacePages} ariaLabel="저장 장소 페이지" onPageChange={setPlacePage} />}
