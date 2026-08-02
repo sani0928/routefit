@@ -3,7 +3,7 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { ListPlus, Lock, LockOpen, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
 
 interface Props {
@@ -53,10 +53,56 @@ function SortablePlaceItem({
     transition: { duration: 180, easing: "cubic-bezier(.2,.8,.2,1)", idle: true },
   });
   const stayDuration = place.stayDurationMinutes ?? 0;
+  const [stayInput, setStayInput] = useState(String(stayDuration));
+  const latestStayDurationChangeRef = useRef(onStayDurationChange);
+  const holdStartTimeoutRef = useRef<number | null>(null);
+  const holdIntervalRef = useRef<number | null>(null);
+  latestStayDurationChangeRef.current = onStayDurationChange;
+
+  useEffect(() => {
+    setStayInput(String(stayDuration));
+  }, [stayDuration]);
+
+  function commitStayDuration() {
+    const requestedMinutes = Number(stayInput);
+    const nextMinutes = Number.isFinite(requestedMinutes)
+      ? Math.min(1_440, Math.max(0, Math.trunc(requestedMinutes)))
+      : stayDuration;
+
+    if (nextMinutes !== stayDuration) onStayDurationChange(place.id, nextMinutes - stayDuration);
+    setStayInput(String(nextMinutes));
+  }
 
   function stopCardToggle(event: MouseEvent<HTMLButtonElement | HTMLDivElement>) {
     event.stopPropagation();
   }
+
+  function applyStayStep(delta: number) {
+    latestStayDurationChangeRef.current(place.id, delta);
+  }
+
+  function clearStayStepHold() {
+    if (holdStartTimeoutRef.current !== null) {
+      window.clearTimeout(holdStartTimeoutRef.current);
+      holdStartTimeoutRef.current = null;
+    }
+    if (holdIntervalRef.current !== null) {
+      window.clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+  }
+
+  function startStayStepHold(event: ReactPointerEvent<HTMLButtonElement>, delta: number) {
+    event.stopPropagation();
+    clearStayStepHold();
+    applyStayStep(delta);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    holdStartTimeoutRef.current = window.setTimeout(() => {
+      holdIntervalRef.current = window.setInterval(() => applyStayStep(delta), 75);
+    }, 350);
+  }
+
+  useEffect(() => clearStayStepHold, []);
 
   return (
     <li
@@ -130,21 +176,47 @@ function SortablePlaceItem({
                 className="stay-step"
                 type="button"
                 aria-label="머무는 시간 5분 줄이기"
+                onPointerDown={(event) => startStayStepHold(event, -5)}
+                onPointerUp={clearStayStepHold}
+                onPointerCancel={clearStayStepHold}
+                onPointerLeave={clearStayStepHold}
                 onClick={(event) => {
+                  if (event.detail !== 0) return;
                   stopCardToggle(event);
-                  onStayDurationChange(place.id, -5);
+                  applyStayStep(-5);
                 }}
               >
                 −
               </button>
-              <output aria-live="polite">{stayDuration}분</output>
+              <input
+                className="stay-duration-input"
+                type="number"
+                min="0"
+                max="1440"
+                step="1"
+                inputMode="numeric"
+                aria-label="머무는 시간(분)"
+                value={stayInput}
+                onPointerDown={(event) => event.stopPropagation()}
+                onChange={(event) => setStayInput(event.target.value)}
+                onBlur={commitStayDuration}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+              />
+              <span className="stay-duration-unit" aria-hidden="true">분</span>
               <button
                 className="stay-step"
                 type="button"
                 aria-label="머무는 시간 5분 늘리기"
+                onPointerDown={(event) => startStayStepHold(event, 5)}
+                onPointerUp={clearStayStepHold}
+                onPointerCancel={clearStayStepHold}
+                onPointerLeave={clearStayStepHold}
                 onClick={(event) => {
+                  if (event.detail !== 0) return;
                   stopCardToggle(event);
-                  onStayDurationChange(place.id, 5);
+                  applyStayStep(5);
                 }}
               >
                 +
@@ -184,7 +256,7 @@ export function PlaceList({
 
   function adjustStayDuration(id: string, delta: number) {
     const currentMinutes = places.find((place) => place.id === id)?.stayDurationMinutes ?? 0;
-    const nextMinutes = Math.min(1_440, Math.max(0, Math.round(currentMinutes / 5) * 5 + delta));
+    const nextMinutes = Math.min(1_440, Math.max(0, currentMinutes + delta));
     onStayDurationChange(id, nextMinutes);
   }
 
@@ -211,8 +283,14 @@ export function PlaceList({
           <input type="checkbox" checked={returnToStart} onChange={(event) => onReturnChange(event.target.checked)} /> 출발지로 복귀
         </label>
       </div>
-      {places.length === 0 && <p className="place-empty-hint">검색하거나 지도에서 장소를 선택하세요.</p>}
-      <DragDropProvider
+      <div className="place-list-scroll">
+        {places.length === 0 ? (
+          <div className="place-empty-state">
+            <img src="/icons/nothing.png" alt="" aria-hidden="true" />
+            <p>검색하거나 지도에서 장소를 선택하세요.</p>
+          </div>
+        ) : (
+        <DragDropProvider
         onDragStart={() => {
           didDragRef.current = true;
           setIsSorting(true);
@@ -263,8 +341,10 @@ export function PlaceList({
               </div>
             </li>
           )}
-        </ol>
-      </DragDropProvider>
+          </ol>
+        </DragDropProvider>
+        )}
+      </div>
     </section>
   );
 }

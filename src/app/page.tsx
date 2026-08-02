@@ -51,6 +51,7 @@ export default function Home() {
   const [buttonNotice, setButtonNotice] = useState("");
   const [routeOption, setRouteOption] = useState<RouteOption>("traoptimal");
   const [routeOptionMenuOpen, setRouteOptionMenuOpen] = useState(false);
+  const routeOptionControlRef = useRef<HTMLDivElement>(null);
   const [hoveredSegmentIndex, setHoveredSegmentIndex] = useState<number | null>(null);
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
   const [member, setMember] = useState<MemberState>(EMPTY_MEMBER);
@@ -77,6 +78,25 @@ export default function Home() {
   useEffect(() => () => {
     if (buttonNoticeTimerRef.current) window.clearTimeout(buttonNoticeTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!routeOptionMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (routeOptionControlRef.current?.contains(event.target as Node)) return;
+      setRouteOptionMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setRouteOptionMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [routeOptionMenuOpen]);
   const loadMember = useCallback(async () => {
     try {
       const response = await fetch("/api/member/state", { cache: "no-store" });
@@ -330,7 +350,7 @@ export default function Home() {
       <aside className="planner-panel">
         <header className="planner-header">
           <div className="planner-title-row">
-            <div><p className="eyebrow">RouteFit</p></div>
+            <div><img className="routefit-logo" src="/icons/logo.png" alt="RouteFit" /></div>
             <MemberHeader authConfigured={member.authConfigured} onBeforeLogin={() => undefined} onSessionChange={loadMember} />
           </div>
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
@@ -344,7 +364,7 @@ export default function Home() {
               {buttonNotice && <p className="optimize-notice" role="alert">{buttonNotice}</p>}
               <button className={`primary route-option-${selectedRouteOption.tone}`} onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"}>동선 최적화</button>
             </div>
-            <div className="route-option-control">
+            <div className="route-option-control" ref={routeOptionControlRef}>
               <button type="button" className={`route-option-settings route-option-${selectedRouteOption.tone}`} aria-label="경로 성향 설정" aria-expanded={routeOptionMenuOpen} onClick={() => setRouteOptionMenuOpen((open) => !open)}>
                 <Settings size={18} strokeWidth={2.1} />
               </button>
