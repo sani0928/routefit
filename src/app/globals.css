@@ -1475,3 +1475,27 @@
   pointer-events: none;
   transform: translate(4px, -50%);
 }
+@media (max-width: 700px) {
+  /* At the intermediate height, a vertical gesture always controls the sheet. */
+  .app-shell.mobile-sheet-peek .mobile-sheet-content {
+    overflow-y: hidden;
+  }
+}
+@media (max-width: 700px) {
+  /* The desktop list-entry animation owns transform and blocks sheet collapse. */
+  .map-list-manager { animation: none; }
+}
+/* The inline stay editor fully replaces the card action row. */
+.planner-panel .place-item.editing-stay .place-actions { display: none; }
+/* Match the search affordance to the RouteFit logo gradient. */
+.planner-panel .naver-search-form .search-input-row {
+  border-color: transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(120deg, #2563eb 12%, #0f7bf6 54%, #19b5d8 100%) border-box;
+}
+
+.planner-panel .naver-search-form .search-input-row:focus-within {
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgb(37 99 235 / .18);
+}

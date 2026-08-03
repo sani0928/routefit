@@ -515,7 +515,7 @@ export default function Home() {
   }
 
   function canClaimMobileSheetDrag(drag: MobileSheetDrag, direction: "up" | "down") {
-    if (drag.fromHandle) return true;
+    if (drag.sheetState === "peek" || drag.fromHandle) return true;
     if ((drag.scrollContainer?.scrollTop ?? 0) > 1) return false;
     if (direction === "up") return drag.sheetState !== "expanded";
     return drag.sheetState !== "collapsed";
@@ -524,7 +524,7 @@ export default function Home() {
   function startMobileSheetDrag(event: ReactPointerEvent<HTMLElement>) {
     if (!event.isPrimary || event.pointerType === "touch" || !window.matchMedia("(max-width: 700px)").matches) return;
     const fromHandle = event.currentTarget.classList.contains("mobile-sheet-handle");
-    if (!fromHandle && isSheetInteractiveTarget(event.target)) return;
+    if (!fromHandle && mobileSheetState !== "peek" && isSheetInteractiveTarget(event.target)) return;
 
     mobileSheetDragRef.current = {
       startY: event.clientY,
@@ -579,7 +579,7 @@ export default function Home() {
       const sheet = event.currentTarget as HTMLElement;
       const target = event.target;
       const fromHandle = target instanceof Element && Boolean(target.closest(".mobile-sheet-handle"));
-      if (!fromHandle && isSheetInteractiveTarget(target)) return;
+      if (!fromHandle && mobileSheetState !== "peek" && isSheetInteractiveTarget(target)) return;
 
       const touch = event.touches[0];
       mobileSheetDragRef.current = {
@@ -679,7 +679,7 @@ export default function Home() {
           </div>
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
         </header>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchFocus={() => { if (window.matchMedia("(max-width: 700px)").matches && mobileSheetState === "peek") setMobileSheetState("expanded"); }} />
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} />
         <div className="planner-footer">
           <button className="secondary" onClick={() => { setCurrentLocationActive(false); setCurrentLocationLocating(false); setPlaces([]); setFixedVisitOrders([]); setResult(null); }}>전체 초기화</button>
