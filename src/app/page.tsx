@@ -148,6 +148,7 @@ export default function Home() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("places");
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>("collapsed");
   const mobileSheetDragRef = useRef<MobileSheetDrag | null>(null);
+  const mobileSearchFocusTimerRef = useRef<number | null>(null);
 
   const start = places[0];
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
@@ -552,11 +553,15 @@ export default function Home() {
     setMobileSheetState((current) => current === "collapsed" ? "peek" : current === "peek" ? "expanded" : "collapsed");
   }
 
-  function prepareMobileSearchFocus() {
+  function prepareMobileSearchFocus(event: ReactPointerEvent<HTMLInputElement>) {
     if (!window.matchMedia("(max-width: 700px)").matches || mobileSheetState !== "peek") return;
-
-    // 포커스는 사용자의 탭 제스처 안에서 브라우저가 직접 처리해야 모바일 키보드가 안정적으로 열린다.
+    event.preventDefault();
+    if (mobileSearchFocusTimerRef.current) window.clearTimeout(mobileSearchFocusTimerRef.current);
     setMobileSheetState("expanded");
+    mobileSearchFocusTimerRef.current = window.setTimeout(() => {
+      document.getElementById("search")?.focus({ preventScroll: true });
+      mobileSearchFocusTimerRef.current = null;
+    }, 260);
   }
   function canClaimMobileSheetDrag(drag: MobileSheetDrag, direction: "up" | "down") {
     if (drag.sheetState === "peek" || drag.fromHandle) return true;
