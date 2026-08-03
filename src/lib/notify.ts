@@ -11,7 +11,10 @@ const optionsFor = (kind: ToastKind, message: string): ToastOptions => ({
 });
 
 function show(kind: ToastKind, message: string) {
-  return toast[kind](message, optionsFor(kind, message));
+  const normalizedMessage = message.trim();
+  if (!normalizedMessage) return;
+
+  return toast[kind](normalizedMessage, optionsFor(kind, normalizedMessage));
 }
 
 export const notify = {

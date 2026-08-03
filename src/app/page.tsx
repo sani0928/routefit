@@ -499,8 +499,13 @@ export default function Home() {
   }
 
   function selectMobileTab(nextTab: MobileTab) {
+    const isActiveTab = mobileTab === nextTab;
+
     setMobileTab(nextTab);
-    setMobileSheetState((current) => current === "collapsed" ? "peek" : current);
+    setMobileSheetState((current) => {
+      if (!isActiveTab || current === "collapsed") return "peek";
+      return current === "peek" ? "expanded" : "peek";
+    });
     setListManagerOpen(nextTab === "lists");
   }
 

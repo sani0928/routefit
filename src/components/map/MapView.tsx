@@ -206,7 +206,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     const createPopupContent = (candidates?: NearbyCandidate[], addressFallback?: MapPlace) => {
       const container = document.createElement("div");
       container.className = "nearby-place-popup";
-      if (!candidates) { container.innerHTML = '<div class="nearby-place-loading"><span></span>주변 장소를 찾는 중/div>'; return container; }
+      if (!candidates) { container.innerHTML = '<div class="nearby-place-loading"><span></span>주변 장소를 찾는 중</div>'; return container; }
       if (candidates.length === 0 && !addressFallback) { container.innerHTML = '<p class="nearby-place-empty">이 위치의 주소를 찾지 못했습니다.</p>'; return container; }
       const title = document.createElement("p"); title.className = "nearby-place-title"; title.textContent = "이 위치를 추가할까요?"; container.appendChild(title);
       candidates.forEach((candidate) => {
@@ -252,7 +252,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       window.naver.maps.Event.addListener(map, "click", async (event: naver.maps.PointerEvent) => {
         if (popupOpenRef.current) { requestIdRef.current += 1; popupRef.current?.close(); popupOpenRef.current = false; return; }
         const coordinate = event.coord as naver.maps.LatLng; const latitude = coordinate.lat(); const longitude = coordinate.lng(); const requestId = ++requestIdRef.current;
-        errorRef.current(""); popupRef.current?.setContent(createPopupContent()); popupRef.current?.setPosition(coordinate); popupRef.current?.open(map, coordinate); popupOpenRef.current = true;
+        popupRef.current?.setContent(createPopupContent()); popupRef.current?.setPosition(coordinate); popupRef.current?.open(map, coordinate); popupOpenRef.current = true;
         try {
           const response = await fetch(`/api/places/nearby?lat=${latitude}&lng=${longitude}`);
           const body = await response.json() as { results?: NearbyCandidate[]; error?: { message?: string } };
