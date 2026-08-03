@@ -1,8 +1,9 @@
 "use client";
 
 import { LogOut, UserRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
+import { notify } from "@/lib/notify";
 
 interface Props {
   authConfigured: boolean;
@@ -12,31 +13,16 @@ interface Props {
 
 export function MemberHeader({ authConfigured, onBeforeLogin, onSessionChange }: Props) {
   const { data: session, isPending } = authClient.useSession();
-  const [showSignedOutNotice, setShowSignedOutNotice] = useState(false);
-  const noticeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (session?.user) onSessionChange();
   }, [session?.user?.id, onSessionChange]);
 
-  useEffect(() => () => {
-    if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
-  }, []);
-
-  function showSignOutNotice() {
-    if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
-    setShowSignedOutNotice(true);
-    noticeTimerRef.current = window.setTimeout(() => {
-      setShowSignedOutNotice(false);
-      noticeTimerRef.current = null;
-    }, 3000);
-  }
-
   async function handleSignOut() {
     const result = await authClient.signOut();
-    if (result.error) return;
+    if (result.error) return notify.error("로그아웃에 실패했습니다.");
     onSessionChange();
-    showSignOutNotice();
+    notify.success("안전하게 로그아웃되었습니다.");
   }
 
   if (isPending) return <div className="member-auth-skeleton" />;
@@ -69,6 +55,5 @@ export function MemberHeader({ authConfigured, onBeforeLogin, onSessionChange }:
         </div>
       </details>
     )}
-    {showSignedOutNotice && <p className="member-signed-out-notice" role="status">안전하게 로그아웃 되었습니다</p>}
   </div>;
 }

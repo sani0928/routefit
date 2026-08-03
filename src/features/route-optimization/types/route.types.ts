@@ -10,6 +10,7 @@ export interface Place {
   longitude: number;
   type: PlaceType;
   stayDurationMinutes?: number;
+  isCurrentLocation?: boolean;
 }
 
 export interface FixedVisitOrder {
@@ -59,7 +60,7 @@ export interface RouteSegment extends RouteCost {
 }
 
 export interface OptimizationResponse {
-  orderedPlaces: Pick<Place, "id" | "name" | "address" | "latitude" | "longitude" | "type" | "stayDurationMinutes">[];
+  orderedPlaces: Pick<Place, "id" | "name" | "address" | "latitude" | "longitude" | "type" | "stayDurationMinutes" | "isCurrentLocation">[];
   segments: RouteSegment[];
   summary: {
     totalDistanceMeters: number;

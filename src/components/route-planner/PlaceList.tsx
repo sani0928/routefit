@@ -2,7 +2,7 @@
 
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { ListPlus, Lock, LockOpen, Trash2 } from "lucide-react";
+import { ListPlus, LocateFixed, Lock, LockOpen, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
 
@@ -16,6 +16,9 @@ interface Props {
   onStayDurationChange: (id: string, minutes: number) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
   onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
+  currentLocationActive: boolean;
+  currentLocationLocating: boolean;
+  onCurrentLocationToggle: () => void;
 }
 
 type SortablePlaceItemProps = {
@@ -50,6 +53,7 @@ function SortablePlaceItem({
   const { ref, isDragging, isDropTarget } = useSortable({
     id: place.id,
     index,
+    disabled: place.isCurrentLocation === true,
     transition: { duration: 180, easing: "cubic-bezier(.2,.8,.2,1)", idle: true },
   });
   const stayDuration = place.stayDurationMinutes ?? 0;
@@ -120,21 +124,18 @@ function SortablePlaceItem({
           <small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
         </div>
         <div className="place-actions">
-          {canSetStayDuration && (
-            <button
-              type="button"
-              className={`place-order-lock icon-action${isOrderLocked ? " locked" : ""}`}
-              aria-label={isOrderLocked ? `${index + 1}번째 방문 순서 고정 해제` : `${index + 1}번째 방문 순서 고정`}
-              title={isOrderLocked ? "순서 고정 해제" : "현재 순서 고정"}
-              aria-pressed={isOrderLocked}
-              onClick={(event) => {
-                stopCardToggle(event);
-                onFixedVisitOrderChange(place.id, index + 1);
-              }}
-            >
-              {isOrderLocked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
-            </button>
-          )}
+          <button
+            type="button"
+            className="danger icon-action place-delete-action"
+            aria-label={`${place.name} 삭제`}
+            title="삭제"
+            onClick={(event) => {
+              stopCardToggle(event);
+              onRemove(place.id);
+            }}
+          >
+            <Trash2 aria-hidden="true" />
+          </button>
           {onSavePlace && (
             <button
               type="button"
@@ -155,18 +156,21 @@ function SortablePlaceItem({
               <ListPlus aria-hidden="true" />
             </button>
           )}
-          <button
-            type="button"
-            className="danger icon-action place-delete-action"
-            aria-label={`${place.name} 삭제`}
-            title="삭제"
-            onClick={(event) => {
-              stopCardToggle(event);
-              onRemove(place.id);
-            }}
-          >
-            <Trash2 aria-hidden="true" />
-          </button>
+          {canSetStayDuration && (
+            <button
+              type="button"
+              className={`place-order-lock icon-action${isOrderLocked ? " locked" : ""}`}
+              aria-label={isOrderLocked ? `${index + 1}번째 방문 순서 고정 해제` : `${index + 1}번째 방문 순서 고정`}
+              title={isOrderLocked ? "순서 고정 해제" : "현재 순서 고정"}
+              aria-pressed={isOrderLocked}
+              onClick={(event) => {
+                stopCardToggle(event);
+                onFixedVisitOrderChange(place.id, index + 1);
+              }}
+            >
+              {isOrderLocked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
+            </button>
+          )}
         </div>
         {isStayEditing && canSetStayDuration && (
           <div className="place-stay-control" onClick={stopCardToggle} aria-label="머무는 시간 설정">
@@ -229,6 +233,19 @@ function SortablePlaceItem({
   );
 }
 
+function CurrentLocationStop({ place, index }: { place: Place; index: number }) {
+  return (
+    <li className="place-item current-location-stop">
+      <span className="drag-handle placeholder" aria-hidden="true">⠿</span>
+      <div className="place-badge start">{index + 1}</div>
+      <div className="place-main">
+        <strong>{place.name}</strong>
+        <small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
+      </div>
+    </li>
+  );
+}
+
 export function PlaceList({
   places,
   returnToStart,
@@ -239,6 +256,9 @@ export function PlaceList({
   onStayDurationChange,
   onFixedVisitOrderChange,
   onSavePlace,
+  currentLocationActive,
+  currentLocationLocating,
+  onCurrentLocationToggle,
 }: Props) {
   const [stayEditingPlaceId, setStayEditingPlaceId] = useState<string | null>(null);
   const [isSorting, setIsSorting] = useState(false);
@@ -279,15 +299,26 @@ export function PlaceList({
     <section className="place-section">
       <div className="section-heading">
         <h2>방문 예정 장소</h2>
-        <label className="toggle place-return-toggle">
-          <input type="checkbox" checked={returnToStart} onChange={(event) => onReturnChange(event.target.checked)} /> 출발지로 복귀
-        </label>
-      </div>
-      <div className="place-list-scroll">
+        <div className="place-heading-actions">
+          <button
+            type="button"
+            className={`current-location-toggle${currentLocationActive ? " active" : ""}${currentLocationLocating ? " locating" : ""}`}
+            aria-label={currentLocationActive ? "현재 위치 활성화 해제" : "현재 위치 활성화"}
+            aria-pressed={currentLocationActive}
+            title={currentLocationActive ? "현재 위치 활성화 해제" : "현재 위치를 출발지로 설정"}
+            onClick={onCurrentLocationToggle}
+          >
+            <LocateFixed size={18} aria-hidden="true" />
+          </button>
+          <label className="toggle place-return-toggle">
+            <input type="checkbox" checked={returnToStart} onChange={(event) => onReturnChange(event.target.checked)} /> 출발지로 복귀
+          </label>
+        </div>
+      </div>      <div className="place-list-scroll">
         {places.length === 0 ? (
           <div className="place-empty-state">
             <img src="/icons/nothing.png" alt="" aria-hidden="true" />
-            <p>검색하거나 지도에서 장소를 선택하세요.</p>
+            <p>동선을 최적화 할 장소를 추가하세요.</p>
           </div>
         ) : (
         <DragDropProvider
@@ -312,6 +343,10 @@ export function PlaceList({
             const isStart = index === 0;
             const isDestination = !returnToStart && index === places.length - 1;
             const canSetStayDuration = !isStart && !isDestination;
+
+            if (place.isCurrentLocation) {
+              return <CurrentLocationStop key={place.id} place={place} index={index} />;
+            }
 
             return (
               <SortablePlaceItem

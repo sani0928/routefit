@@ -1,14 +1,14 @@
 "use client";
 
 import { List } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Place, RouteSegment } from "@/features/route-optimization/types/route.types";
 import type { SavedPlace } from "@/features/member/types";
 import { routeColor } from "@/lib/route-colors";
 
 type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; onMapPlaceSelect: (place: MapPlace) => void; onCurrentLocationStart: (place: MapPlace) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 
@@ -33,7 +33,7 @@ function createPlaceInfoContent(place: MapPlace, onAdd?: () => void) {
   return container;
 }
 
-function createCurrentLocationPopupContent(address: string | undefined, onSetStart: () => void) {
+function createCurrentLocationPopupContent(address?: string) {
   const container = document.createElement("div");
   container.className = "nearby-place-popup map-place-popup current-location-popup";
   const name = document.createElement("strong");
@@ -41,96 +41,172 @@ function createCurrentLocationPopupContent(address: string | undefined, onSetSta
   name.textContent = "현재 위치";
   const addressLine = document.createElement("p");
   addressLine.className = "map-place-popup-address";
-  addressLine.textContent = address ?? "주소를 확인하는 중입니다.";
+  addressLine.textContent = address ?? "주소 정보를 확인하는 중입니다.";
   const notice = document.createElement("small");
-  notice.textContent = "GPS 기반 주소로 실제 위치와 다를 수 있어요.";
-  const startButton = document.createElement("button");
-  startButton.type = "button";
-  startButton.className = "current-location-start";
-  startButton.textContent = "출발지로 설정";
-  startButton.addEventListener("click", onSetStart);
-  container.append(name, addressLine, notice, startButton);
+  notice.textContent = "GPS 기반 위치이므로 실제 주소와 다소 차이가 있을 수 있습니다.";
+  container.append(name, addressLine, notice);
   return container;
 }
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, onMapPlaceSelect, onCurrentLocationStart, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
+
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, onMapPlaceSelect, currentLocationActive, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
   const overlays = useRef<naver.maps.OverlayView[]>([]);
   const currentLocationMarkerRef = useRef<naver.maps.Marker | null>(null);
   const currentLocationAddressRef = useRef<string | null>(null);
+  const currentLocationCoordinatesRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const currentLocationAddressRequestIdRef = useRef(0);
+  const currentLocationWatchIdRef = useRef<number | null>(null);
   const fittedPlacesKeyRef = useRef("");
   const popupRef = useRef<naver.maps.InfoWindow | null>(null);
   const requestIdRef = useRef(0);
   const popupOpenRef = useRef(false);
   const selectRef = useRef(onMapPlaceSelect);
-  const startRef = useRef(onCurrentLocationStart);
+  const currentLocationUpdateRef = useRef(onCurrentLocationUpdate);
+  const trackingChangeRef = useRef(onCurrentLocationTrackingChange);
   const errorRef = useRef(onMapError);
   const listAddRef = useRef(onListPlaceAdd);
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
-  const [isLocating, setIsLocating] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
 
-  function locateCurrentPosition() {
-    const map = mapRef.current;
-    if (!map || !window.naver) return;
-    if (!navigator.geolocation) { errorRef.current("이 브라우저에서는 현재 위치를 지원하지 않습니다."); return; }
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const activeMap = mapRef.current;
-        if (!activeMap || !window.naver) return;
-        const position = new window.naver.maps.LatLng(coords.latitude, coords.longitude);
-        currentLocationMarkerRef.current?.setMap(null);
-        currentLocationAddressRef.current = null;
-        const currentLocationMarker = new window.naver.maps.Marker({
-          position,
-          map: activeMap,
-          title: "현재 위치",
-          icon: { content: '<div class="current-location-marker"><span></span></div>', anchor: new window.naver.maps.Point(11, 11) },
-        });
-        window.naver.maps.Event.addListener(currentLocationMarker, "click", async () => {
-          const requestId = ++requestIdRef.current;
-          const setAsStart = () => {
-            startRef.current({ name: "현재 위치", address: currentLocationAddressRef.current || undefined, latitude: coords.latitude, longitude: coords.longitude });
-            popupRef.current?.close();
-            popupOpenRef.current = false;
-          };
-          popupRef.current?.setContent(createCurrentLocationPopupContent(currentLocationAddressRef.current ?? undefined, setAsStart));
-          popupRef.current?.setPosition(position);
-          popupRef.current?.open(activeMap, position);
-          popupOpenRef.current = true;
-          if (currentLocationAddressRef.current) return;
-          try {
-            const response = await fetch(`/api/maps/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
-            const body = await response.json() as { address?: string };
-            if (requestId !== requestIdRef.current) return;
-            const address = response.ok && body.address && body.address !== "주소 정보 없음" ? body.address : "주소 정보를 찾지 못했습니다.";
-            currentLocationAddressRef.current = address;
-            popupRef.current?.setContent(createCurrentLocationPopupContent(address, setAsStart));
-          } catch {
-            if (requestId !== requestIdRef.current) return;
-            currentLocationAddressRef.current = "주소 정보를 찾지 못했습니다.";
-            popupRef.current?.setContent(createCurrentLocationPopupContent(currentLocationAddressRef.current, setAsStart));
-          }
-        });
-        currentLocationMarkerRef.current = currentLocationMarker;
-        activeMap.setCenter(position);
-        if (activeMap.getZoom() < 15) activeMap.setZoom(15);
-        setIsLocating(false);
-      },
-      () => { errorRef.current("현재 위치를 가져오지 못했습니다. 위치 권한을 확인해 주세요."); setIsLocating(false); },
-      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 10_000 },
-    );
-  }
+  const updateCurrentLocationPlace = useCallback((latitude: number, longitude: number, address?: string | null) => {
+    currentLocationUpdateRef.current({
+      name: "현재 위치",
+      address: address ?? currentLocationAddressRef.current ?? "현재 위치",
+      latitude,
+      longitude,
+      stayDurationMinutes: 0,
+      isCurrentLocation: true,
+    });
+  }, []);
 
-  useEffect(() => { selectRef.current = onMapPlaceSelect; startRef.current = onCurrentLocationStart; errorRef.current = onMapError; listAddRef.current = onListPlaceAdd; }, [onMapPlaceSelect, onCurrentLocationStart, onMapError, onListPlaceAdd]);
+  const resolveCurrentLocationAddress = useCallback(async (latitude: number, longitude: number) => {
+    const requestId = ++currentLocationAddressRequestIdRef.current;
+
+    try {
+      const response = await fetch(`/api/maps/reverse-geocode?lat=${latitude}&lng=${longitude}`);
+      const body = await response.json() as { address?: string };
+      if (requestId !== currentLocationAddressRequestIdRef.current) return;
+
+      const currentCoordinates = currentLocationCoordinatesRef.current;
+      if (!currentCoordinates || Math.abs(currentCoordinates.latitude - latitude) > 0.000001 || Math.abs(currentCoordinates.longitude - longitude) > 0.000001) return;
+
+      currentLocationAddressRef.current = response.ok && body.address && body.address !== "주소 정보 없음"
+        ? body.address
+        : "주소 정보를 찾지 못했습니다.";
+    } catch {
+      if (requestId !== currentLocationAddressRequestIdRef.current) return;
+      currentLocationAddressRef.current = "주소 정보를 찾지 못했습니다.";
+    }
+
+    updateCurrentLocationPlace(latitude, longitude, currentLocationAddressRef.current);
+    if (popupOpenRef.current) popupRef.current?.setContent(createCurrentLocationPopupContent(currentLocationAddressRef.current));
+  }, [updateCurrentLocationPlace]);
+
+  const renderCurrentLocationMarker = useCallback((latitude: number, longitude: number) => {
+    const activeMap = mapRef.current;
+    if (!activeMap || !window.naver) return;
+
+    const previousCoordinates = currentLocationCoordinatesRef.current;
+    const coordinatesChanged = !previousCoordinates
+      || Math.abs(previousCoordinates.latitude - latitude) > 0.000001
+      || Math.abs(previousCoordinates.longitude - longitude) > 0.000001;
+    const position = new window.naver.maps.LatLng(latitude, longitude);
+
+    if (currentLocationMarkerRef.current) {
+      currentLocationMarkerRef.current.setPosition(position);
+    } else {
+      const marker = new window.naver.maps.Marker({
+        position,
+        map: activeMap,
+        title: "현재 위치",
+        icon: { content: '<div class="current-location-marker"><span></span></div>', anchor: new window.naver.maps.Point(11, 11) },
+      });
+
+      window.naver.maps.Event.addListener(marker, "click", () => {
+        const coordinates = currentLocationCoordinatesRef.current;
+        const map = mapRef.current;
+        if (!coordinates || !map) return;
+
+        const markerPosition = new window.naver.maps.LatLng(coordinates.latitude, coordinates.longitude);
+        popupRef.current?.setContent(createCurrentLocationPopupContent(currentLocationAddressRef.current ?? undefined));
+        popupRef.current?.setPosition(markerPosition);
+        popupRef.current?.open(map, markerPosition);
+        popupOpenRef.current = true;
+        if (!currentLocationAddressRef.current) void resolveCurrentLocationAddress(coordinates.latitude, coordinates.longitude);
+      });
+      currentLocationMarkerRef.current = marker;
+    }
+
+    currentLocationCoordinatesRef.current = { latitude, longitude };
+    if (coordinatesChanged) {
+      currentLocationAddressRef.current = null;
+      if (popupOpenRef.current) popupRef.current?.setContent(createCurrentLocationPopupContent());
+    }
+
+    updateCurrentLocationPlace(latitude, longitude);
+    if (coordinatesChanged || !currentLocationAddressRef.current) void resolveCurrentLocationAddress(latitude, longitude);
+
+    if (!previousCoordinates) {
+      activeMap.setCenter(position);
+      if (activeMap.getZoom() < 15) activeMap.setZoom(15);
+    }
+  }, [resolveCurrentLocationAddress, updateCurrentLocationPlace]);
+  useEffect(() => {
+    selectRef.current = onMapPlaceSelect;
+    currentLocationUpdateRef.current = onCurrentLocationUpdate;
+    trackingChangeRef.current = onCurrentLocationTrackingChange;
+    errorRef.current = onMapError;
+    listAddRef.current = onListPlaceAdd;
+  }, [onMapPlaceSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, onListPlaceAdd]);
 
   useEffect(() => {
+    if (!mapInitialized) return;
+
+    if (!currentLocationActive) {
+      if (currentLocationWatchIdRef.current !== null) navigator.geolocation?.clearWatch(currentLocationWatchIdRef.current);
+      currentLocationWatchIdRef.current = null;
+      currentLocationMarkerRef.current?.setMap(null);
+      currentLocationMarkerRef.current = null;
+      currentLocationAddressRef.current = null;
+      currentLocationCoordinatesRef.current = null;
+      popupRef.current?.close();
+      trackingChangeRef.current?.(false);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      errorRef.current("이 브라우저에서는 현재 위치를 지원하지 않습니다.");
+      trackingChangeRef.current?.(false);
+      return;
+    }
+
+    trackingChangeRef.current?.(true);
+    const watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        renderCurrentLocationMarker(coords.latitude, coords.longitude);
+        trackingChangeRef.current?.(false);
+      },
+      () => {
+        errorRef.current("현재 위치를 가져오지 못했습니다. 위치 권한을 확인해 주세요.");
+        trackingChangeRef.current?.(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
+    );
+    currentLocationWatchIdRef.current = watchId;
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      if (currentLocationWatchIdRef.current === watchId) currentLocationWatchIdRef.current = null;
+      trackingChangeRef.current?.(false);
+    };
+  }, [currentLocationActive, mapInitialized, renderCurrentLocationMarker]);  useEffect(() => {
     if (!clientId || !nodeRef.current || mapRef.current) return;
     const createPopupContent = (candidates?: NearbyCandidate[], addressFallback?: MapPlace) => {
       const container = document.createElement("div");
       container.className = "nearby-place-popup";
-      if (!candidates) { container.innerHTML = '<div class="nearby-place-loading"><span></span>주변 장소를 찾는 중</div>'; return container; }
+      if (!candidates) { container.innerHTML = '<div class="nearby-place-loading"><span></span>주변 장소를 찾는 중/div>'; return container; }
       if (candidates.length === 0 && !addressFallback) { container.innerHTML = '<p class="nearby-place-empty">이 위치의 주소를 찾지 못했습니다.</p>'; return container; }
       const title = document.createElement("p"); title.className = "nearby-place-title"; title.textContent = "이 위치를 추가할까요?"; container.appendChild(title);
       candidates.forEach((candidate) => {
@@ -157,6 +233,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       if (!nodeRef.current || !window.naver) return;
       const map = new window.naver.maps.Map(nodeRef.current, { center: new window.naver.maps.LatLng(CENTER.latitude, CENTER.longitude), zoom: 12, zoomControl: false });
       mapRef.current = map;
+    setMapInitialized(true);
       syncMapSize = () => {
         if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
         resizeFrame = window.requestAnimationFrame(() => {
@@ -201,13 +278,13 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     const script = document.createElement("script");
     script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`;
     script.async = true; script.onload = init; document.head.appendChild(script);
-    return () => { resizeObserver?.disconnect(); if (syncMapSize) window.removeEventListener("resize", syncMapSize); if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame); script.remove(); popupRef.current?.close(); currentLocationMarkerRef.current?.setMap(null); currentLocationMarkerRef.current = null; popupRef.current = null; popupOpenRef.current = false; mapRef.current = null; };
+    return () => { resizeObserver?.disconnect(); if (syncMapSize) window.removeEventListener("resize", syncMapSize); if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame); script.remove(); popupRef.current?.close(); currentLocationMarkerRef.current?.setMap(null); currentLocationMarkerRef.current = null; popupRef.current = null; popupOpenRef.current = false; setMapInitialized(false); mapRef.current = null; };
   }, [clientId]);
 
   useEffect(() => {
     const map = mapRef.current; if (!map || !window.naver) return;
     overlays.current.forEach((overlay) => overlay.setMap(null)); overlays.current = [];
-    const markerPlaces = listPlaces ?? places;
+    const markerPlaces = listPlaces ?? places.filter((place) => !place.isCurrentLocation);
     const first = markerPlaces[0] ?? { latitude: CENTER.latitude, longitude: CENTER.longitude };
     const initial = new window.naver.maps.LatLng(first.latitude, first.longitude);
     const bounds = new window.naver.maps.LatLngBounds(initial, initial);
@@ -217,7 +294,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       const isStart = index === 0;
       const isDestination = !returnToStart && index === markerPlaces.length - 1;
       const roleClass = isStart ? "start" : isDestination ? "destination" : "waypoint";
-      const label = String(index + 1);
+      const label = String(index + 1 + (!listPlaces && places.some((place) => place.isCurrentLocation) ? 1 : 0));
       const listColor = listPlaces?.[index]?.color;
       const markerStyle = isOptimized ? ` style="--marker-color:${routeColor(index)}"` : listColor ? ` style="--marker-color:${listColor}"` : "";
       const markerClass = isOptimized || listColor ? "optimized" : roleClass;
@@ -252,6 +329,40 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     }
   }, [places, segments, highlightedSegmentIndex, listPlaces]);
 
-  if (!clientId) return <div className="map-placeholder"><div><strong>지도 키를 설정해 주세요</strong><p>NEXT_PUBLIC_NAVER_MAP_CLIENT_ID를 추가하면 지도가 표시됩니다.</p></div></div>;
-  return <div ref={viewRef} className="map-view"><div ref={nodeRef} className="map-canvas" aria-label="NAVER 지도" /><button type="button" className={`map-location-control${isLocating ? " locating" : ""}`} aria-label={isLocating ? "현재 위치를 찾는 중" : "현재 위치로 이동"} onClick={locateCurrentPosition} disabled={isLocating}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3" /><circle cx="12" cy="12" r="5" /></svg></button>{onListManagerToggle && <button type="button" className={`map-list-control${isListManagerOpen ? " active" : ""}`} aria-label="내 장소 관리" aria-pressed={isListManagerOpen} onClick={onListManagerToggle}><List size={18} /></button>}<div className="map-zoom-control" aria-label="지도 확대 및 축소"><button type="button" aria-label="지도 확대" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() + 1); }}>+</button><span aria-hidden="true" /><button type="button" aria-label="지도 축소" onClick={() => { const map = mapRef.current; if (map) map.setZoom(map.getZoom() - 1); }}>−</button></div></div>;
+  if (!clientId) {
+    return (
+      <div className="map-placeholder">
+        <div>
+          <strong>{"지도 설정이 필요합니다."}</strong>
+          <p>{"NEXT_PUBLIC_NAVER_MAP_CLIENT_ID를 추가하면 지도가 표시됩니다."}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={viewRef} className="map-view">
+      <div ref={nodeRef} className="map-canvas" aria-label={"NAVER 지도"} />
+      {onListManagerToggle && (
+        <button
+          type="button"
+          className={`map-list-control${isListManagerOpen ? " active" : ""}`}
+          aria-label={"장소 리스트 관리"}
+          aria-pressed={isListManagerOpen}
+          onClick={onListManagerToggle}
+        >
+          <List size={18} aria-hidden="true" />
+        </button>
+      )}
+      <div className="map-zoom-control" aria-label={"지도 확대 및 축소"}>
+        <button type="button" aria-label={"지도 확대"} onClick={() => mapRef.current?.setZoom(mapRef.current.getZoom() + 1)}>
+          +
+        </button>
+        <span aria-hidden="true" />
+        <button type="button" aria-label={"지도 축소"} onClick={() => mapRef.current?.setZoom(mapRef.current.getZoom() - 1)}>
+          −
+        </button>
+      </div>
+    </div>
+  );
 }

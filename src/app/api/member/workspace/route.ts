@@ -11,6 +11,7 @@ const placeSchema = z.object({
   longitude: z.number().finite(),
   type: z.enum(["START", "WAYPOINT", "DESTINATION"]),
   stayDurationMinutes: z.number().int().min(0).max(1440).optional(),
+  isCurrentLocation: z.boolean().optional(),
 });
 
 const workspaceSchema = z.object({
