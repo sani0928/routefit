@@ -19,6 +19,9 @@ type PlaceInput = Omit<Place, "id" | "type">;
 type MobileTab = "places" | "lists" | "results";
 type MobileSheetState = "collapsed" | "peek" | "expanded";
 type AddPlaceResult = { added: boolean; message?: string };
+
+type LocationCoordinates = Pick<Place, "latitude" | "longitude">;
+const CURRENT_LOCATION_RECALCULATE_DISTANCE_METERS = 150;
 const EMPTY_MEMBER: MemberState = { authenticated: false, authConfigured: false, placeLists: [] };
 const newId = () => crypto.randomUUID();
 const GUEST_WORKSPACE_KEY = "routefit-guest-workspace";
@@ -51,6 +54,17 @@ const normalizePlaceRoles = (items: Place[]) => {
     type: index === 0 ? "START" as const : "WAYPOINT" as const,
   }));
 };
+function distanceInMeters(first: LocationCoordinates, second: LocationCoordinates) {
+  const earthRadiusMeters = 6_371_000;
+  const toRadians = (degrees: number) => degrees * Math.PI / 180;
+  const latitudeDelta = toRadians(second.latitude - first.latitude);
+  const longitudeDelta = toRadians(second.longitude - first.longitude);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(toRadians(first.latitude)) * Math.cos(toRadians(second.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function isFixedOrderValid(fixed: FixedVisitOrder, items: Place[], returnToStart: boolean) {
   const index = items.findIndex((place) => place.id === fixed.placeId);
   return index > 0 && (returnToStart || index < items.length - 1) && fixed.visitOrder >= 2 && fixed.visitOrder <= items.length;
@@ -113,6 +127,7 @@ export default function Home() {
   const [returnToStart, setReturnToStart] = useState(true);
   const [fixedVisitOrders, setFixedVisitOrders] = useState<FixedVisitOrder[]>([]);
   const [result, setResult] = useState<OptimizationResponse | null>(null);
+  const [routeNeedsRecalculation, setRouteNeedsRecalculation] = useState(false);
   const [status, setStatus] = useState<Status>("IDLE");
   const [routeOption, setRouteOption] = useState<RouteOption>("traoptimal");
   const [routeOptionMenuOpen, setRouteOptionMenuOpen] = useState(false);
@@ -125,6 +140,7 @@ export default function Home() {
   const [currentLocationActive, setCurrentLocationActive] = useState(false);
   const [currentLocationLocating, setCurrentLocationLocating] = useState(false);
   const workspaceRestoredRef = useRef(false);
+  const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
   const [listManagerOpen, setListManagerOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [savedPlacesByListId, setSavedPlacesByListId] = useState<Record<string, SavedPlace[]>>({});
@@ -132,7 +148,7 @@ export default function Home() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("places");
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>("collapsed");
   const mobileSheetDragRef = useRef<MobileSheetDrag | null>(null);
-  const mobileSearchFocusTimerRef = useRef<number | null>(null);
+
   const start = places[0];
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
   const savedListPlaces = selectedListId ? savedPlacesByListId[selectedListId] ?? [] : [];
@@ -238,6 +254,11 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [listManagerOpen, selectedListId, savedPlacesByListId]);
   useEffect(() => {
+    if (result) return;
+    calculatedCurrentLocationRef.current = null;
+    setRouteNeedsRecalculation(false);
+  }, [result]);
+  useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (window.matchMedia("(max-width: 700px)").matches) closeMobileSheet();
@@ -268,6 +289,14 @@ export default function Home() {
     return { added: true };
   }, [places]);
   const updateCurrentLocation = useCallback((input: PlaceInput) => {
+    const calculatedCurrentLocation = calculatedCurrentLocationRef.current;
+    if (
+      calculatedCurrentLocation
+      && distanceInMeters(calculatedCurrentLocation, input) >= CURRENT_LOCATION_RECALCULATE_DISTANCE_METERS
+    ) {
+      setRouteNeedsRecalculation(true);
+    }
+
     setPlaces((current) => {
       const existing = current.find((place) => place.isCurrentLocation);
       const isAlreadyCurrent = existing
@@ -293,8 +322,6 @@ export default function Home() {
         ...current.filter((place) => !place.isCurrentLocation),
       ]);
     });
-    setResult((current) => current ? null : current);
-
   }, []);
 
   const handleCurrentLocationTrackingChange = useCallback((locating: boolean) => {
@@ -371,6 +398,9 @@ export default function Home() {
     }
     const destination = returnToStart ? null : places.at(-1) ?? null;
     const waypoints = returnToStart ? places.slice(1) : places.slice(1, -1);
+    const calculationCurrentLocation = start.isCurrentLocation
+      ? { latitude: start.latitude, longitude: start.longitude }
+      : null;
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("results");
       setMobileSheetState((current) => current === "collapsed" ? "peek" : current);
@@ -384,6 +414,8 @@ export default function Home() {
       if (!response.ok) throw new Error(body.error?.message || "동선 계산에 실패했습니다.");
       setStatus("FETCHING_FINAL_ROUTE");
       setResult(body);
+      calculatedCurrentLocationRef.current = calculationCurrentLocation;
+      setRouteNeedsRecalculation(false);
       setStatus("SUCCESS");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "동선 계산에 실패했습니다.";
@@ -520,15 +552,11 @@ export default function Home() {
     setMobileSheetState((current) => current === "collapsed" ? "peek" : current === "peek" ? "expanded" : "collapsed");
   }
 
-  function prepareMobileSearchFocus(event: ReactPointerEvent<HTMLInputElement>) {
+  function prepareMobileSearchFocus() {
     if (!window.matchMedia("(max-width: 700px)").matches || mobileSheetState !== "peek") return;
-    event.preventDefault();
-    if (mobileSearchFocusTimerRef.current) window.clearTimeout(mobileSearchFocusTimerRef.current);
+
+    // 포커스는 사용자의 탭 제스처 안에서 브라우저가 직접 처리해야 모바일 키보드가 안정적으로 열린다.
     setMobileSheetState("expanded");
-    mobileSearchFocusTimerRef.current = window.setTimeout(() => {
-      document.getElementById("search")?.focus({ preventScroll: true });
-      mobileSearchFocusTimerRef.current = null;
-    }, 260);
   }
   function canClaimMobileSheetDrag(drag: MobileSheetDrag, direction: "up" | "down") {
     if (drag.sheetState === "peek" || drag.fromHandle) return true;
@@ -818,7 +846,7 @@ export default function Home() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={setSelectedSegmentIndex} />
+            <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isCurrentLocationStale={routeNeedsRecalculation} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={setSelectedSegmentIndex} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} onSave={(listId) => void savePlace(listId)} onClose={() => setSaveTarget(null)} />

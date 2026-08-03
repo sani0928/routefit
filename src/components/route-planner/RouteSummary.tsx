@@ -19,7 +19,7 @@ const segmentTrafficStatus = (sections: OptimizationResponse["segments"][number]
   return trafficStatus(Math.round(weightedCongestion) as TrafficCongestion);
 };
 
-export function RouteSummary({ result, routeOption, placeCount, fixedVisitOrders, isCalculating, onSegmentHover, onSegmentSelect }: { result: OptimizationResponse | null; routeOption: RouteOption; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void }) {
+export function RouteSummary({ result, routeOption, placeCount, fixedVisitOrders, isCalculating, isCurrentLocationStale = false, onSegmentHover, onSegmentSelect }: { result: OptimizationResponse | null; routeOption: RouteOption; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isCurrentLocationStale?: boolean; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void }) {
   const [expandedSegmentIndex, setExpandedSegmentIndex] = useState<number | null>(null);
   const routeOptionClass = `route-summary-option-${ROUTE_OPTION_META[routeOption].tone}`;
   const fixedPlaceIds = new Set(fixedVisitOrders.map(({ placeId }) => placeId));
@@ -38,6 +38,7 @@ export function RouteSummary({ result, routeOption, placeCount, fixedVisitOrders
   const placesById = new Map(result.orderedPlaces.map((place) => [place.id, place]));
   const totalStayDurationMinutes = result.summary.totalStayDurationMinutes ?? 0;
   const totalDurationMilliseconds = result.summary.totalDurationMilliseconds + totalStayDurationMinutes * 60_000;
+  const estimatedArrivalTime = new Date(new Date(result.summary.calculatedAt).getTime() + totalDurationMilliseconds);
   let scheduleCursor = new Date(result.summary.calculatedAt).getTime();
   const segmentSchedules = result.segments.map((segment, index) => {
     const departureTime = scheduleCursor;
@@ -48,12 +49,12 @@ export function RouteSummary({ result, routeOption, placeCount, fixedVisitOrders
   });
 
   return <section className={`route-summary-panel ${routeOptionClass}`}> 
-    <div className="result-header"><div className="result-eyebrow"><span className="status-orb success" />최적화 완료</div><span className="result-time">계산 {formatCalculationTime(result.summary.calculationDurationMilliseconds)}</span></div>
+    <div className="result-header"><div className="result-eyebrow"><span className="status-orb success" />최적화 완료</div><span className="result-time">계산 {formatCalculationTime(result.summary.calculationDurationMilliseconds)}</span></div>{isCurrentLocationStale && <p className="route-recalculation-notice" role="status">현재 위치가 변경되었습니다.</p>}
     <div className="route-hero"><span className="route-option-badge">{ROUTE_OPTION_META[routeOption].label}</span><p>예상 소요 시간</p><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">이동 시간 ({formatTime(result.summary.totalDurationMilliseconds)}) + 머무는 시간 ({formatTime(totalStayDurationMinutes * 60_000)})</span>}<div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div>
     <div className="route-stops-card"><div className="stops-heading"><div><small>방문 순서</small><strong>{result.orderedPlaces.length}개 지점</strong></div><span>ROUTE</span></div><ol className="modern-route-order">{result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`} style={{ "--route-color": routeColor(index) } as CSSProperties}><span className="stop-number">{String(index + 1).padStart(2, "0")}</span><div><div className="route-stop-name"><strong>{place.name}</strong>{fixedPlaceIds.has(place.id) && <Lock className="route-stop-lock" size={13} strokeWidth={2.6} aria-label="방문 순서 고정" />}</div><small>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}</small></div></li>)}</ol></div>
     <details className="segment-details">
       <summary><div className="segment-summary-title"><span>구간별 상세</span><time>실시간 교통정보 기준</time></div><b>{result.segments.length}개 구간</b></summary>
-      <ol>{result.segments.map((segment, index) => {
+      <ol><li className="segment-boundary-time is-departure"><span>출발 시간</span><time>{formatTrafficReferenceTime(result.summary.calculatedAt)}</time></li>{result.segments.map((segment, index) => {
         const isExpanded = expandedSegmentIndex === index;
         const from = placesById.get(segment.fromId);
         const to = placesById.get(segment.toId);
@@ -63,7 +64,7 @@ export function RouteSummary({ result, routeOption, placeCount, fixedVisitOrders
           <p>{formatDistance(segment.distanceMeters)}<small>{formatTime(segment.durationMilliseconds)}</small><em className={`traffic-status ${traffic.className}`}>{traffic.label}</em></p>
           {isExpanded && <div className="segment-place-details"><div className="segment-place-time"><strong>{from?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[index].departureTime).toISOString())}</small></div><i aria-hidden="true">to</i><div className="segment-place-time"><strong>{to?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[index].arrivalTime).toISOString())}</small></div></div>}
         </li>;
-      })}</ol>
+      })}<li className="segment-boundary-time is-arrival"><span>도착 예정</span><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></li></ol>
     </details>
   </section>;
 }
