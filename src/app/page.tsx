@@ -132,6 +132,7 @@ export default function Home() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("places");
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>("collapsed");
   const mobileSheetDragRef = useRef<MobileSheetDrag | null>(null);
+  const mobileSearchFocusTimerRef = useRef<number | null>(null);
   const start = places[0];
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
   const savedListPlaces = selectedListId ? savedPlacesByListId[selectedListId] ?? [] : [];
@@ -514,6 +515,16 @@ export default function Home() {
     setMobileSheetState((current) => current === "collapsed" ? "peek" : current === "peek" ? "expanded" : "collapsed");
   }
 
+  function prepareMobileSearchFocus(event: ReactPointerEvent<HTMLInputElement>) {
+    if (!window.matchMedia("(max-width: 700px)").matches || mobileSheetState !== "peek") return;
+    event.preventDefault();
+    if (mobileSearchFocusTimerRef.current) window.clearTimeout(mobileSearchFocusTimerRef.current);
+    setMobileSheetState("expanded");
+    mobileSearchFocusTimerRef.current = window.setTimeout(() => {
+      document.getElementById("search")?.focus({ preventScroll: true });
+      mobileSearchFocusTimerRef.current = null;
+    }, 260);
+  }
   function canClaimMobileSheetDrag(drag: MobileSheetDrag, direction: "up" | "down") {
     if (drag.sheetState === "peek" || drag.fromHandle) return true;
     if ((drag.scrollContainer?.scrollTop ?? 0) > 1) return false;
@@ -679,7 +690,7 @@ export default function Home() {
           </div>
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
         </header>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchFocus={() => { if (window.matchMedia("(max-width: 700px)").matches && mobileSheetState === "peek") setMobileSheetState("expanded"); }} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchPointerDown={prepareMobileSearchFocus} onSearchFocus={() => { if (window.matchMedia("(max-width: 700px)").matches && mobileSheetState === "peek") setMobileSheetState("expanded"); }} />
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} />
         <div className="planner-footer">
           <button className="secondary" onClick={() => { setCurrentLocationActive(false); setCurrentLocationLocating(false); setPlaces([]); setFixedVisitOrders([]); setResult(null); }}>전체 초기화</button>

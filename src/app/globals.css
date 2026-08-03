@@ -1108,6 +1108,7 @@
   :root {
     --mobile-nav-height:calc(64px + env(safe-area-inset-bottom));
     --mobile-sheet-peek:min(48dvh, 430px);
+    --mobile-sheet-expanded-map-peek:clamp(72px, 10dvh, 96px);
   }
 
   body { overflow:hidden; }
@@ -1224,7 +1225,7 @@
   .app-shell.mobile-sheet-peek .mobile-sheet-controls { bottom:calc(var(--mobile-nav-height) + var(--mobile-sheet-peek) - 12px); }
   .app-shell.mobile-sheet-expanded .planner-panel.mobile-sheet-panel,
   .app-shell.mobile-sheet-expanded .result-panel.mobile-sheet-panel,
-  .app-shell.mobile-sheet-expanded .map-list-manager { height:calc(100dvh - var(--mobile-nav-height)); }
+  .app-shell.mobile-sheet-expanded .map-list-manager { height:calc(100dvh - var(--mobile-nav-height) - var(--mobile-sheet-expanded-map-peek)); }
   .app-shell.mobile-sheet-expanded .mobile-sheet-controls { bottom:calc(100dvh - 12px); }
 
   .planner-panel.mobile-sheet-panel { overflow-y:auto; overscroll-behavior:contain; }
