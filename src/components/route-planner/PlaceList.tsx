@@ -2,15 +2,17 @@
 
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { ListPlus, LocateFixed, Lock, LockOpen, Trash2 } from "lucide-react";
+import { Clock3, ListPlus, LocateFixed, Lock, LockOpen, RotateCcw, Square, SquareCheck, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
+import { notify } from "@/lib/notify";
 
 interface Props {
   places: Place[];
   returnToStart: boolean;
   fixedVisitOrders: FixedVisitOrder[];
   onReturnChange: (value: boolean) => void;
+  onReset: () => void;
   onRemove: (id: string) => void;
   onReorder: (id: string, destinationIndex: number) => void;
   onStayDurationChange: (id: string, minutes: number) => void;
@@ -28,6 +30,7 @@ type SortablePlaceItemProps = {
   isDestination: boolean;
   canSetStayDuration: boolean;
   isOrderLocked: boolean;
+  isSelected: boolean;
   isStayEditing: boolean;
   onCardClick: (event: MouseEvent<HTMLDivElement>, place: Place) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
@@ -43,6 +46,7 @@ function SortablePlaceItem({
   isDestination,
   canSetStayDuration,
   isOrderLocked,
+  isSelected,
   isStayEditing,
   onCardClick,
   onFixedVisitOrderChange,
@@ -53,7 +57,7 @@ function SortablePlaceItem({
   const { ref, isDragging, isDropTarget } = useSortable({
     id: place.id,
     index,
-    disabled: place.isCurrentLocation === true,
+    disabled: place.isCurrentLocation === true || isDestination,
     transition: { duration: 180, easing: "cubic-bezier(.2,.8,.2,1)", idle: true },
   });
   const stayDuration = place.stayDurationMinutes ?? 0;
@@ -114,14 +118,22 @@ function SortablePlaceItem({
       className={`sortable-place-item${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}`}
     >
       <div
-        className={`place-item draggable${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}`}
+        className={`place-item draggable${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isSelected ? " selected-place" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}`}
         onClick={(event) => onCardClick(event, place)}
       >
-        <span className="drag-handle" aria-label="드래그하여 순서 변경" title="드래그하여 순서 변경">⠿</span>
+        <span className={`drag-handle${isDestination ? " placeholder" : ""}`} aria-label={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"} title={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"}>⠿</span>
         <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{index + 1}</div>
         <div className="place-main">
           <strong>{place.name}</strong>
           <small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
+        </div>
+        <div className="place-mobile-status" aria-label="장소 상태">
+          {canSetStayDuration && stayDuration > 0 && (
+            <span className="place-stay-badge"><Clock3 aria-hidden="true" /> {stayDuration}분</span>
+          )}
+          {canSetStayDuration && isOrderLocked && (
+            <span className="place-lock-badge" aria-label="순서 보장"><Lock aria-hidden="true" /></span>
+          )}
         </div>
         <div className="place-actions">
           <button
@@ -135,6 +147,7 @@ function SortablePlaceItem({
             }}
           >
             <Trash2 aria-hidden="true" />
+            <span className="place-action-label">삭제</span>
           </button>
           {onSavePlace && (
             <button
@@ -154,6 +167,7 @@ function SortablePlaceItem({
               }}
             >
               <ListPlus aria-hidden="true" />
+              <span className="place-action-label">리스트 저장</span>
             </button>
           )}
           {canSetStayDuration && (
@@ -169,6 +183,7 @@ function SortablePlaceItem({
               }}
             >
               {isOrderLocked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
+              <span className="place-action-label">{isOrderLocked ? "순서 해제" : "순서 보장"}</span>
             </button>
           )}
         </div>
@@ -192,6 +207,8 @@ function SortablePlaceItem({
               >
                 −
               </button>
+              <div className="stay-value">
+
               <input
                 className="stay-duration-input"
                 type="number"
@@ -209,6 +226,8 @@ function SortablePlaceItem({
                 }}
               />
               <span className="stay-duration-unit" aria-hidden="true">분</span>
+              </div>
+
               <button
                 className="stay-step"
                 type="button"
@@ -251,6 +270,7 @@ export function PlaceList({
   returnToStart,
   fixedVisitOrders,
   onReturnChange,
+  onReset,
   onRemove,
   onReorder,
   onStayDurationChange,
@@ -263,16 +283,19 @@ export function PlaceList({
   const [stayEditingPlaceId, setStayEditingPlaceId] = useState<string | null>(null);
   const [isSorting, setIsSorting] = useState(false);
   const didDragRef = useRef(false);
+  const dragReleaseTimeoutRef = useRef<number | null>(null);
+  const resetConfirmationExpiresAtRef = useRef(0);
   const fixedPlaceIds = new Set(fixedVisitOrders.map((fixed) => fixed.placeId));
   const returnStop = returnToStart && places[0] ? places[0] : null;
 
   useEffect(() => {
     if (!stayEditingPlaceId) return;
-    const index = places.findIndex((place) => place.id === stayEditingPlaceId);
-    const canKeepEditing = index > 0 && (returnToStart || index < places.length - 1);
+    if (!places.some((place) => place.id === stayEditingPlaceId)) setStayEditingPlaceId(null);
+  }, [places, stayEditingPlaceId]);
 
-    if (!canKeepEditing) setStayEditingPlaceId(null);
-  }, [places, returnToStart, stayEditingPlaceId]);
+  useEffect(() => () => {
+    if (dragReleaseTimeoutRef.current !== null) window.clearTimeout(dragReleaseTimeoutRef.current);
+  }, []);
 
   function adjustStayDuration(id: string, delta: number) {
     const currentMinutes = places.find((place) => place.id === id)?.stayDurationMinutes ?? 0;
@@ -281,38 +304,53 @@ export function PlaceList({
   }
 
   function handleCardClick(event: MouseEvent<HTMLDivElement>, place: Place) {
-    const index = places.findIndex((item) => item.id === place.id);
-    const canSetStayDuration = index > 0 && (returnToStart || index < places.length - 1);
-
-    if (didDragRef.current || !canSetStayDuration || (event.target as HTMLElement).closest("button, .drag-handle, .place-stay-control")) return;
+    if (didDragRef.current || (event.target as HTMLElement).closest("button, input, .drag-handle, .place-stay-control")) return;
     setStayEditingPlaceId((current) => (current === place.id ? null : place.id));
   }
 
+  function handleReset() {
+    if (Date.now() < resetConfirmationExpiresAtRef.current) {
+      resetConfirmationExpiresAtRef.current = 0;
+      onReset();
+      return;
+    }
+
+    resetConfirmationExpiresAtRef.current = Date.now() + 3_000;
+    notify.info("한 번 더 누르면 방문 장소가 모두 삭제됩니다.");
+  }
   function finishDrag() {
     setIsSorting(false);
-    window.setTimeout(() => {
+    if (dragReleaseTimeoutRef.current !== null) window.clearTimeout(dragReleaseTimeoutRef.current);
+    dragReleaseTimeoutRef.current = window.setTimeout(() => {
       didDragRef.current = false;
-    }, 0);
+      dragReleaseTimeoutRef.current = null;
+    }, 240);
   }
 
   return (
     <section className="place-section">
       <div className="section-heading">
-        <h2>방문 예정 장소</h2>
+        <h2>방문 장소</h2>
         <div className="place-heading-actions">
           <button
             type="button"
             className={`current-location-toggle${currentLocationActive ? " active" : ""}${currentLocationLocating ? " locating" : ""}`}
-            aria-label={currentLocationActive ? "현재 위치 활성화 해제" : "현재 위치 활성화"}
+            aria-label={currentLocationActive ? "위치 추적 해제" : "위치 추적"}
             aria-pressed={currentLocationActive}
-            title={currentLocationActive ? "현재 위치 활성화 해제" : "현재 위치를 출발지로 설정"}
+            title={currentLocationActive ? "위치 추적 해제" : "현재 위치를 출발지로 설정"}
             onClick={onCurrentLocationToggle}
           >
             <LocateFixed size={18} aria-hidden="true" />
+            <span>위치 추적</span>
           </button>
-          <label className="toggle place-return-toggle">
-            <input type="checkbox" checked={returnToStart} onChange={(event) => onReturnChange(event.target.checked)} /> 출발지로 복귀
-          </label>
+          <button type="button" className="place-return-toggle" aria-pressed={returnToStart} onClick={() => onReturnChange(!returnToStart)} title="출발지로 복귀">
+            {returnToStart ? <SquareCheck aria-hidden="true" /> : <Square aria-hidden="true" />}
+            <span>복귀</span>
+          </button>
+          <button type="button" className="place-reset-action" onClick={handleReset} title="방문 장소 초기화">
+            <RotateCcw aria-hidden="true" />
+            <span>초기화</span>
+          </button>
         </div>
       </div>      <div className="place-list-scroll">
         {places.length === 0 ? (
@@ -323,6 +361,7 @@ export function PlaceList({
         ) : (
         <DragDropProvider
         onDragStart={() => {
+          if (dragReleaseTimeoutRef.current !== null) window.clearTimeout(dragReleaseTimeoutRef.current);
           didDragRef.current = true;
           setIsSorting(true);
           setStayEditingPlaceId(null);
@@ -357,7 +396,8 @@ export function PlaceList({
                 isDestination={isDestination}
                 canSetStayDuration={canSetStayDuration}
                 isOrderLocked={fixedPlaceIds.has(place.id)}
-                isStayEditing={stayEditingPlaceId === place.id}
+                isSelected={stayEditingPlaceId === place.id}
+                isStayEditing={stayEditingPlaceId === place.id && canSetStayDuration}
                 onCardClick={handleCardClick}
                 onFixedVisitOrderChange={onFixedVisitOrderChange}
                 onSavePlace={onSavePlace}

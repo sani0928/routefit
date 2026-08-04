@@ -237,8 +237,7 @@
 .map-place-popup-name { display:block; overflow:hidden; color:#1f2f46; font-size:.8rem; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
 .map-place-popup-address { display:-webkit-box; margin:5px 0 0; overflow:hidden; color:#718096; font-size:.68rem; line-height:1.45; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
 .current-location-popup small { display:block; margin-top:7px; color:#98a5b5; font-size:.58rem; line-height:1.35; }
-/* Stay duration is signaled by the place card itself. */
-.planner-panel .place-item.has-stay-duration:not(.editing-stay) { border-color:#a9c8fb; box-shadow:0 2px 6px #2563eb12; }
+/* Stay duration is conveyed by the status badge rather than the card border. */
 .planner-panel .place-item.draggable:not(.dragging) { cursor:pointer; }
 .planner-panel .place-item.draggable .drag-handle { cursor:grab; }
 .current-location-start { width:100%; margin-top:10px; padding:8px 10px; border:1px solid #c8daf7; border-radius:8px; color:#2563eb; background:#f4f8ff; font-size:.68rem; font-weight:800; transition:background-color .16s ease,border-color .16s ease; }
@@ -1468,7 +1467,6 @@
 }
 /* Make the active stay-time editor state unmistakable. */
 .planner-panel .place-item.editing-stay { border-width: 2px; }
-.planner-panel .place-item.has-stay-duration { border-width: 2px; }
 /* Stay-time editing takes precedence over the persistent order-lock action. */
 .planner-panel .place-item.editing-stay:has(.place-order-lock.locked) .place-actions {
   opacity: 0;
@@ -1547,3 +1545,1314 @@
   border-top: 1px dashed #dbe7f2;
 }
 .segment-details li.segment-boundary-time.is-arrival time { color: #b91c1c; }
+/* Mobile sheet interaction contract: viewport-aware layout and state-specific gestures. */
+@media (max-width: 700px) {
+  :root {
+    --mobile-visual-viewport-height: 100dvh;
+    --mobile-sheet-visible-handle: 44px;
+  }
+
+  .app-shell,
+  .map-panel {
+    min-height: var(--mobile-visual-viewport-height);
+    height: var(--mobile-visual-viewport-height);
+  }
+
+  .map-panel,
+  .map-panel .map-view,
+  .map-panel .map-canvas {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .mobile-bottom-nav {
+    touch-action: manipulation;
+  }
+
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager {
+    max-height: calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height));
+  }
+
+  .app-shell.mobile-sheet-expanded .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-expanded .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-expanded .map-list-manager {
+    height: calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height) - var(--mobile-sheet-expanded-map-peek));
+  }
+
+  .planner-panel.mobile-sheet-panel .place-list-scroll {
+    max-height: calc(var(--mobile-visual-viewport-height) - 300px);
+  }
+
+  .mobile-sheet-chrome {
+    height: var(--mobile-sheet-visible-handle);
+    flex-basis: var(--mobile-sheet-visible-handle);
+    touch-action: none;
+  }
+
+  .mobile-sheet-handle {
+    width: 64px;
+    height: 44px;
+    touch-action: none;
+  }
+
+  .app-shell.mobile-sheet-collapsed .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .map-list-manager {
+    transform: translateY(calc(100% - var(--mobile-sheet-visible-handle)));
+  }
+
+  .mobile-sheet-content {
+    touch-action: pan-y;
+  }
+
+  .app-shell.mobile-sheet-peek .mobile-sheet-content {
+    overflow-y: hidden;
+    touch-action: none;
+  }
+
+  .app-shell.mobile-sheet-expanded .mobile-sheet-content {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager,
+  .mobile-bottom-nav,
+  .planner-panel .naver-search-form .search-control {
+    transition-duration: 1ms !important;
+  }
+}
+/* Keep mobile planner actions discoverable above the scrollable stop list. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .planner-panel.mobile-sheet-panel .naver-search-form {
+    order: 1;
+    flex: 0 0 auto;
+    margin: 0 0 10px;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-footer {
+    order: 2;
+    flex: 0 0 auto;
+    margin: 0 0 10px;
+    padding: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-section {
+    order: 3;
+    display: flex;
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-section .place-list-scroll {
+    max-height: none;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+
+  .app-shell.mobile-sheet-peek .planner-panel.mobile-sheet-panel .place-list-scroll {
+    overflow-y: hidden;
+  }
+}
+/* Mobile place-card editor: keep the list scannable and expose one focused editor at a time. */
+.place-mobile-status,
+.place-action-label { display: none; }
+
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item {
+    cursor: pointer;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item .place-mobile-status {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    align-self: center;
+    margin-left: auto;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-stay-badge,
+  .planner-panel.mobile-sheet-panel .place-lock-badge {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 1px solid #d8e5f7;
+    border-radius: 999px;
+    color: #49709b;
+    background: #f7faff;
+    font-size: .68rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-stay-badge { padding: 0 9px; }
+  .planner-panel.mobile-sheet-panel .place-stay-badge svg { width: 13px; height: 13px; }
+  .planner-panel.mobile-sheet-panel .place-lock-badge { width: 28px; color: #2563eb; border-color: #b9d3ff; background: #eff6ff; }
+  .planner-panel.mobile-sheet-panel .place-lock-badge svg { width: 14px; height: 14px; stroke-width: 2.3; }
+
+  .planner-panel.mobile-sheet-panel .place-item .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item:has(.place-order-lock.locked) .place-actions {
+    display: none;
+    position: static;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place {
+    cursor: default;
+    border-color: #a9c8fb;
+    background: #fbfdff;
+    box-shadow: 0 5px 14px rgb(37 99 235 / .08);
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-main { padding-right: 0; }
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-mobile-status { display: none; }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place:has(.place-order-lock.locked) .place-actions {
+    display: grid;
+    width: 100%;
+    flex: 0 0 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 4px 0 0 33px;
+    padding-top: 10px;
+    border-top: 1px solid #e6eef8;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions > :not(.place-order-lock.locked) { display: flex; }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-order-lock {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 8px;
+    border: 1px solid #d9e5f3;
+    border-radius: 12px;
+    color: #53677f;
+    background: #fff;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action svg { width: 17px; height: 17px; }
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-delete-action { color: #c2414d; border-color: #fde0e3; background: #fffafb; }
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-save-action { color: #2563eb; border-color: #cddfff; background: #f8fbff; }
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-order-lock.locked { color: #1d4ed8; border-color: #a9c8fb; background: #eff6ff; box-shadow: none; }
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-action-label { display: inline; font-size: .68rem; font-weight: 800; line-height: 1; white-space: nowrap; }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-stay-control {
+    position: static;
+    display: grid;
+    width: 100%;
+    flex: 0 0 100%;
+    order: 4;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 4px 0 0 33px;
+    padding: 10px 0 0;
+    border-top: 1px solid #e6eef8;
+    transform: none;
+    animation: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-stay-control > span { color: #5c708a; font-size: .72rem; }
+  .planner-panel.mobile-sheet-panel .place-stay-control .stay-stepper {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-stay-control .stay-step {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #d9e5f3;
+    border-radius: 12px;
+    color: #2563eb;
+    background: #f8fbff;
+    font-size: 1.15rem;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-stay-control .stay-value {
+    display: flex;
+    min-width: 0;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 10px;
+    border: 1px solid #cddfff;
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-stay-control .stay-duration-input {
+    width: min(92px, 100%);
+    height: 32px;
+    min-width: 0;
+    padding: 0 4px;
+    border: 0;
+    box-shadow: none;
+    color: #1d4ed8;
+    background: transparent;
+    font-size: .95rem;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-stay-control .stay-duration-unit { font-size: .78rem; }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-actions {
+    margin-top: 10px;
+  }
+}
+/* Keep every expanded place-card control inside the card on narrow phones. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-stay-control {
+    width: calc(100% - 33px);
+    flex-basis: calc(100% - 33px);
+    min-width: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions {
+    column-gap: 6px;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-order-lock {
+    min-width: 0;
+    gap: 4px;
+    padding: 0 5px;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-action-label {
+    font-size: clamp(.59rem, 2.6vw, .68rem);
+  }
+}
+/* The expanded controls use the card's full row width; this avoids device-specific flex overflow. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-stay-control {
+    width: 100%;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-order-lock,
+  .planner-panel.mobile-sheet-panel .place-stay-control .stay-stepper,
+  .planner-panel.mobile-sheet-panel .place-stay-control .stay-value {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 370px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-order-lock {
+    padding-inline: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-action-label {
+    display: none;
+  }
+}
+/* A selected card has a stable three-column grid, so its editor cannot exceed the right edge. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place {
+    display: grid;
+    grid-template-columns: 18px 26px minmax(0, 1fr);
+    column-gap: 9px;
+    row-gap: 10px;
+    align-items: center;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .drag-handle { grid-column: 1; grid-row: 1; }
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-badge { grid-column: 2; grid-row: 1; }
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-main { grid-column: 3; grid-row: 1; }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-stay-control {
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-stay-control {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-actions {
+    grid-column: 2 / -1;
+    grid-row: 3;
+    margin-top: 0;
+  }
+}
+/* Narrow phones: stack each action's icon and label to prevent the rightmost label from clipping. */
+@media (max-width: 460px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-order-lock {
+    min-height: 54px;
+    height: 54px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 2px;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-action-label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.05;
+  }
+}
+/* Align every expanded row to the exact same left and right card edges. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-stay-control {
+    grid-column: 1 / -1 !important;
+    justify-self: stretch;
+    align-self: stretch;
+    width: auto !important;
+    max-width: none;
+    margin: 0 !important;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions {
+    grid-row: 3;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place.editing-stay .place-stay-control {
+    grid-row: 2;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place:not(.editing-stay) .place-actions {
+    grid-row: 2;
+  }
+}
+/* Mobile action row: lightweight icon controls instead of bordered button tiles. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-order-lock,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-delete-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-save-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-order-lock.locked {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action svg,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-order-lock svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2.2;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action:focus-visible,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-order-lock:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+  }
+}
+/* Match mobile place-action icon colors to the desktop card palette. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-delete-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-save-action,
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-order-lock {
+    color: #3f4956;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-order-lock.locked {
+    color: #111827;
+  }
+}
+/* Status badges sit on their own row so place names and addresses retain the full text width. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) {
+    display: grid;
+    grid-template-columns: 18px 26px minmax(0, 1fr);
+    column-gap: 9px;
+    row-gap: 6px;
+    align-items: center;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .drag-handle { grid-column: 1; grid-row: 1; }
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-badge { grid-column: 2; grid-row: 1; }
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-main { grid-column: 3; grid-row: 1; min-width: 0; }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-mobile-status {
+    display: none;
+    grid-column: 2 / -1;
+    grid-row: 2;
+    justify-self: end;
+    margin: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-mobile-status:has(.place-stay-badge, .place-lock-badge) {
+    display: flex;
+  }
+}
+/* Keep mobile status on the same row while allowing place text to use additional lines first. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) {
+    display: flex;
+    align-items: center;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-mobile-status {
+    display: flex;
+    flex: 0 0 auto;
+    align-self: center;
+    margin-left: auto;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-mobile-status:not(:has(.place-stay-badge, .place-lock-badge)) {
+    display: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-main > strong,
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-main small {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-main small {
+    margin-bottom: 0;
+    line-height: 1.35;
+  }
+}
+/* Keep place names and addresses single-line; truncate only when the available row width is exceeded. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-main > strong,
+  .planner-panel.mobile-sheet-panel .place-item.draggable:not(.selected-place) .place-main small {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    -webkit-line-clamp: unset;
+  }
+}
+/* Mobile cards never reserve desktop hover-action space; only visible status badges reduce text width. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item:not(.selected-place):hover .place-main,
+  .planner-panel.mobile-sheet-panel .place-item:not(.selected-place):not(.editing-stay):has(:focus-visible) .place-main {
+    padding-right: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item:not(.selected-place) .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item:not(.selected-place):hover .place-actions {
+    display: none;
+    pointer-events: none;
+  }
+}
+/* Prevent iOS input-focus zoom and double-tap zoom on mobile UI without disabling map or accessibility pinch zoom. */
+@media (max-width: 700px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .mobile-sheet-panel,
+  .map-list-manager,
+  .mobile-bottom-nav,
+  .mobile-sheet-panel button,
+  .map-list-manager button,
+  .mobile-bottom-nav button,
+  .mobile-sheet-panel input,
+  .mobile-sheet-panel select,
+  .mobile-sheet-panel textarea {
+    touch-action: manipulation;
+  }
+
+  .map-panel,
+  .map-panel .map-view,
+  .map-panel .map-canvas {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+}
+@media (max-width: 700px) {
+  /* Component-specific input styles must not fall below iOS's 16px focus-zoom threshold. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+/* Selected map segment: a compact, dismissible detail card shared by desktop and mobile results. */
+.segment-focus-card {
+  margin: 12px 0;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--route-color, #2563eb) 28%, #dbe7f2);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--route-color, #2563eb) 7%, #fff);
+  box-shadow: 0 5px 14px rgb(37 99 235 / .08);
+}
+.segment-focus-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.segment-focus-heading > span { color: var(--route-color, #2563eb); font-size: .68rem; font-weight: 900; }
+.segment-focus-heading button { display: grid; width: 30px; height: 30px; place-items: center; padding: 0; border-radius: 9px; color: #66788f; background: transparent; }
+.segment-focus-heading button:hover { color: #1e3a5f; background: rgb(255 255 255 / .66); }
+.segment-focus-heading button svg { width: 17px; height: 17px; }
+.segment-focus-card > strong { display: block; overflow: hidden; margin-top: 2px; color: #27384f; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.segment-focus-card > strong i { margin: 0 3px; color: var(--route-color, #2563eb); font-style: normal; }
+.segment-focus-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 8px; color: #566c86; font-size: .7rem; font-weight: 800; }
+.segment-focus-meta > span + span::before { margin-right: 7px; color: #b4c0ce; content: "·"; }
+
+@media (max-width: 700px) {
+  .segment-focus-card { margin: 10px 0; padding: 11px 12px; }
+  .segment-focus-heading button { min-width: 44px; min-height: 44px; margin: -7px -7px -7px 0; }
+}.segment-focus-times { display: block; margin-top: 4px; color: #7890aa; font-size: .66rem; font-weight: 700; }
+/* Result information is separated into concise visit-order and segment-detail views. */
+.route-hero-times { display:flex; align-items:center; gap:9px; margin-top:14px; color:#fff; font-size:.77rem; font-weight:900; }
+.route-hero-times span { display:flex; align-items:baseline; gap:5px; }.route-hero-times small { color:#c9ddff; font-size:.62rem; font-weight:700; }.route-hero-times i { color:#c9ddff; font-style:normal; }
+.route-result-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:14px; padding:4px; border:1px solid #e0e8f3; border-radius:13px; background:#f6f8fc; }
+.route-result-tabs button { display:flex; min-width:0; align-items:center; justify-content:center; gap:6px; min-height:38px; padding:7px 8px; border-radius:9px; color:#718096; background:transparent; font-size:.73rem; font-weight:800; transition:color .18s ease,background .18s ease,box-shadow .18s ease; }
+.route-result-tabs button svg { width:16px; height:16px; flex:0 0 auto; }.route-result-tabs button small { display:grid; min-width:17px; height:17px; place-items:center; border-radius:999px; color:#8a9ab0; background:#e8eef6; font-size:.58rem; font-weight:900; }.route-result-tabs button.is-active { color:#2563eb; background:#fff; box-shadow:0 2px 7px #0f172a12; }.route-result-tabs button.is-active small { color:#fff; background:#2563eb; }
+.route-tab-panel { margin-top:12px; }.route-stops-card.route-tab-panel { margin-top:12px; }
+.modern-route-order li { padding:4px 0; }.route-stop-row { display:flex; width:100%; min-width:0; align-items:flex-start; gap:11px; padding:8px 7px; border:1px solid transparent; border-radius:11px; text-align:left; background:transparent; transition:border-color .18s ease,background .18s ease,transform .18s ease; }.modern-route-order li.stop-selected .route-stop-row { border-color:color-mix(in srgb,var(--route-color,#2563eb) 35%,#dbe7f2); background:color-mix(in srgb,var(--route-color,#2563eb) 7%,white); }.route-stop-copy { display:block; min-width:0; flex:1 1 auto; }.route-stop-copy .route-stop-name { display:flex; min-width:0; align-items:center; gap:5px; }.route-stop-copy strong,.route-stop-copy small { max-width:none; }.route-stop-copy strong { min-width:0; flex:0 1 auto; }.route-stop-copy small { width:100%; }
+.segment-details.route-tab-panel { margin-top:12px; }.segment-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 14px 10px; border-bottom:1px solid #edf1f6; }.segment-panel-heading small,.segment-panel-heading strong { display:block; }.segment-panel-heading small { color:#526174; font-size:.78rem; font-weight:850; }.segment-panel-heading strong { margin-top:3px; color:#94a3b8; font-size:.6rem; font-weight:700; }.segment-panel-heading b { flex:0 0 auto; color:#2563eb; font-size:.67rem; }.segment-details.route-tab-panel > ol { padding-top:11px; }
+@media (max-width:700px) { .route-hero-times { margin-top:12px; }.route-result-tabs button { min-height:44px; font-size:.72rem; }.route-stop-row { min-height:48px; padding:9px 7px; }.segment-panel-heading { padding-top:12px; }.segment-details.route-tab-panel > ol { padding-bottom:12px; } }
+/* The selected segment keeps each endpoint and its time together. */
+.segment-focus-places { display:grid; grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr); align-items:center; gap:7px; margin-top:3px; }
+.segment-focus-places > div { min-width:0; }.segment-focus-places > div:last-child { text-align:right; }.segment-focus-places strong,.segment-focus-places small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.segment-focus-places strong { color:#27384f; font-size:.8rem; }.segment-focus-places small { margin-top:4px; color:#7890aa; font-size:.64rem; font-weight:750; }.segment-focus-places i { color:var(--route-color,#2563eb); font-style:normal; font-weight:900; text-align:center; }
+@media (max-width:700px) { .segment-focus-places strong { font-size:.78rem; }.segment-focus-places small { font-size:.62rem; } }
+/* Make total duration and the trip's start/end time the primary result cues. */
+.route-summary-panel .route-hero > strong { font-size:clamp(2.18rem,3.1vw,2.62rem); letter-spacing:-.075em; }
+.route-hero-times { display:grid; grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr); align-items:center; gap:8px; margin-top:16px; padding:10px 11px; border:1px solid rgb(255 255 255 / .23); border-radius:12px; background:rgb(15 23 42 / .14); }
+.route-hero-times span { display:flex; min-width:0; flex-direction:column; gap:3px; }.route-hero-times span:last-child { align-items:flex-end; text-align:right; }.route-hero-times small { color:rgb(255 255 255 / .7); font-size:.61rem; font-weight:750; }.route-hero-times time { color:#fff; font-size:1rem; font-weight:900; letter-spacing:-.035em; line-height:1.1; }.route-hero-times i { color:rgb(255 255 255 / .82); font-size:.95rem; font-style:normal; font-weight:900; text-align:center; }
+.route-hero:has(.stay-time-summary) .route-hero-times { margin-top:14px; }
+@media (max-width:700px) { .route-summary-panel .route-hero > strong { font-size:2.48rem; }.route-hero-times { margin-top:14px; padding:10px; }.route-hero-times time { font-size:1.04rem; } }
+/* Keep the saved-place search hint aligned with the compact card interface. */
+.saved-places-panel .saved-place-search input { color:#415671; font-size:.78rem; font-weight:700; letter-spacing:-.02em; }
+.saved-places-panel .saved-place-search input::placeholder { color:#9aabbe; font-size:.74rem; font-weight:650; letter-spacing:-.025em; opacity:1; }
+/* Keep RouteFit visible beside the compact mobile search field, then yield space while searching. */
+@media (max-width:700px) {
+  .planner-panel.mobile-sheet-panel .naver-search-form { position:relative; min-height:52px; }
+  .planner-panel.mobile-sheet-panel .naver-search-form .search-brand { position:absolute; top:50%; right:3px; display:flex; width:44%; height:52px; align-items:center; justify-content:flex-end; padding:0 8px 0 16px; pointer-events:none; opacity:1; transform:translateY(-50%) translateX(0); transition:opacity .2s ease,transform .24s cubic-bezier(.22,.85,.3,1); }
+  .planner-panel.mobile-sheet-panel .naver-search-form .search-brand img { display:block; width:min(100%,104px); height:auto; object-fit:contain; opacity:.92; }
+  .planner-panel.mobile-sheet-panel .naver-search-form.search-expanded .search-brand { opacity:0; transform:translateY(-50%) translateX(10px); }
+}
+/* The search brand is intentionally a mobile-only identity cue. */
+.search-brand { display:none; }
+@media (max-width:700px) { .planner-panel.mobile-sheet-panel .naver-search-form .search-brand { display:flex; } }
+/* Keep stay duration and guaranteed-order state visible at every viewport size. */
+.planner-panel .place-mobile-status {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  align-self: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.planner-panel .place-stay-badge,
+.planner-panel .place-lock-badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid #d8e5f7;
+  border-radius: 999px;
+  color: #49709b;
+  background: #f7faff;
+  font-size: .68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.planner-panel .place-stay-badge { padding: 0 9px; }
+.planner-panel .place-stay-badge svg { width: 13px; height: 13px; }
+.planner-panel .place-lock-badge { width: 28px; color: #2563eb; border-color: #b9d3ff; background: #eff6ff; }
+.planner-panel .place-lock-badge svg { width: 14px; height: 14px; stroke-width: 2.3; }
+/* Desktop and tablet use the same compact state badges; reveal actions only on intent. */
+@media (min-width: 701px) {
+  .planner-panel .place-mobile-status {
+    min-width: 0;
+    max-width: 110px;
+    overflow: hidden;
+    opacity: 1;
+    visibility: visible;
+    white-space: nowrap;
+    transition: max-width .16s ease .12s, opacity .14s ease .12s, visibility 0s linear .12s;
+  }
+
+  .planner-panel .place-item:hover .place-mobile-status,
+  .planner-panel .place-item:not(.editing-stay):has(:focus-visible) .place-mobile-status {
+    max-width: 0;
+    margin-left: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: max-width .12s ease, opacity .1s ease, visibility 0s linear .1s;
+  }
+
+  .planner-panel .place-item:has(.place-order-lock.locked) .place-actions {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(4px, -50%);
+    transition-delay: .16s;
+  }
+
+  .planner-panel .place-item:has(.place-order-lock.locked):hover .place-actions,
+  .planner-panel .place-item:has(.place-order-lock.locked):not(.editing-stay):has(:focus-visible) .place-actions {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate(0, -50%);
+    transition-delay: 0s;
+  }
+}
+/* Match the desktop guaranteed-order control to its persistent status marker. */
+@media (min-width: 701px) {
+  .planner-panel .place-actions .place-order-lock.locked {
+    color: #2563eb;
+  }
+
+  .planner-panel .place-actions .place-order-lock.locked svg {
+    stroke-width: 2.3;
+  }
+}
+/* Mobile route preferences use an independent overlay so the peek sheet never needs extra height. */
+.mobile-route-option-layer { display: none; }
+
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .route-option-popover {
+    display: none;
+  }
+
+  .mobile-route-option-layer {
+    position: fixed;
+    z-index: 45;
+    right: 16px;
+    bottom: calc(var(--mobile-nav-height) + max(12px, env(safe-area-inset-bottom)));
+    left: 16px;
+    display: block;
+    padding: 9px;
+    border: 1px solid #dce6f2;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 16px 36px rgb(15 23 42 / .22);
+    animation: route-option-overlay-in .18s cubic-bezier(.16, 1, .3, 1) both;
+  }
+
+  .mobile-route-option-layer > p {
+    margin: 2px 5px 7px;
+    color: #526174;
+    font-size: .68rem;
+    font-weight: 850;
+  }
+
+  .mobile-route-option-layer .route-option-item {
+    min-height: 52px;
+    padding: 9px 10px;
+  }
+}
+
+@keyframes route-option-overlay-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-route-option-layer { animation: none; }
+}
+/* The reset action belongs with the other visit-plan controls. */
+.planner-panel .place-reset-action {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 4px;
+  margin-left: 1px;
+  padding: 0 0 0 8px;
+  border-left: 1px solid #e1e8f1;
+  border-radius: 0;
+  color: #718096;
+  background: transparent;
+  font-size: .71rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.planner-panel .place-reset-action svg { width: 14px; height: 14px; stroke-width: 2; }
+.planner-panel .place-reset-action:hover { color: #2563eb; background: transparent; }
+.planner-panel .place-reset-action:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-heading-actions { gap: 5px; }
+  .planner-panel.mobile-sheet-panel .place-reset-action { padding-left: 6px; font-size: .68rem; }
+}
+/* Route preference is a direct segmented control, with optimization kept as a separate action. */
+.planner-panel .planner-footer .route-primary-group {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(94px, 112px);
+  gap: 8px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.planner-panel .route-option-toggle {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #d9e5f3;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.planner-panel .route-option-toggle-item {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 0;
+  color: #718096;
+  background: transparent;
+  font-size: .68rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-panel .route-option-toggle-item + .route-option-toggle-item { border-left: 1px solid #dfe8f4; }
+.planner-panel .route-option-toggle-item.route-option-fast.selected { color: #c2410c; background: #fff7ed; }
+.planner-panel .route-option-toggle-item.route-option-balanced.selected { color: #2563eb; background: #eff6ff; }
+.planner-panel .route-option-toggle-item.route-option-comfort.selected { color: #15803d; background: #f0fdf4; }
+.planner-panel .route-option-toggle-item:focus-visible { position: relative; z-index: 1; outline: 2px solid #93c5fd; outline-offset: -2px; }
+
+.planner-panel .planner-footer .route-primary-group .optimize-action { display: flex; min-width: 0; margin: 0; }
+.planner-panel .planner-footer .route-primary-group .primary {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  box-shadow: 0 6px 14px #2563eb36;
+}
+
+.planner-panel .route-option-hint {
+  position: absolute;
+  z-index: 52;
+  top: calc(100% + 7px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #dbe7f5;
+  border-radius: 10px;
+  background: rgb(255 255 255 / .97);
+  box-shadow: 0 8px 18px rgb(15 23 42 / .12);
+  color: #5f7188;
+  font-size: .67rem;
+  font-weight: 700;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.planner-panel .route-option-hint.route-option-fast { border-color: #fed7aa; color: #c2410c; }
+.planner-panel .route-option-hint.route-option-balanced { border-color: #bfdbfe; color: #2563eb; }
+.planner-panel .route-option-hint.route-option-comfort { border-color: #bbf7d0; color: #15803d; }
+
+/* Header controls share one compact visual language. */
+.planner-panel .place-heading-actions { gap: 0; }
+.planner-panel .place-heading-actions .current-location-toggle,
+.planner-panel .place-heading-actions .place-return-toggle,
+.planner-panel .place-heading-actions .place-reset-action {
+  display: inline-flex;
+  width: auto;
+  min-height: 28px;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 0;
+  color: #718096;
+  background: transparent;
+  font-size: .71rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.planner-panel .place-heading-actions > * + * { border-left: 1px solid #e1e8f1; }
+.planner-panel .place-heading-actions .current-location-toggle svg { width: 16px; height: 16px; }
+.planner-panel .place-heading-actions .place-return-toggle svg,
+.planner-panel .place-heading-actions .place-reset-action svg { width: 15px; height: 15px; }
+.planner-panel .place-heading-actions .current-location-toggle.active,
+.planner-panel .place-heading-actions .place-return-toggle[aria-pressed=true] { color: #2563eb; }
+.planner-panel .place-heading-actions .current-location-toggle:hover,
+.planner-panel .place-heading-actions .place-return-toggle:hover,
+.planner-panel .place-heading-actions .place-reset-action:hover { color: #2563eb; background: transparent; }
+
+@media (max-width: 380px) {
+  .planner-panel .planner-footer .route-primary-group { grid-template-columns: minmax(0, 1fr) 84px; gap: 6px; }
+  .planner-panel .route-option-toggle-item { padding: 0 3px; font-size: .6rem; }
+  .planner-panel .place-heading-actions .current-location-toggle,
+  .planner-panel .place-heading-actions .place-return-toggle,
+  .planner-panel .place-heading-actions .place-reset-action { gap: 3px; padding: 0 5px; font-size: .64rem; }
+}
+/* Minimal route-preference toggle that remains legible in narrow desktop panels. */
+.planner-panel .planner-footer .route-primary-group {
+  grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 7px;
+}
+
+.planner-panel .route-option-toggle {
+  padding: 3px;
+  border-color: #e1e8f1;
+  border-radius: 11px;
+  background: #f7f9fc;
+}
+
+.planner-panel .route-option-toggle-item {
+  min-height: 36px;
+  padding: 0 4px;
+  border-radius: 8px;
+  color: #8a98aa;
+  font-size: .66rem;
+  font-weight: 750;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.planner-panel .route-option-toggle-item + .route-option-toggle-item { border-left: 0; }
+.planner-panel .route-option-toggle-item.route-option-fast.selected { color: #c2410c; background: #fff3e8; }
+.planner-panel .route-option-toggle-item.route-option-balanced.selected { color: #2563eb; background: #fff; box-shadow: 0 1px 4px rgb(15 23 42 / .09); }
+.planner-panel .route-option-toggle-item.route-option-comfort.selected { color: #15803d; background: #edfcf2; }
+
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 11px;
+  background: #2563eb;
+  box-shadow: none;
+  font-size: .68rem;
+}
+
+.planner-panel .route-calculate-action svg { width: 16px; height: 16px; stroke-width: 2.2; }
+.planner-panel .route-calculate-action:hover:not(:disabled) { background: #1d4ed8; filter: none; }
+
+@media (max-width: 380px) {
+  .planner-panel .planner-footer .route-primary-group { grid-template-columns: minmax(0, 1fr) 70px; }
+  .planner-panel .route-option-toggle-item { font-size: .61rem; }
+}
+/* Drag-selectable route preference slider. The handle carries the full active label. */
+.planner-panel .route-option-toggle {
+  position: relative;
+  display: block;
+  height: 42px;
+  padding: 3px;
+  overflow: visible;
+  border: 1px solid #e1e8f1;
+  border-radius: 11px;
+  background: #f7f9fc;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.planner-panel .route-option-toggle:active,
+.planner-panel .route-option-toggle.is-dragging { cursor: grabbing; }
+.planner-panel .route-option-toggle-track { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; pointer-events: none; }
+.planner-panel .route-option-toggle-track i { display: block; width: 4px; height: 4px; justify-self: center; border-radius: 50%; background: #cbd5e1; transition: transform .24s ease, background-color .24s ease; }
+.planner-panel .route-option-toggle-handle { position: absolute; top: 3px; bottom: 3px; left: 3px; display: grid; width: calc((100% - 6px) / 3); place-items: center; overflow: hidden; padding: 0 6px; border-radius: 8px; color: #2563eb; background: #fff; box-shadow: 0 2px 5px rgb(15 23 42 / .12); font-size: .66rem; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; transition: transform .32s cubic-bezier(.22, .9, .25, 1.12), color .2s ease, background-color .2s ease, box-shadow .2s ease; }
+.planner-panel .route-option-toggle.route-option-index-0 .route-option-toggle-handle { transform: translateX(0); }
+.planner-panel .route-option-toggle.route-option-index-1 .route-option-toggle-handle { transform: translateX(100%); }
+.planner-panel .route-option-toggle.route-option-index-2 .route-option-toggle-handle { transform: translateX(200%); }
+.planner-panel .route-option-toggle.route-option-fast .route-option-toggle-handle { color: #c2410c; background: #fff7ed; }
+.planner-panel .route-option-toggle.route-option-balanced .route-option-toggle-handle { color: #2563eb; background: #fff; }
+.planner-panel .route-option-toggle.route-option-comfort .route-option-toggle-handle { color: #15803d; background: #f0fdf4; }
+.planner-panel .route-option-toggle.route-option-index-0 .route-option-toggle-track i:nth-child(1),
+.planner-panel .route-option-toggle.route-option-index-1 .route-option-toggle-track i:nth-child(2),
+.planner-panel .route-option-toggle.route-option-index-2 .route-option-toggle-track i:nth-child(3) { background: currentColor; transform: scale(1.45); animation: route-option-dot-pop .34s cubic-bezier(.16, 1, .3, 1); }
+.planner-panel .route-option-toggle.route-option-fast { color: #c2410c; }
+.planner-panel .route-option-toggle.route-option-balanced { color: #2563eb; }
+.planner-panel .route-option-toggle.route-option-comfort { color: #15803d; }
+.planner-panel .route-option-toggle.is-dragging .route-option-toggle-handle { box-shadow: 0 5px 12px rgb(15 23 42 / .18); }
+.planner-panel .route-option-toggle:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+
+@keyframes route-option-dot-pop { from { transform: scale(.7); opacity: .45; } to { transform: scale(1.45); opacity: 1; } }
+
+@media (max-width: 380px) {
+  .planner-panel .route-option-toggle-handle { padding: 0 3px; font-size: .58rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel .route-option-toggle-handle,
+  .planner-panel .route-option-toggle-track i { transition: none; animation: none; }
+}
+/* Refined slider: clear separation, soft gradient rail, directional affordances and a speech-bubble hint. */
+.planner-panel .planner-footer .route-primary-group {
+  grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 12px;
+}
+
+.planner-panel .route-option-toggle {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(#f8fafc, #f8fafc) padding-box, linear-gradient(100deg, #fed7aa, #bfdbfe 48%, #bbf7d0) border-box;
+}
+
+.planner-panel .route-option-toggle-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  color: currentColor;
+  opacity: .42;
+}
+
+.planner-panel .route-option-toggle-track svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+  transition: opacity .2s ease, transform .24s ease;
+}
+
+.planner-panel .route-option-toggle.is-dragging .route-option-toggle-track svg:first-child { transform: translateX(-2px); }
+.planner-panel .route-option-toggle.is-dragging .route-option-toggle-track svg:last-child { transform: translateX(2px); }
+.planner-panel .route-option-toggle-handle { border-radius: 999px; }
+
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action {
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgb(37 99 235 / .2);
+}
+
+.planner-panel .route-option-hint {
+  top: calc(100% + 10px);
+  right: 88px;
+  padding: 9px 11px;
+  border-radius: 13px;
+  box-shadow: 0 10px 22px rgb(15 23 42 / .15);
+  animation: route-option-hint-in .18s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.planner-panel .route-option-hint::before {
+  position: absolute;
+  top: -6px;
+  width: 11px;
+  height: 11px;
+  border-top: 1px solid currentColor;
+  border-left: 1px solid currentColor;
+  background: #fff;
+  content: "";
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.planner-panel .route-option-hint.route-option-index-0::before { left: 16.67%; }
+.planner-panel .route-option-hint.route-option-index-1::before { left: 50%; }
+.planner-panel .route-option-hint.route-option-index-2::before { left: 83.33%; }
+
+@keyframes route-option-hint-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 380px) {
+  .planner-panel .planner-footer .route-primary-group { grid-template-columns: minmax(0, 1fr) 70px; gap: 9px; }
+  .planner-panel .route-option-toggle-track { padding: 0 9px; }
+  .planner-panel .route-option-hint { right: 79px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel .route-option-hint { animation: none; }
+}
+/* Route preference and calculation are separate controls; the hint belongs to the slider only. */
+.planner-panel .planner-footer .route-primary-group {
+  align-items: stretch;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.planner-panel .planner-footer .route-primary-group:has(.route-option-fast),
+.planner-panel .planner-footer .route-primary-group:has(.route-option-balanced),
+.planner-panel .planner-footer .route-primary-group:has(.route-option-comfort) { box-shadow: none; }
+
+.planner-panel .route-option-control {
+  position: relative;
+  min-width: 0;
+}
+
+.planner-panel .route-calculate-control {
+  display: flex;
+  min-width: 0;
+}
+
+.planner-panel .route-option-toggle-track {
+  z-index: 0;
+  justify-content: center;
+  gap: 5px;
+}
+
+.planner-panel .route-option-toggle-track svg {
+  flex: 0 0 auto;
+  opacity: .72;
+}
+
+.planner-panel .route-option-toggle-handle { z-index: 1; }
+
+.planner-panel .route-option-hint {
+  right: auto;
+  left: 50%;
+  width: max-content;
+  max-width: min(238px, calc(100vw - 40px));
+  white-space: normal;
+  transform: translateX(-50%);
+}
+
+.planner-panel .route-option-hint::before,
+.planner-panel .route-option-hint.route-option-index-0::before,
+.planner-panel .route-option-hint.route-option-index-1::before,
+.planner-panel .route-option-hint.route-option-index-2::before { left: 50%; }
+
+@keyframes route-option-hint-in {
+  from { opacity: 0; transform: translate(-50%, -4px) scale(.98); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+/* Keep the route hint anchored to the active slider handle. */
+.planner-panel .route-option-hint.route-option-index-0 { left: 16.6667%; }
+.planner-panel .route-option-hint.route-option-index-1 { left: 50%; }
+.planner-panel .route-option-hint.route-option-index-2 { left: 83.3333%; }
+
+.planner-panel .route-option-hint::before {
+  top: -7px;
+  width: 14px;
+  height: 8px;
+  border: 0;
+  background: #fff;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transform: translateX(-50%);
+}
+/* Compress the route summary by pairing headline duration with trip facts. */
+.route-hero-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.route-hero-duration { min-width: 0; }
+
+.route-hero-overview .route-hero-details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  text-align: right;
+}
+
+.route-hero-overview .route-hero-details span { white-space: nowrap; }
+.route-hero-overview .route-hero-details small { margin-bottom: 1px; }
+
+/* The neutral preference also receives its own soft handle surface. */
+.planner-panel .route-option-toggle.route-option-balanced .route-option-toggle-handle {
+  background: #eff6ff;
+  box-shadow: 0 2px 6px rgb(37 99 235 / .15);
+}
+
+/* Calculation follows the active route preference. */
+.planner-panel .route-primary-group:has(.route-option-fast) .route-calculate-action {
+  background: linear-gradient(135deg, #ea580c, #f97316);
+  box-shadow: 0 4px 10px rgb(234 88 12 / .22);
+}
+
+.planner-panel .route-primary-group:has(.route-option-comfort) .route-calculate-action {
+  background: linear-gradient(135deg, #15803d, #22c55e);
+  box-shadow: 0 4px 10px rgb(21 128 61 / .22);
+}
+
+.planner-panel .route-primary-group:has(.route-option-fast) .route-calculate-action:hover:not(:disabled) { background: #c2410c; }
+.planner-panel .route-primary-group:has(.route-option-comfort) .route-calculate-action:hover:not(:disabled) { background: #166534; }
+
+@media (max-width: 380px) {
+  .route-hero-overview { gap: 8px; }
+  .route-hero-overview .route-hero-details { gap: 6px; }
+  .route-hero-overview .route-hero-details span { font-size: .74rem; }
+}
+/* Preference colors must outrank the shared calculation-button background in its resting state. */
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action.route-option-fast {
+  background: linear-gradient(135deg, #ea580c, #f97316);
+  box-shadow: 0 4px 10px rgb(234 88 12 / .22);
+}
+
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action.route-option-balanced {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  box-shadow: 0 4px 10px rgb(37 99 235 / .22);
+}
+
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action.route-option-comfort {
+  background: linear-gradient(135deg, #15803d, #22c55e);
+  box-shadow: 0 4px 10px rgb(21 128 61 / .22);
+}
+
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action.route-option-fast:hover:not(:disabled) { background: #c2410c; }
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action.route-option-balanced:hover:not(:disabled) { background: #1d4ed8; }
+.planner-panel .planner-footer .route-primary-group .primary.route-calculate-action.route-option-comfort:hover:not(:disabled) { background: #166534; }
+/* Preserve a stronger lock glyph after the shared mobile action-icon rule. */
+.planner-panel .place-actions .place-order-lock.locked svg { stroke-width: 2.7; }
+
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-order-lock.locked svg { stroke-width: 2.9; }
+}
+/* Order lock keeps the same stroke weight before and after locking. */
+.planner-panel .place-actions .place-order-lock.locked svg { stroke-width: 1.8; }
+
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place .place-actions .place-order-lock.locked svg { stroke-width: 2.2; }
+}
+/* Keep the mobile edit-action row stable when a guaranteed-order card is hovered. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place:has(.place-order-lock.locked):hover .place-actions > :not(.place-order-lock.locked),
+  .planner-panel.mobile-sheet-panel .place-item.selected-place:has(.place-order-lock.locked):not(.editing-stay):has(:focus-visible) .place-actions > :not(.place-order-lock.locked) {
+    display: flex;
+  }
+}
+/* Keep compact trip facts clear of the route-preference badge. */
+.route-hero-overview .route-hero-details {
+  gap: 6px;
+  align-self: end;
+}
+
+.route-hero-overview .route-hero-details span {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.route-hero-overview .route-hero-details small {
+  display: inline;
+  margin: 0;
+  font-size: .61rem;
+}
+
+@media (max-width: 380px) {
+  .route-hero-overview .route-hero-details span { gap: 4px; }
+  .route-hero-overview .route-hero-details small { font-size: .57rem; }
+}
+/* Route summary hierarchy: label and preference first, duration and trip facts second. */
+.route-hero-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.route-hero-heading > p {
+  margin: 0;
+  color: #c9ddff;
+  font-size: .74rem;
+  font-weight: 700;
+}
+
+.route-hero-heading .route-option-badge {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.route-hero-overview {
+  align-items: start;
+}
+
+.route-hero-duration > strong {
+  display: block;
+  color: #fff;
+  font-size: clamp(2.18rem, 3.1vw, 2.62rem);
+  font-weight: 800;
+  letter-spacing: -.075em;
+  line-height: 1;
+  text-shadow: 0 1px 2px #0f172a26;
+}
+
+.route-hero-overview .route-hero-details { align-self: center; }
+
+@media (max-width: 700px) {
+  .route-hero-duration > strong { font-size: 2.48rem; }
+}
+/* The second summary row is a true three-column metric grid. */
+.route-hero-overview {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.route-hero-overview .route-hero-details { display: contents; }
+
+.route-hero-overview .route-hero-details span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.route-hero-overview .route-hero-details span:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.route-hero-overview .route-hero-details small {
+  display: block;
+  margin: 0;
+  font-size: .61rem;
+}
+
+@media (max-width: 380px) {
+  .route-hero-overview { gap: 6px; }
+  .route-hero-overview .route-hero-details small { font-size: .56rem; }
+}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { ChartNoAxesCombined, List, MapPin, Settings } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { List, MapPin, MoveLeft, MoveRight, Waypoints } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { SavePlaceDialog } from "@/components/member/SavePlaceDialog";
@@ -13,6 +13,7 @@ import type { MemberPlaceList, MemberState, SavedPlace } from "@/features/member
 import type { FixedVisitOrder, OptimizationResponse, Place } from "@/features/route-optimization/types/route.types";
 import { ROUTE_OPTIONS, ROUTE_OPTION_META, type RouteOption } from "@/features/route-optimization/route-options";
 import { notify } from "@/lib/notify";
+import { useMobileSheetController } from "@/hooks/useMobileSheetController";
 
 type Status = "IDLE" | "BUILDING_MATRIX" | "OPTIMIZING" | "FETCHING_FINAL_ROUTE" | "SUCCESS" | "ERROR";
 type PlaceInput = Omit<Place, "id" | "type">;
@@ -79,30 +80,6 @@ type MobileSheetHandleProps = {
   onStep: (direction: "up" | "down") => void;
 };
 
-type MobileSheetDrag = {
-  startY: number;
-  sheetState: MobileSheetState;
-  scrollContainer: HTMLElement | null;
-  pointerId: number;
-  inputSource: "pointer" | "touch";
-  fromHandle: boolean;
-  claimed: boolean;
-};
-
-function findScrollableSheetAncestor(target: EventTarget | null, sheet: HTMLElement) {
-  let element = target instanceof HTMLElement ? target : null;
-  while (element) {
-    const overflowY = window.getComputedStyle(element).overflowY;
-    if ((overflowY === "auto" || overflowY === "scroll") && element.scrollHeight > element.clientHeight) return element;
-    if (element === sheet) break;
-    element = element.parentElement;
-  }
-  return null;
-}
-
-function isSheetInteractiveTarget(target: EventTarget | null) {
-  return target instanceof Element && Boolean(target.closest("button, input, textarea, select, a, [role=button], [contenteditable=true]"));
-}
 function MobileSheetHandle({ expanded, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onStep }: MobileSheetHandleProps) {
   return <button
     type="button"
@@ -116,6 +93,7 @@ function MobileSheetHandle({ expanded, onPointerDown, onPointerMove, onPointerUp
     onKeyDown={(event) => {
       if (event.key === "ArrowUp") { event.preventDefault(); onStep("up"); }
       if (event.key === "ArrowDown") { event.preventDefault(); onStep("down"); }
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onStep(expanded ? "down" : "up"); }
     }}
   >
     <span aria-hidden="true" />
@@ -130,8 +108,11 @@ export default function Home() {
   const [routeNeedsRecalculation, setRouteNeedsRecalculation] = useState(false);
   const [status, setStatus] = useState<Status>("IDLE");
   const [routeOption, setRouteOption] = useState<RouteOption>("traoptimal");
-  const [routeOptionMenuOpen, setRouteOptionMenuOpen] = useState(false);
-  const routeOptionControlRef = useRef<HTMLDivElement>(null);
+  const [routeOptionHint, setRouteOptionHint] = useState<RouteOption | null>(null);
+  const [routeOptionDragging, setRouteOptionDragging] = useState(false);
+  const routeOptionHoldTimerRef = useRef<number | null>(null);
+  const routeOptionHintDismissTimerRef = useRef<number | null>(null);
+  const routeOptionLongPressRef = useRef(false);
   const [hoveredSegmentIndex, setHoveredSegmentIndex] = useState<number | null>(null);
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
   const [member, setMember] = useState<MemberState>(EMPTY_MEMBER);
@@ -145,34 +126,27 @@ export default function Home() {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [savedPlacesByListId, setSavedPlacesByListId] = useState<Record<string, SavedPlace[]>>({});
   const [saveTarget, setSaveTarget] = useState<PlaceInput | null>(null);
-  const [mobileTab, setMobileTab] = useState<MobileTab>("places");
-  const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>("collapsed");
-  const mobileSheetDragRef = useRef<MobileSheetDrag | null>(null);
-  const mobileSearchFocusTimerRef = useRef<number | null>(null);
+  const {
+    mobileTab,
+    mobileSheetState,
+    setMobileTab,
+    setMobileSheetState,
+    selectMobileTab,
+    prepareSearchFocus,
+    stepMobileSheet,
+    sheetGestureHandlers,
+    handlePointerHandlers,
+  } = useMobileSheetController();
 
   const start = places[0];
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
   const savedListPlaces = selectedListId ? savedPlacesByListId[selectedListId] ?? [] : [];
   const selectedRouteOption = ROUTE_OPTION_META[routeOption];
 
-  useEffect(() => {
-    if (!routeOptionMenuOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (routeOptionControlRef.current?.contains(event.target as Node)) return;
-      setRouteOptionMenuOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setRouteOptionMenuOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [routeOptionMenuOpen]);
+  useEffect(() => () => {
+    if (routeOptionHoldTimerRef.current !== null) window.clearTimeout(routeOptionHoldTimerRef.current);
+    if (routeOptionHintDismissTimerRef.current !== null) window.clearTimeout(routeOptionHintDismissTimerRef.current);
+  }, []);
   const loadMember = useCallback(async () => {
     try {
       const response = await fetch("/api/member/state", { cache: "no-store" });
@@ -276,12 +250,12 @@ export default function Home() {
   const addPlace = useCallback((input: PlaceInput): AddPlaceResult => {
     const isDuplicate = places.some((place) => Math.abs(place.latitude - input.latitude) < 0.000001 && Math.abs(place.longitude - input.longitude) < 0.000001);
     if (isDuplicate) {
-      const message = "해당 장소는 이미 방문 예정 장소에 있습니다.";
+      const message = "해당 장소는 이미 방문 장소에 있습니다.";
       notify.info(message);
       return { added: false, message };
     }
     if (places.length >= 15) {
-      const message = "방문 예정 장소는 최대 15곳까지 추가할 수 있습니다.";
+      const message = "방문 장소는 최대 15곳까지 추가할 수 있습니다.";
       notify.info(message);
       return { added: false, message };
     }
@@ -344,7 +318,7 @@ export default function Home() {
     }
 
     if (!places.some((place) => place.isCurrentLocation) && places.length >= 15) {
-      notify.info("방문 예정 장소는 최대 15개까지 추가할 수 있습니다.");
+      notify.info("방문 장소는 최대 15개까지 추가할 수 있습니다.");
       return;
     }
 
@@ -354,14 +328,26 @@ export default function Home() {
   function reorderPlace(id: string, destinationIndex: number) {
     setPlaces((current) => {
       const sourceIndex = current.findIndex((place) => place.id === id);
-      if (sourceIndex < 0 || sourceIndex === destinationIndex || current[sourceIndex]?.isCurrentLocation) return current;
+      const hasCurrentLocation = current.some((place) => place.isCurrentLocation);
+      const hasFixedDestination = !returnToStart;
+      const destinationPlaceIndex = current.length - 1;
+
+      // 현재 위치는 항상 출발지이며, 복귀하지 않는 경로의 마지막 장소는 도착지다.
+      // 두 역할은 수동 정렬로 변경되지 않도록 드래그 시작과 삽입 단계에서 모두 보호한다.
+      if (
+        sourceIndex < 0
+        || current[sourceIndex]?.isCurrentLocation
+        || (hasFixedDestination && sourceIndex === destinationPlaceIndex)
+      ) return current;
 
       const next = [...current];
       const [moved] = next.splice(sourceIndex, 1);
-      const insertionIndex = Math.max(0, Math.min(destinationIndex, next.length));
+      const minimumInsertionIndex = hasCurrentLocation ? 1 : 0;
+      const maximumInsertionIndex = hasFixedDestination ? next.length - 1 : next.length;
+      const insertionIndex = Math.max(minimumInsertionIndex, Math.min(destinationIndex, maximumInsertionIndex));
+
+      if (sourceIndex === insertionIndex) return current;
       next.splice(insertionIndex, 0, moved);
-      const currentLocationIndex = next.findIndex((place) => place.isCurrentLocation);
-      if (currentLocationIndex > 0) { const [currentLocation] = next.splice(currentLocationIndex, 1); next.unshift(currentLocation); }
       const normalized = normalizePlaceRoles(next);
 
       setFixedVisitOrders((currentFixedOrders) => currentFixedOrders.flatMap((fixed) => {
@@ -531,164 +517,129 @@ export default function Home() {
     window.setTimeout(() => document.getElementById("mobile-map-focus")?.focus(), 0);
   }
 
-  function selectMobileTab(nextTab: MobileTab) {
-    const isActiveTab = mobileTab === nextTab;
-
-    setMobileTab(nextTab);
-    setMobileSheetState((current) => {
-      if (!isActiveTab || current === "collapsed") return "peek";
-      return current === "peek" ? "expanded" : "peek";
-    });
+  function handleMobileTabSelect(nextTab: "places" | "lists" | "results") {
+    selectMobileTab(nextTab);
     setListManagerOpen(nextTab === "lists");
   }
 
-  function stepMobileSheet(direction: "up" | "down") {
-    setMobileSheetState((current) => {
-      if (direction === "up") return current === "collapsed" ? "peek" : "expanded";
-      return current === "expanded" ? "peek" : "collapsed";
-    });
-  }
-
-  function cycleMobileSheet() {
-    setMobileSheetState((current) => current === "collapsed" ? "peek" : current === "peek" ? "expanded" : "collapsed");
-  }
-
-  function prepareMobileSearchFocus(event: ReactPointerEvent<HTMLInputElement>) {
-    if (!window.matchMedia("(max-width: 700px)").matches || mobileSheetState !== "peek") return;
-    event.preventDefault();
-    if (mobileSearchFocusTimerRef.current) window.clearTimeout(mobileSearchFocusTimerRef.current);
-    setMobileSheetState("expanded");
-    mobileSearchFocusTimerRef.current = window.setTimeout(() => {
-      document.getElementById("search")?.focus({ preventScroll: true });
-      mobileSearchFocusTimerRef.current = null;
-    }, 260);
-  }
-  function canClaimMobileSheetDrag(drag: MobileSheetDrag, direction: "up" | "down") {
-    if (drag.sheetState === "peek" || drag.fromHandle) return true;
-    if ((drag.scrollContainer?.scrollTop ?? 0) > 1) return false;
-    if (direction === "up") return drag.sheetState !== "expanded";
-    return drag.sheetState !== "collapsed";
-  }
-
-  function startMobileSheetDrag(event: ReactPointerEvent<HTMLElement>) {
-    if (!event.isPrimary || event.pointerType === "touch" || !window.matchMedia("(max-width: 700px)").matches) return;
-    const fromHandle = event.currentTarget.classList.contains("mobile-sheet-handle");
-    if (!fromHandle && mobileSheetState !== "peek" && isSheetInteractiveTarget(event.target)) return;
-
-    mobileSheetDragRef.current = {
-      startY: event.clientY,
-      sheetState: mobileSheetState,
-      scrollContainer: fromHandle ? null : findScrollableSheetAncestor(event.target, event.currentTarget),
-      pointerId: event.pointerId,
-      inputSource: "pointer",
-      fromHandle,
-      claimed: false,
-    };
-  }
-
-  function moveMobileSheetDrag(event: ReactPointerEvent<HTMLElement>) {
-    const drag = mobileSheetDragRef.current;
-    if (!drag || drag.inputSource !== "pointer" || drag.pointerId !== event.pointerId) return;
-
-    const distance = event.clientY - drag.startY;
-    if (!drag.claimed && Math.abs(distance) >= 10) {
-      const direction = distance < 0 ? "up" : "down";
-      if (!canClaimMobileSheetDrag(drag, direction)) return;
-      drag.claimed = true;
-      event.currentTarget.setPointerCapture(event.pointerId);
+  function clearRouteOptionHoldTimer() {
+    if (routeOptionHoldTimerRef.current !== null) {
+      window.clearTimeout(routeOptionHoldTimerRef.current);
+      routeOptionHoldTimerRef.current = null;
     }
-    if (drag.claimed) event.preventDefault();
   }
 
-  function endMobileSheetDrag(event: ReactPointerEvent<HTMLElement>) {
-    const drag = mobileSheetDragRef.current;
-    if (!drag || drag.inputSource !== "pointer" || drag.pointerId !== event.pointerId) return;
-    mobileSheetDragRef.current = null;
+  function startRouteOptionHint(option: RouteOption) {
+    clearRouteOptionHoldTimer();
+    if (routeOptionHintDismissTimerRef.current !== null) window.clearTimeout(routeOptionHintDismissTimerRef.current);
+    routeOptionLongPressRef.current = false;
+    routeOptionHoldTimerRef.current = window.setTimeout(() => {
+      routeOptionLongPressRef.current = true;
+      setRouteOptionHint(option);
+      routeOptionHoldTimerRef.current = null;
+    }, 500);
+  }
+
+  function finishRouteOptionHint() {
+    clearRouteOptionHoldTimer();
+    if (!routeOptionLongPressRef.current) return;
+    if (routeOptionHintDismissTimerRef.current !== null) window.clearTimeout(routeOptionHintDismissTimerRef.current);
+    routeOptionHintDismissTimerRef.current = window.setTimeout(() => {
+      setRouteOptionHint(null);
+      routeOptionLongPressRef.current = false;
+      routeOptionHintDismissTimerRef.current = null;
+    }, 2400);
+  }
+
+  function selectRouteOption(option: RouteOption) {
+    setRouteOption(option);
+    setRouteOptionHint(null);
+    setResult(null);
+  }
+
+  function selectRouteOptionFromPointer(event: ReactPointerEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+    const nextOption = ROUTE_OPTIONS[Math.round(ratio * (ROUTE_OPTIONS.length - 1))];
+    selectRouteOption(nextOption);
+    return nextOption;
+  }
+
+  function handleRouteOptionPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setRouteOptionDragging(true);
+    startRouteOptionHint(selectRouteOptionFromPointer(event));
+  }
+
+  function handleRouteOptionPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    clearRouteOptionHoldTimer();
+    setRouteOptionHint(null);
+    selectRouteOptionFromPointer(event);
+  }
+
+  function handleRouteOptionPointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    setRouteOptionDragging(false);
+    finishRouteOptionHint();
+  }
 
-    const distance = event.clientY - drag.startY;
-    if (!drag.claimed) {
-      if (drag.fromHandle && Math.abs(distance) < 18) cycleMobileSheet();
-      return;
+  function handleRouteOptionKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const currentIndex = ROUTE_OPTIONS.indexOf(routeOption);
+    const nextIndex = event.key === "ArrowLeft" || event.key === "ArrowDown"
+      ? Math.max(0, currentIndex - 1)
+      : event.key === "ArrowRight" || event.key === "ArrowUp"
+        ? Math.min(ROUTE_OPTIONS.length - 1, currentIndex + 1)
+        : event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? ROUTE_OPTIONS.length - 1
+            : null;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    selectRouteOption(ROUTE_OPTIONS[nextIndex]);
+  }
+
+  function resetPlanner() {
+    setCurrentLocationActive(false);
+    setCurrentLocationLocating(false);
+    setPlaces([]);
+    setFixedVisitOrders([]);
+    setResult(null);
+    setRouteOptionHint(null);
+  }
+
+  function handleMapSegmentSelect(index: number) {
+    setHoveredSegmentIndex(null);
+    setSelectedSegmentIndex((current) => current === index ? null : index);
+
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      setMobileTab("results");
+      setMobileSheetState("peek");
+      setListManagerOpen(false);
     }
-    if (Math.abs(distance) >= 42) stepMobileSheet(distance < 0 ? "up" : "down");
+
+    window.requestAnimationFrame(() => {
+      const resultPanel = document.getElementById("mobile-results-panel");
+      resultPanel?.scrollTo({ top: 0, behavior: "smooth" });
+      resultPanel?.querySelector<HTMLElement>(".mobile-sheet-content")?.scrollTo({ top: 0, behavior: "smooth" });
+    });
   }
 
-  function cancelMobileSheetDrag(event?: ReactPointerEvent<HTMLElement>) {
-    if (event?.pointerType === "touch") return;
-    mobileSheetDragRef.current = null;
+  function handleResultSegmentSelect(index: number | null, source: "stop" | "segment" = "segment") {
+    setSelectedSegmentIndex(index);
+
+    if (index !== null && source === "segment" && window.matchMedia("(max-width: 700px)").matches) {
+      setMobileTab("results");
+      setMobileSheetState("peek");
+      setListManagerOpen(false);
+      window.requestAnimationFrame(() => {
+        const resultPanel = document.getElementById("mobile-results-panel");
+        resultPanel?.scrollTo({ top: 0, behavior: "smooth" });
+        resultPanel?.querySelector<HTMLElement>(".mobile-sheet-content")?.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
   }
-
-  useEffect(() => {
-    if (!window.matchMedia("(max-width: 700px)").matches) return;
-    const sheets = Array.from(document.querySelectorAll<HTMLElement>(".mobile-sheet-panel, .map-list-manager"));
-
-    const onTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) return;
-      const sheet = event.currentTarget as HTMLElement;
-      const target = event.target;
-      const fromHandle = target instanceof Element && Boolean(target.closest(".mobile-sheet-handle"));
-      if (!fromHandle && mobileSheetState !== "peek" && isSheetInteractiveTarget(target)) return;
-
-      const touch = event.touches[0];
-      mobileSheetDragRef.current = {
-        startY: touch.clientY,
-        sheetState: mobileSheetState,
-        scrollContainer: fromHandle ? null : findScrollableSheetAncestor(target, sheet),
-        pointerId: touch.identifier,
-        inputSource: "touch",
-        fromHandle,
-        claimed: false,
-      };
-    };
-
-    const onTouchMove = (event: TouchEvent) => {
-      const drag = mobileSheetDragRef.current;
-      if (!drag || drag.inputSource !== "touch") return;
-      const touch = Array.from(event.touches).find((item) => item.identifier === drag.pointerId);
-      if (!touch) return;
-
-      const distance = touch.clientY - drag.startY;
-      if (!drag.claimed && Math.abs(distance) >= 10) {
-        const direction = distance < 0 ? "up" : "down";
-        if (!canClaimMobileSheetDrag(drag, direction)) return;
-        drag.claimed = true;
-      }
-      if (drag.claimed) event.preventDefault();
-    };
-
-    const onTouchEnd = (event: TouchEvent) => {
-      const drag = mobileSheetDragRef.current;
-      if (!drag || drag.inputSource !== "touch") return;
-      const touch = Array.from(event.changedTouches).find((item) => item.identifier === drag.pointerId);
-      if (!touch) return;
-      mobileSheetDragRef.current = null;
-
-      const distance = touch.clientY - drag.startY;
-      if (!drag.claimed) {
-        if (drag.fromHandle && Math.abs(distance) < 18) cycleMobileSheet();
-        return;
-      }
-      if (Math.abs(distance) >= 42) stepMobileSheet(distance < 0 ? "up" : "down");
-    };
-
-    const onTouchCancel = () => {
-      if (mobileSheetDragRef.current?.inputSource === "touch") mobileSheetDragRef.current = null;
-    };
-
-    sheets.forEach((sheet) => {
-      sheet.addEventListener("touchstart", onTouchStart, { passive: true });
-      sheet.addEventListener("touchmove", onTouchMove, { passive: false });
-      sheet.addEventListener("touchend", onTouchEnd, { passive: true });
-      sheet.addEventListener("touchcancel", onTouchCancel, { passive: true });
-    });
-    return () => sheets.forEach((sheet) => {
-      sheet.removeEventListener("touchstart", onTouchStart);
-      sheet.removeEventListener("touchmove", onTouchMove);
-      sheet.removeEventListener("touchend", onTouchEnd);
-      sheet.removeEventListener("touchcancel", onTouchCancel);
-    });
-  }, [listManagerOpen, mobileSheetState]);
   function browseSavedPlaces() {
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("places");
@@ -705,18 +656,15 @@ export default function Home() {
       <aside
         id="mobile-places-panel"
         className="planner-panel mobile-sheet-panel"
-        onPointerDown={startMobileSheetDrag}
-        onPointerMove={moveMobileSheetDrag}
-        onPointerUp={endMobileSheetDrag}
-        onPointerCancel={cancelMobileSheetDrag}
+        {...sheetGestureHandlers}
       >
         <div className="mobile-sheet-chrome">
           <MobileSheetHandle
             expanded={mobileSheetState !== "collapsed"}
-            onPointerDown={startMobileSheetDrag}
-            onPointerMove={moveMobileSheetDrag}
-            onPointerUp={endMobileSheetDrag}
-            onPointerCancel={cancelMobileSheetDrag}
+            onPointerDown={handlePointerHandlers.onPointerDown}
+            onPointerMove={handlePointerHandlers.onPointerMove}
+            onPointerUp={handlePointerHandlers.onPointerUp}
+            onPointerCancel={handlePointerHandlers.onPointerCancel}
             onStep={stepMobileSheet}
           />
         </div>
@@ -728,29 +676,36 @@ export default function Home() {
           </div>
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
         </header>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchPointerDown={prepareMobileSearchFocus} onSearchFocus={() => { if (window.matchMedia("(max-width: 700px)").matches && mobileSheetState === "peek") setMobileSheetState("expanded"); }} />
-        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} />
+        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} />
         <div className="planner-footer">
-          <button className="secondary" onClick={() => { setCurrentLocationActive(false); setCurrentLocationLocating(false); setPlaces([]); setFixedVisitOrders([]); setResult(null); }}>전체 초기화</button>
           <div className="route-primary-group">
-            <div className="optimize-action">
-              <button className={`primary route-option-${selectedRouteOption.tone}`} onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"}>동선 최적화</button>
+            <div className="route-option-control">
+              <div
+                className={`route-option-toggle route-option-${selectedRouteOption.tone} route-option-index-${ROUTE_OPTIONS.indexOf(routeOption)}${routeOptionDragging ? " is-dragging" : ""}`}
+                role="slider"
+                tabIndex={0}
+                aria-label="경로 성향"
+                aria-valuemin={0}
+                aria-valuemax={ROUTE_OPTIONS.length - 1}
+                aria-valuenow={ROUTE_OPTIONS.indexOf(routeOption)}
+                aria-valuetext={selectedRouteOption.label}
+                onPointerDown={handleRouteOptionPointerDown}
+                onPointerMove={handleRouteOptionPointerMove}
+                onPointerUp={handleRouteOptionPointerEnd}
+                onPointerCancel={handleRouteOptionPointerEnd}
+                onKeyDown={handleRouteOptionKeyDown}
+              >
+                <span className="route-option-toggle-track" aria-hidden="true">
+                  {routeOption !== "trafast" && <MoveLeft />}
+                  {routeOption !== "tracomfort" && <MoveRight />}
+                </span>
+                <span className="route-option-toggle-handle">{selectedRouteOption.label}</span>
+              </div>
+              {routeOptionHint && <p className={`route-option-hint route-option-${ROUTE_OPTION_META[routeOptionHint].tone} route-option-index-${ROUTE_OPTIONS.indexOf(routeOptionHint)}`} role="status">{ROUTE_OPTION_META[routeOptionHint].description}</p>}
             </div>
-            <div className="route-option-control" ref={routeOptionControlRef}>
-              <button type="button" className={`route-option-settings route-option-${selectedRouteOption.tone}`} aria-label="경로 성향 설정" aria-expanded={routeOptionMenuOpen} onClick={() => setRouteOptionMenuOpen((open) => !open)}>
-                <Settings size={18} strokeWidth={2.1} />
-              </button>
-              {routeOptionMenuOpen && <div className="route-option-popover" role="menu" aria-label="경로 성향 선택">
-              <p>경로 성향</p>
-              {ROUTE_OPTIONS.map((option) => {
-                const meta = ROUTE_OPTION_META[option];
-                const selected = option === routeOption;
-                return <button key={option} type="button" role="menuitemradio" aria-checked={selected} className={`route-option-item route-option-${meta.tone}${selected ? " selected" : ""}`} onClick={() => { setRouteOption(option); setRouteOptionMenuOpen(false); setResult(null); }}>
-                  <span className="route-option-swatch" />
-                  <span><strong>{meta.label}</strong><small>{meta.description}</small></span>
-                </button>;
-              })}
-              </div>}
+            <div className="route-calculate-control optimize-action">
+              <button className={`primary route-calculate-action route-option-${selectedRouteOption.tone}`} onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"} aria-label="경로 계산" title="경로 계산">계산</button>
             </div>
           </div>
         </div>
@@ -765,6 +720,8 @@ export default function Home() {
           segments={listManagerOpen && activeList ? [] : result?.segments ?? []}
           returnToStart={returnToStart}
           highlightedSegmentIndex={hoveredSegmentIndex ?? selectedSegmentIndex}
+          focusedSegmentIndex={selectedSegmentIndex}
+          onSegmentSelect={handleMapSegmentSelect}
           onMapPlaceSelect={addPlace}
           currentLocationActive={currentLocationActive}
           onCurrentLocationUpdate={updateCurrentLocation}
@@ -780,18 +737,15 @@ export default function Home() {
             id="mobile-lists-panel"
             className="map-list-manager"
             aria-label="내 장소 관리"
-            onPointerDown={startMobileSheetDrag}
-            onPointerMove={moveMobileSheetDrag}
-            onPointerUp={endMobileSheetDrag}
-            onPointerCancel={cancelMobileSheetDrag}
+            {...sheetGestureHandlers}
           >
             <div className="mobile-sheet-chrome">
               <MobileSheetHandle
                 expanded={mobileSheetState !== "collapsed"}
-                onPointerDown={startMobileSheetDrag}
-                onPointerMove={moveMobileSheetDrag}
-                onPointerUp={endMobileSheetDrag}
-                onPointerCancel={cancelMobileSheetDrag}
+                onPointerDown={handlePointerHandlers.onPointerDown}
+                onPointerMove={handlePointerHandlers.onPointerMove}
+                onPointerUp={handlePointerHandlers.onPointerUp}
+                onPointerCancel={handlePointerHandlers.onPointerCancel}
                 onStep={stepMobileSheet}
               />
             </div>
@@ -822,36 +776,33 @@ export default function Home() {
         )}
       </section>
       <nav className="mobile-bottom-nav" aria-label="모바일 주요 메뉴" role="tablist">
-        <button type="button" role="tab" aria-selected={mobileTab === "places"} aria-controls="mobile-places-panel" onClick={() => selectMobileTab("places")}>
+        <button type="button" role="tab" aria-selected={mobileTab === "places"} aria-controls="mobile-places-panel" onClick={() => handleMobileTabSelect("places")}>
           <MapPin size={20} aria-hidden="true" /><span>방문 장소</span>
         </button>
-        <button type="button" role="tab" aria-selected={mobileTab === "lists"} aria-controls="mobile-lists-panel" onClick={() => selectMobileTab("lists")}>
+        <button type="button" role="tab" aria-selected={mobileTab === "lists"} aria-controls="mobile-lists-panel" onClick={() => handleMobileTabSelect("lists")}>
           <List size={20} aria-hidden="true" /><span>장소 리스트</span>
         </button>
-        <button type="button" role="tab" aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onClick={() => selectMobileTab("results")}>
-          <ChartNoAxesCombined size={20} aria-hidden="true" /><span>계산 결과</span>
+        <button type="button" role="tab" aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onClick={() => handleMobileTabSelect("results")}>
+          <Waypoints size={20} aria-hidden="true" /><span>계산 결과</span>
         </button>
       </nav>
       <aside
         id="mobile-results-panel"
         className="result-panel mobile-sheet-panel"
-        onPointerDown={startMobileSheetDrag}
-        onPointerMove={moveMobileSheetDrag}
-        onPointerUp={endMobileSheetDrag}
-        onPointerCancel={cancelMobileSheetDrag}
+        {...sheetGestureHandlers}
       >
         <div className="mobile-sheet-chrome">
           <MobileSheetHandle
             expanded={mobileSheetState !== "collapsed"}
-            onPointerDown={startMobileSheetDrag}
-            onPointerMove={moveMobileSheetDrag}
-            onPointerUp={endMobileSheetDrag}
-            onPointerCancel={cancelMobileSheetDrag}
+            onPointerDown={handlePointerHandlers.onPointerDown}
+            onPointerMove={handlePointerHandlers.onPointerMove}
+            onPointerUp={handlePointerHandlers.onPointerUp}
+            onPointerCancel={handlePointerHandlers.onPointerCancel}
             onStep={stepMobileSheet}
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isCurrentLocationStale={routeNeedsRecalculation} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={setSelectedSegmentIndex} />
+            <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isCurrentLocationStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} onSave={(listId) => void savePlace(listId)} onClose={() => setSaveTarget(null)} />

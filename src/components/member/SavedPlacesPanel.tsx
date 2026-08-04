@@ -95,7 +95,7 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
       </div>}
       {pagedPlaces.length > 0 && <ol className="saved-place-list">{pagedPlaces.map((place) => <li key={place.id}>
         <div><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></div>
-        <div className="saved-place-actions"><button className="saved-place-add-action" type="button" onClick={() => addToRoute(place)} title="방문 예정 장소에 추가" aria-label={`${place.name} 방문 예정 장소에 추가`}><MapPinPlus size={16} /><span>추가</span></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div>
+        <div className="saved-place-actions"><button className="saved-place-add-action" type="button" onClick={() => addToRoute(place)} title="방문 장소에 추가" aria-label={`${place.name} 방문 장소에 추가`}><MapPinPlus size={16} /><span>추가</span></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div>
       </li>)}</ol>}
       {places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장 장소가 없습니다.</p>}
       {places.length === 0 && <div className="list-empty-state list-empty-action-area"><p>아직 저장한 장소가 없습니다.</p><span>검색 결과의 저장 버튼으로 이 리스트에 장소를 모아보세요.</span><button type="button" onClick={onBrowsePlaces}><Search size={15} />장소 검색하기</button></div>}

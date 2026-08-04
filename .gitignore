@@ -5,3 +5,4 @@ coverage/
 .env.local
 .env.production
 plan.md
+docs/

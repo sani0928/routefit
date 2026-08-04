@@ -8,7 +8,7 @@ import { routeColor } from "@/lib/route-colors";
 
 type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 
@@ -26,7 +26,7 @@ function createPlaceInfoContent(place: MapPlace, onAdd?: () => void) {
     const addButton = document.createElement("button");
     addButton.type = "button";
     addButton.className = "current-location-start";
-    addButton.textContent = "방문 예정 장소에 추가";
+    addButton.textContent = "방문 장소에 추가";
     addButton.addEventListener("click", onAdd);
     container.append(addButton);
   }
@@ -48,7 +48,7 @@ function createCurrentLocationPopupContent(address?: string) {
   return container;
 }
 
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, onMapPlaceSelect, currentLocationActive, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, onSegmentSelect, onMapPlaceSelect, currentLocationActive, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
@@ -63,6 +63,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   const requestIdRef = useRef(0);
   const popupOpenRef = useRef(false);
   const selectRef = useRef(onMapPlaceSelect);
+  const segmentSelectRef = useRef(onSegmentSelect);
   const currentLocationUpdateRef = useRef(onCurrentLocationUpdate);
   const trackingChangeRef = useRef(onCurrentLocationTrackingChange);
   const errorRef = useRef(onMapError);
@@ -155,11 +156,12 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   }, [resolveCurrentLocationAddress, updateCurrentLocationPlace]);
   useEffect(() => {
     selectRef.current = onMapPlaceSelect;
+    segmentSelectRef.current = onSegmentSelect;
     currentLocationUpdateRef.current = onCurrentLocationUpdate;
     trackingChangeRef.current = onCurrentLocationTrackingChange;
     errorRef.current = onMapError;
     listAddRef.current = onListPlaceAdd;
-  }, [onMapPlaceSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, onListPlaceAdd]);
+  }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, onListPlaceAdd]);
 
   useEffect(() => {
     if (!mapInitialized) return;
@@ -231,7 +233,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     let syncMapSize: (() => void) | null = null;
     const init = () => {
       if (!nodeRef.current || !window.naver) return;
-      const map = new window.naver.maps.Map(nodeRef.current, { center: new window.naver.maps.LatLng(CENTER.latitude, CENTER.longitude), zoom: 12, zoomControl: false });
+      const map = new window.naver.maps.Map(nodeRef.current, { center: new window.naver.maps.LatLng(CENTER.latitude, CENTER.longitude), zoom: window.matchMedia("(max-width: 700px)").matches ? 13 : 12, zoomControl: false });
       mapRef.current = map;
     setMapInitialized(true);
       syncMapSize = () => {
@@ -249,10 +251,20 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       window.addEventListener("resize", syncMapSize);
       syncMapSize();
       popupRef.current = new window.naver.maps.InfoWindow({ content: createPopupContent([]), maxWidth: 260, backgroundColor: "transparent", borderWidth: 0, disableAnchor: true, disableAutoPan: true, pixelOffset: new window.naver.maps.Point(0, -12), zIndex: 100 });
-      window.naver.maps.Event.addListener(map, "click", async (event: naver.maps.PointerEvent) => {
-        if (popupOpenRef.current) { requestIdRef.current += 1; popupRef.current?.close(); popupOpenRef.current = false; return; }
-        const coordinate = event.coord as naver.maps.LatLng; const latitude = coordinate.lat(); const longitude = coordinate.lng(); const requestId = ++requestIdRef.current;
-        popupRef.current?.setContent(createPopupContent()); popupRef.current?.setPosition(coordinate); popupRef.current?.open(map, coordinate); popupOpenRef.current = true;
+      let longPressTimer: number | null = null;
+      let longPressTriggered = false;
+      const cancelLongPress = () => {
+        if (longPressTimer !== null) window.clearTimeout(longPressTimer);
+        longPressTimer = null;
+      };
+      const findNearbyAt = async (coordinate: naver.maps.LatLng) => {
+        const latitude = coordinate.lat();
+        const longitude = coordinate.lng();
+        const requestId = ++requestIdRef.current;
+        popupRef.current?.setContent(createPopupContent());
+        popupRef.current?.setPosition(coordinate);
+        popupRef.current?.open(map, coordinate);
+        popupOpenRef.current = true;
         try {
           const response = await fetch(`/api/places/nearby?lat=${latitude}&lng=${longitude}`);
           const body = await response.json() as { results?: NearbyCandidate[]; error?: { message?: string } };
@@ -267,11 +279,41 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
             if (reverseResponse.ok && reverseBody.address && reverseBody.address !== "주소 정보 없음") {
               addressFallback = { name: reverseBody.address, address: reverseBody.address, latitude, longitude };
             }
-          } catch { /* 주소 선택지는 생략하고 장소 후보를 계속 제공합니다. */ }
+          } catch { /* 주소 선택지는 생략하고 주변 장소 후보를 계속 제공합니다. */ }
           popupRef.current?.setContent(createPopupContent(candidates, addressFallback));
         } catch (reason) {
           if (requestId !== requestIdRef.current) return;
-          popupRef.current?.close(); popupOpenRef.current = false; errorRef.current(reason instanceof Error ? reason.message : "주변 장소를 찾지 못했습니다.");
+          popupRef.current?.close();
+          popupOpenRef.current = false;
+          errorRef.current(reason instanceof Error ? reason.message : "주변 장소를 찾지 못했습니다.");
+        }
+      };
+      const beginLongPress = (event: naver.maps.PointerEvent) => {
+        cancelLongPress();
+        longPressTriggered = false;
+        const coordinate = event.coord as naver.maps.LatLng;
+        longPressTimer = window.setTimeout(() => {
+          longPressTimer = null;
+          longPressTriggered = true;
+          void findNearbyAt(coordinate);
+        }, 550);
+      };
+      const cancelOnGesture = () => cancelLongPress();
+      window.naver.maps.Event.addListener(map, "mousedown", beginLongPress);
+      window.naver.maps.Event.addListener(map, "touchstart", beginLongPress);
+      window.naver.maps.Event.addListener(map, "mouseup", cancelOnGesture);
+      window.naver.maps.Event.addListener(map, "touchend", cancelOnGesture);
+      window.naver.maps.Event.addListener(map, "dragstart", cancelOnGesture);
+      window.naver.maps.Event.addListener(map, "pinchstart", cancelOnGesture);
+      window.naver.maps.Event.addListener(map, "click", () => {
+        if (longPressTriggered) {
+          longPressTriggered = false;
+          return;
+        }
+        if (popupOpenRef.current) {
+          requestIdRef.current += 1;
+          popupRef.current?.close();
+          popupOpenRef.current = false;
         }
       });
     };
@@ -319,16 +361,33 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         const innerGlow = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 11, strokeOpacity: 0.28 });
         overlays.current.push(outerGlow, innerGlow);
       }
-      const polyline = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: isHighlighted ? 6 : 5, strokeOpacity: isDimmed ? 0.28 : 0.9 });
-      overlays.current.push(polyline);
+      const selectSegment = () => segmentSelectRef.current?.(index);
+      const hitArea = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 22, strokeOpacity: 0.01, clickable: true });
+      const polyline = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: isHighlighted ? 6 : 5, strokeOpacity: isDimmed ? 0.28 : 0.9, clickable: true });
+      window.naver.maps.Event.addListener(hitArea, "click", selectSegment);
+      window.naver.maps.Event.addListener(polyline, "click", selectSegment);
+      overlays.current.push(hitArea, polyline);
     });
     const placesKey = markerPlaces.map((place) => `${place.id}:${place.latitude}:${place.longitude}`).join("|");
     if (markerPlaces.length > 1 && fittedPlacesKeyRef.current !== placesKey) {
-      map.fitBounds(bounds, { top: 48, right: 48, bottom: 48, left: 48 });
+      const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+      map.fitBounds(bounds, isMobileMap ? { top: 32, right: 32, bottom: 32, left: 32 } : { top: 48, right: 48, bottom: 48, left: 48 });
+      if (isMobileMap) window.requestAnimationFrame(() => map.setZoom(map.getZoom() + 1, false));
       fittedPlacesKeyRef.current = placesKey;
     }
   }, [places, segments, highlightedSegmentIndex, listPlaces]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !window.naver || focusedSegmentIndex === null || focusedSegmentIndex === undefined) return;
+    const segment = segments[focusedSegmentIndex];
+    if (!segment || segment.path.length < 2) return;
+    const [firstLongitude, firstLatitude] = segment.path[0];
+    const bounds = new window.naver.maps.LatLngBounds(new window.naver.maps.LatLng(firstLatitude, firstLongitude), new window.naver.maps.LatLng(firstLatitude, firstLongitude));
+    segment.path.forEach(([longitude, latitude]) => bounds.extend(new window.naver.maps.LatLng(latitude, longitude)));
+    const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+    map.fitBounds(bounds, isMobileMap ? { top: 36, right: 30, bottom: 36, left: 30 } : { top: 52, right: 52, bottom: 52, left: 52 });
+  }, [segments, focusedSegmentIndex, mapInitialized]);
   if (!clientId) {
     return (
       <div className="map-placeholder">
