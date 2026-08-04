@@ -6,6 +6,7 @@ export type MobileTab = "places" | "lists" | "results";
 export type MobileSheetState = "collapsed" | "peek" | "expanded";
 
 type MobileSheetDrag = {
+  startX: number;
   startY: number;
   sheetState: MobileSheetState;
   scrollContainers: HTMLElement[];
@@ -48,6 +49,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const [mobileTab, setMobileTab] = useState<MobileTab>(initialTab);
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>("collapsed");
   const dragRef = useRef<MobileSheetDrag | null>(null);
+  const stableViewportRef = useRef({ width: 0, height: 0 });
 
   useEffect(() => {
     if (!isMobileViewport()) return;
@@ -67,11 +69,25 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     const syncVisibleViewport = () => {
       if (!mediaQuery.matches) {
         root.style.removeProperty("--mobile-visual-viewport-height");
+        root.style.removeProperty("--mobile-layout-viewport-height");
+        root.style.removeProperty("--mobile-keyboard-height");
+        stableViewportRef.current = { width: 0, height: 0 };
         return;
       }
 
-      const height = Math.round(visualViewport?.height ?? window.innerHeight);
-      root.style.setProperty("--mobile-visual-viewport-height", `${height}px`);
+      const width = Math.round(visualViewport?.width ?? window.innerWidth);
+      const visibleHeight = Math.round(visualViewport?.height ?? window.innerHeight);
+      const viewportChanged = stableViewportRef.current.width !== width;
+
+      if (viewportChanged || visibleHeight > stableViewportRef.current.height) {
+        stableViewportRef.current = { width, height: visibleHeight };
+      }
+
+      const layoutHeight = stableViewportRef.current.height || visibleHeight;
+      const keyboardHeight = Math.max(0, layoutHeight - visibleHeight);
+      root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
+      root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
+      root.style.setProperty("--mobile-keyboard-height", `${keyboardHeight}px`);
     };
 
     syncVisibleViewport();
@@ -88,6 +104,8 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       if ("removeEventListener" in mediaQuery) mediaQuery.removeEventListener("change", syncVisibleViewport);
       else legacyMediaQuery.removeListener(syncVisibleViewport);
       root.style.removeProperty("--mobile-visual-viewport-height");
+      root.style.removeProperty("--mobile-layout-viewport-height");
+      root.style.removeProperty("--mobile-keyboard-height");
     };
   }, []);
 
@@ -130,6 +148,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     if (!input.fromHandle && input.sheetState !== "peek" && isInteractiveTarget(input.target)) return;
 
     dragRef.current = {
+      startX: input.startX,
       startY: input.startY,
       sheetState: input.sheetState,
       scrollContainers: input.fromHandle ? [] : findScrollableAncestors(input.target, input.sheet),
@@ -140,11 +159,13 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     };
   }, []);
 
-  const moveDrag = useCallback((clientY: number, preventDefault: () => void, pointerId: number, inputSource: MobileSheetDrag["inputSource"]) => {
+  const moveDrag = useCallback((clientX: number, clientY: number, preventDefault: () => void, pointerId: number, inputSource: MobileSheetDrag["inputSource"]) => {
     const drag = dragRef.current;
     if (!drag || drag.inputSource !== inputSource || drag.pointerId !== pointerId) return false;
 
     const distance = clientY - drag.startY;
+    const horizontalDistance = clientX - drag.startX;
+    if (!drag.claimed && Math.abs(horizontalDistance) > Math.abs(distance)) return false;
     if (!drag.claimed && Math.abs(distance) >= DRAG_CLAIM_DISTANCE) {
       const direction = distance < 0 ? "up" : "down";
       if (!canClaimDrag(drag, direction)) return false;
@@ -180,6 +201,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const onSheetPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     if (!event.isPrimary || event.pointerType === "touch") return;
     beginDrag({
+      startX: event.clientX,
       startY: event.clientY,
       sheetState: mobileSheetState,
       pointerId: event.pointerId,
@@ -192,7 +214,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
 
   const onSheetPointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     if (event.pointerType === "touch") return;
-    if (moveDrag(event.clientY, () => event.preventDefault(), event.pointerId, "pointer")) {
+    if (moveDrag(event.clientX, event.clientY, () => event.preventDefault(), event.pointerId, "pointer")) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
   }, [moveDrag]);
@@ -211,6 +233,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const onHandlePointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     if (!event.isPrimary || event.pointerType === "touch") return;
     beginDrag({
+      startX: event.clientX,
       startY: event.clientY,
       sheetState: mobileSheetState,
       pointerId: event.pointerId,
@@ -226,6 +249,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     const touch = event.touches[0];
     const fromHandle = event.target instanceof Element && Boolean(event.target.closest(".mobile-sheet-handle"));
     beginDrag({
+      startX: touch.clientX,
       startY: touch.clientY,
       sheetState: mobileSheetState,
       pointerId: touch.identifier,
@@ -242,7 +266,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     const touch = Array.from(event.touches).find((item) => item.identifier === drag.pointerId);
     if (!touch) return;
     // React의 합성 touchmove는 passive일 수 있다. 스크롤 잠금은 상태별 touch-action으로 처리한다.
-    moveDrag(touch.clientY, () => undefined, touch.identifier, "touch");
+    moveDrag(touch.clientX, touch.clientY, () => undefined, touch.identifier, "touch");
   }, [moveDrag]);
 
   const onSheetTouchEnd = useCallback((event: ReactTouchEvent<HTMLElement>) => {

@@ -13,6 +13,5 @@ export function ToastProvider() {
     pauseOnFocusLoss
     pauseOnHover
     newestOnTop
-    limit={3}
   />;
 }

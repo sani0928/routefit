@@ -4,17 +4,16 @@ import { toast, type ToastOptions } from "react-toastify";
 
 type ToastKind = "info" | "success" | "error";
 
-const optionsFor = (kind: ToastKind, message: string): ToastOptions => ({
+const optionsFor = (kind: ToastKind): ToastOptions => ({
   autoClose: kind === "error" ? 5000 : 3000,
   hideProgressBar: true,
-  toastId: `routefit-${kind}-${message}`,
 });
 
 function show(kind: ToastKind, message: string) {
   const normalizedMessage = message.trim();
   if (!normalizedMessage) return;
 
-  return toast[kind](normalizedMessage, optionsFor(kind, normalizedMessage));
+  return toast[kind](normalizedMessage, optionsFor(kind));
 }
 
 export const notify = {

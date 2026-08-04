@@ -1549,13 +1549,15 @@
 @media (max-width: 700px) {
   :root {
     --mobile-visual-viewport-height: 100dvh;
+    --mobile-layout-viewport-height: 100dvh;
+    --mobile-keyboard-height: 0px;
     --mobile-sheet-visible-handle: 44px;
   }
 
   .app-shell,
   .map-panel {
-    min-height: var(--mobile-visual-viewport-height);
-    height: var(--mobile-visual-viewport-height);
+    min-height: var(--mobile-layout-viewport-height);
+    height: var(--mobile-layout-viewport-height);
   }
 
   .map-panel,
@@ -1571,17 +1573,17 @@
   .planner-panel.mobile-sheet-panel,
   .result-panel.mobile-sheet-panel,
   .map-list-manager {
-    max-height: calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height));
+    max-height: calc(var(--mobile-layout-viewport-height) - var(--mobile-nav-height));
   }
 
   .app-shell.mobile-sheet-expanded .planner-panel.mobile-sheet-panel,
   .app-shell.mobile-sheet-expanded .result-panel.mobile-sheet-panel,
   .app-shell.mobile-sheet-expanded .map-list-manager {
-    height: calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height) - var(--mobile-sheet-expanded-map-peek));
+    height: calc(var(--mobile-layout-viewport-height) - var(--mobile-nav-height) - var(--mobile-sheet-expanded-map-peek));
   }
 
   .planner-panel.mobile-sheet-panel .place-list-scroll {
-    max-height: calc(var(--mobile-visual-viewport-height) - 300px);
+    max-height: calc(var(--mobile-layout-viewport-height) - 300px);
   }
 
   .mobile-sheet-chrome {
@@ -3697,4 +3699,67 @@
   .planner-panel.mobile-sheet-panel .planner-footer {
     margin: 0;
   }
+}
+/* Keep the sheet geometry stable while the mobile keyboard reduces only the visible viewport. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .naver-search-form .search-results {
+    max-height: min(318px, max(116px, calc(var(--mobile-visual-viewport-height) - 188px)));
+  }
+}
+/* The selected route segment can be changed horizontally without stealing vertical sheet scroll. */
+.segment-focus-card {
+  touch-action: pan-y;
+  user-select: none;
+}
+/* Segment selection: directional motion and subdued end guards make horizontal swipes discoverable. */
+.segment-focus-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.segment-focus-card.segment-swipe-next { animation: segment-focus-enter-next .28s cubic-bezier(.2, .75, .2, 1); }
+.segment-focus-card.segment-swipe-previous { animation: segment-focus-enter-previous .28s cubic-bezier(.2, .75, .2, 1); }
+.segment-focus-card.segment-swipe-start { animation: segment-focus-boundary-start .3s cubic-bezier(.25, .7, .35, 1); }
+.segment-focus-card.segment-swipe-end { animation: segment-focus-boundary-end .3s cubic-bezier(.25, .7, .35, 1); }
+
+@keyframes segment-focus-enter-next {
+  from { opacity: .38; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes segment-focus-enter-previous {
+  from { opacity: .38; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes segment-focus-boundary-start {
+  0%, 100% { transform: translateX(0); }
+  45% { transform: translateX(9px); }
+}
+
+@keyframes segment-focus-boundary-end {
+  0%, 100% { transform: translateX(0); }
+  45% { transform: translateX(-9px); }
+}
+
+/* A two-part duration stays a single unit on narrow mobile cards. */
+.route-hero-duration > strong { white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .route-hero-overview:has(.route-hero-duration.duration-long) {
+    grid-template-columns: minmax(0, 1.42fr) minmax(0, .88fr) minmax(0, .88fr);
+    gap: 7px;
+  }
+
+  .route-hero-duration.duration-long > strong {
+    font-size: clamp(1.25rem, 6vw, 1.95rem);
+    letter-spacing: -.075em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment-focus-card.segment-swipe-next,
+  .segment-focus-card.segment-swipe-previous,
+  .segment-focus-card.segment-swipe-start,
+  .segment-focus-card.segment-swipe-end { animation: none; }
 }

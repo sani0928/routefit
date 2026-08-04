@@ -506,7 +506,9 @@ export default function Home() {
   }
 
   function addSavedPlaceToRoute(place: SavedPlace): AddPlaceResult {
-    return addPlace(place);
+    const addResult = addPlace(place);
+    if (addResult.added) notify.success("\uBC29\uBB38 \uC7A5\uC18C\uC5D0 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+    return addResult;
   }
 
   function closeListManager() { setListManagerOpen(false); setSelectedListId(null); }
