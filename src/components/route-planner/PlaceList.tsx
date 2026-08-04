@@ -316,7 +316,7 @@ export function PlaceList({
     }
 
     resetConfirmationExpiresAtRef.current = Date.now() + 3_000;
-    notify.info("한 번 더 누르면 방문 장소가 모두 삭제됩니다.");
+    notify.info("한 번 더 누르면 모든 방문 장소가 삭제됩니다.");
   }
   function finishDrag() {
     setIsSorting(false);

@@ -132,7 +132,7 @@
 /* Prevent long place names from overflowing planner cards */
 .planner-panel .place-list,.planner-panel .place-item { min-width:0; max-width:100%; }.planner-panel .place-item { width:100%; overflow:hidden; }.planner-panel .place-main { min-width:0; overflow:hidden; }.planner-panel .place-main > strong,.planner-panel .place-main small { max-width:100%; }.planner-panel .place-actions { flex:0 0 auto; }
 /* Drag-based map zoom */
-.map-zoom-control { display:flex; width:36px; height:142px; align-items:center; justify-content:center; padding:10px 0; }.map-zoom-control input { width:116px; height:6px; margin:0; padding:0; cursor:ns-resize; accent-color:#2563eb; appearance:slider-vertical; writing-mode:vertical-lr; direction:rtl; }.map-zoom-control input::-webkit-slider-runnable-track { width:5px; border-radius:999px; background:#dce7f6; }.map-zoom-control input::-webkit-slider-thumb { width:18px; height:18px; margin-left:-6px; border:3px solid #fff; border-radius:50%; background:#2563eb; box-shadow:0 2px 7px #2563eb66; appearance:none; }.map-zoom-control input:focus-visible { outline:2px solid #93c5fd; outline-offset:5px; }
+.map-zoom-control { display:flex; width:36px; height:142px; align-items:center; justify-content:center; padding:10px 0; }.map-zoom-control input { width:116px; height:6px; margin:0; padding:0; cursor:ns-resize; accent-color:#2563eb; appearance:none; writing-mode:vertical-lr; direction:rtl; }.map-zoom-control input::-webkit-slider-runnable-track { width:5px; border-radius:999px; background:#dce7f6; }.map-zoom-control input::-webkit-slider-thumb { width:18px; height:18px; margin-left:-6px; border:3px solid #fff; border-radius:50%; background:#2563eb; box-shadow:0 2px 7px #2563eb66; appearance:none; }.map-zoom-control input:focus-visible { outline:2px solid #93c5fd; outline-offset:5px; }
 /* Restored button zoom control */
 .map-zoom-control { display:grid; width:38px; height:auto; padding:3px; }.map-zoom-control button { display:grid; width:30px; height:30px; place-items:center; padding:0; border-radius:9px; color:#2e4058; background:transparent; font-size:1.3rem; font-weight:500; line-height:1; transition:background .18s ease,color .18s ease,transform .18s ease; }.map-zoom-control button:hover { color:#fff; background:#2563eb; transform:scale(1.04); }.map-zoom-control span { height:1px; margin:2px 5px; background:#dce5f0; }
 /* NAVER Maps-inspired place search */
@@ -2855,4 +2855,846 @@
 @media (max-width: 380px) {
   .route-hero-overview { gap: 6px; }
   .route-hero-overview .route-hero-details small { font-size: .56rem; }
+}
+/* Saved-list collection view: dense, scannable rows that retain RouteFit's light map language. */
+.map-list-manager .place-list-overview .list-overview-header {
+  align-items: flex-start;
+  min-height: 58px;
+  padding: 2px 2px 0;
+}
+
+.map-list-manager .place-list-overview .list-overview-heading > span {
+  display: block;
+  margin-bottom: 3px;
+  color: #6f84a0;
+  font-size: .58rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.map-list-manager .place-list-overview .list-overview-heading h2 {
+  font-size: 1.08rem;
+  font-weight: 850;
+  letter-spacing: -.045em;
+}
+
+.map-list-manager .place-list-overview .list-overview-heading p {
+  margin: 4px 0 0;
+  color: #8192a7;
+  font-size: .67rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.map-list-manager .place-list-overview .list-overview-header > div:last-child { gap: 6px; }
+.map-list-manager .place-list-overview .list-create-button { color: #fff; border-color: #2563eb; background: #2563eb; box-shadow: 0 5px 12px rgb(37 99 235 / .2); }
+.map-list-manager .place-list-overview .list-create-button:hover { color: #fff; border-color: #1d4ed8; background: #1d4ed8; }
+
+.map-list-manager .place-list-overview .list-overview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 2px 8px;
+  color: #8494a8;
+  font-size: .66rem;
+  font-weight: 700;
+}
+
+.map-list-manager .place-list-overview .list-overview-meta b { color: #2563eb; font-size: .78rem; }
+.map-list-manager .place-list-overview .list-overview-meta span:last-child { color: #9aa8ba; }
+
+.map-list-manager .place-list-overview .place-list-cards.place-list-collection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 0;
+  padding: 0 2px;
+  border-top: 1px solid #e8eef6;
+  border-bottom: 1px solid #e8eef6;
+  border-radius: 0;
+  background: transparent;
+}
+
+.map-list-manager .place-list-overview .place-list-collection > li + li { border-top: 1px solid #edf2f7; }
+
+.map-list-manager .place-list-overview .place-list-collection .place-list-card {
+  display: grid;
+  width: 100%;
+  min-height: 72px;
+  grid-template-columns: 42px minmax(0, 1fr) 20px;
+  align-items: center;
+  justify-items: stretch;
+  gap: 11px;
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 0;
+  color: #26384f;
+  background: transparent;
+  text-align: left;
+  box-shadow: none;
+}
+
+.map-list-manager .place-list-overview .place-list-collection .place-list-card:hover {
+  border: 0;
+  background: linear-gradient(90deg, #f4f8ff, transparent);
+  box-shadow: none;
+  transform: none;
+}
+
+.map-list-manager .place-list-overview .list-color-emblem {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 15px;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4), 0 4px 10px rgb(15 23 42 / .12);
+}
+
+.map-list-manager .place-list-overview .list-color-emblem svg { stroke-width: 2.2; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy { min-width: 0; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy strong { display: block; overflow: hidden; color: #26384f; font-size: .84rem; font-weight: 820; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy small { display: block; margin-top: 4px; overflow: hidden; color: #8a9aaf; font-size: .66rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy small b { color: #526f91; font-weight: 850; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-arrow { align-self: center; color: #9aabc0; }
+
+@media (max-width: 700px) {
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection { grid-template-columns: minmax(0, 1fr); }
+  .map-list-manager .place-list-overview .place-list-collection .place-list-card { min-height: 76px; padding-block: 12px; }
+}
+/* Saved-place detail follows the collection language of the list overview. */
+.map-list-manager .place-list-detail .list-detail-header {
+  min-height: 46px;
+  padding: 1px 2px 0;
+}
+
+.map-list-manager .place-list-detail .list-detail-title { gap: 9px; }
+.map-list-manager .place-list-detail .list-detail-title strong { color: #26384f; font-size: .91rem; font-weight: 850; letter-spacing: -.035em; }
+
+.map-list-manager .place-list-detail .list-detail-emblem {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  background: var(--list-color, #2563eb);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--list-color, #2563eb) 28%, transparent);
+}
+
+.map-list-manager .place-list-detail .list-detail-emblem svg { stroke-width: 2.25; }
+
+.map-list-manager .place-list-detail .list-detail-context {
+  margin: 9px 2px 11px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--list-color, #2563eb) 18%, #dbe7f5);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--list-color, #2563eb) 5%, #fff);
+}
+
+.map-list-manager .place-list-detail .list-detail-context b,
+.map-list-manager .place-list-detail .list-detail-context span:last-child { color: var(--list-color, #2563eb); }
+
+.map-list-manager .place-list-detail .saved-place-list.saved-place-collection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 2px;
+  padding: 0 2px;
+  border-top: 1px solid #e8eef6;
+  border-bottom: 1px solid #e8eef6;
+  border-radius: 0;
+  background: transparent;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection > li,
+.map-list-manager .place-list-detail .saved-place-list.saved-place-collection > li {
+  display: grid;
+  height: auto;
+  min-height: 68px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection > li + li { border-top: 1px solid #edf2f7; }
+
+.map-list-manager .place-list-detail .saved-place-index {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--list-color, #2563eb);
+  background: color-mix(in srgb, var(--list-color, #2563eb) 12%, #fff);
+  font-size: .61rem;
+  font-weight: 900;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection li > div:first-of-type { min-width: 0; }
+.map-list-manager .place-list-detail .saved-place-collection strong { color: #30435d; font-size: .74rem; font-weight: 820; }
+.map-list-manager .place-list-detail .saved-place-collection small { margin-top: 4px; color: #8a9aaf; font-size: .61rem; font-weight: 650; }
+
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-actions { gap: 4px; }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action {
+  min-width: 48px;
+  height: 30px;
+  gap: 3px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--list-color, #2563eb) 25%, #dbe7f5);
+  border-radius: 9px;
+  color: var(--list-color, #2563eb);
+  background: color-mix(in srgb, var(--list-color, #2563eb) 5%, #fff);
+  font-size: .59rem;
+  font-weight: 850;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action:hover { background: color-mix(in srgb, var(--list-color, #2563eb) 12%, #fff); }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-actions > button:last-child { color: #8b9caf; }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-actions > button:last-child:hover { color: #d24d58; }
+
+@media (max-width: 700px) {
+  .map-list-manager .place-list-detail .saved-place-collection > li,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection > li { min-height: 72px; }
+}
+/* Desktop list overlay: keep the stable frame and scroll only the collection body. */
+@media (min-width: 701px) {
+  .map-list-manager {
+    display: block;
+    overflow: hidden;
+  }
+
+  .map-list-manager .saved-places-panel {
+    display: flex;
+    min-height: 0;
+    height: 100%;
+    flex-direction: column;
+  }
+
+  .map-list-manager .place-list-overview,
+  .map-list-manager .place-list-detail {
+    min-height: 0;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards,
+  .map-list-manager .place-list-detail .saved-place-list {
+    min-height: 0;
+    max-height: none;
+    flex: 1 1 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Mobile tabs and sheet gestures already provide a clear exit from the list workspace. */
+@media (max-width: 700px) {
+  .map-list-manager .place-list-overview .list-close-button { display: none; }
+}
+/* List creation and editing stay within the same collection workspace. */
+.map-list-manager .place-list-editor-screen {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+}
+
+.map-list-manager .list-editor-screen-header {
+  display: grid;
+  min-height: 56px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 12px;
+  border-bottom: 1px solid #eaf0f7;
+}
+
+.map-list-manager .list-editor-back {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+
+.map-list-manager .list-editor-screen-header span {
+  display: block;
+  margin-bottom: 3px;
+  color: #7188a4;
+  font-size: .58rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.map-list-manager .list-editor-screen-header h2 {
+  margin: 0;
+  color: #24364f;
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -.035em;
+}
+
+.map-list-manager .list-editor-screen-form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 21px;
+  overflow-y: auto;
+  padding: 20px 2px 2px;
+  scrollbar-width: none;
+}
+
+.map-list-manager .list-editor-screen-form::-webkit-scrollbar { display: none; }
+
+.map-list-manager .list-editor-name-field,
+.map-list-manager .list-editor-colors {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.map-list-manager .list-editor-name-field > span,
+.map-list-manager .list-editor-colors legend {
+  display: block;
+  margin-bottom: 8px;
+  padding: 0;
+  color: #405773;
+  font-size: .68rem;
+  font-weight: 850;
+}
+
+.map-list-manager .list-editor-name-field > div {
+  position: relative;
+}
+
+.map-list-manager .list-editor-name-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 52px 0 13px;
+  border: 1px solid #d5e2f1;
+  border-radius: 13px;
+  color: #263a54;
+  background: #f9fbfe;
+  font: inherit;
+  font-size: .77rem;
+  font-weight: 750;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.map-list-manager .list-editor-name-field input::placeholder { color: #a6b3c2; }
+.map-list-manager .list-editor-name-field input:focus { border-color: #5f9be6; background: #fff; box-shadow: 0 0 0 3px rgb(37 99 235 / .11); }
+.map-list-manager .list-editor-name-field small { position: absolute; top: 50%; right: 13px; color: #91a0b2; font-size: .59rem; font-weight: 750; transform: translateY(-50%); }
+
+.map-list-manager .list-editor-colors p {
+  margin: -3px 0 12px;
+  color: #8898aa;
+  font-size: .61rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.map-list-manager .list-editor-color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.map-list-manager .list-editor-color-options button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: 0 0 0 1px rgb(76 99 127 / .18), 0 3px 8px rgb(15 23 42 / .13);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.map-list-manager .list-editor-color-options button:hover { transform: translateY(-1px) scale(1.04); }
+.map-list-manager .list-editor-color-options button.selected { border-color: #fff; box-shadow: 0 0 0 3px #2563eb, 0 4px 10px rgb(37 99 235 / .25); }
+.map-list-manager .list-editor-color-options button svg { opacity: 0; stroke-width: 3; }
+.map-list-manager .list-editor-color-options button.selected svg { opacity: 1; }
+
+.map-list-manager .list-editor-preview {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--list-color, #2563eb) 20%, #dbe7f5);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--list-color, #2563eb) 6%, #fff);
+}
+
+.map-list-manager .list-editor-preview-emblem {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--list-color, #2563eb);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--list-color, #2563eb) 30%, transparent);
+}
+
+.map-list-manager .list-editor-preview div { min-width: 0; }
+.map-list-manager .list-editor-preview div > span { display: block; margin-bottom: 2px; color: #8192a6; font-size: .57rem; font-weight: 750; }
+.map-list-manager .list-editor-preview strong { display: block; overflow: hidden; color: #30445f; font-size: .74rem; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+
+.map-list-manager .list-editor-screen-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding: 14px 0 2px;
+  border-top: 1px solid #eaf0f7;
+}
+
+.map-list-manager .list-editor-delete-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 3px;
+  border: 0;
+  color: #c35d68;
+  background: transparent;
+  font-size: .65rem;
+  font-weight: 800;
+}
+
+.map-list-manager .list-editor-submit {
+  min-width: 112px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 6px 14px rgb(37 99 235 / .2);
+  font-size: .67rem;
+  font-weight: 850;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.map-list-manager .list-editor-submit:hover:not(:disabled) { background: #1d4ed8; box-shadow: 0 8px 18px rgb(37 99 235 / .26); transform: translateY(-1px); }
+.map-list-manager .list-editor-submit:disabled { opacity: .45; cursor: default; }
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-screen-header { min-height: 66px; padding: 8px 2px 14px; }
+  .map-list-manager .list-editor-screen-header h2 { font-size: 1.08rem; }
+  .map-list-manager .list-editor-screen-form { gap: 25px; padding-top: 22px; }
+  .map-list-manager .list-editor-name-field input { height: 48px; font-size: .83rem; }
+  .map-list-manager .list-editor-color-options { gap: 12px; }
+  .map-list-manager .list-editor-color-options button { width: 34px; height: 34px; }
+  .map-list-manager .list-editor-preview { padding: 13px; }
+  .map-list-manager .list-editor-screen-footer { position: sticky; bottom: 0; padding: 14px 0 calc(4px + env(safe-area-inset-bottom)); background: #f6f8fc; }
+  .map-list-manager .list-editor-submit { min-width: 136px; height: 42px; border-radius: 13px; font-size: .74rem; }
+}
+/* Opening the stay editor changes controls only, never the card's visual weight. */
+.planner-panel .place-item.editing-stay {
+  border-width: 1px;
+  border-color: #e7edf5;
+  border-right-color: #e7edf5;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 5px rgb(15 23 42 / .05);
+}
+
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.selected-place {
+    border-color: #e7edf5;
+    background: #fff;
+    box-shadow: 0 2px 5px rgb(15 23 42 / .05);
+  }
+}
+/* Keep the editor's persistent action visible without masking the content beneath it. */
+.map-list-manager .list-editor-screen-header:has(.list-editor-delete-icon) {
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+}
+
+.map-list-manager .list-editor-delete-icon {
+  width: 34px;
+  height: 34px;
+  border-color: #fde1e4;
+  color: #c95764;
+  background: #fffafb;
+}
+
+.map-list-manager .list-editor-delete-icon:hover {
+  border-color: #f6bfc7;
+  color: #b84250;
+  background: #fff4f5;
+}
+
+.map-list-manager .list-editor-screen-footer {
+  justify-content: flex-end;
+  background: transparent;
+}
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-screen-form { padding-bottom: 66px; }
+  .map-list-manager .list-editor-screen-footer {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-bottom-nav {
+    border-top-color: transparent;
+    background: #f6f8fc;
+    box-shadow: none;
+  }
+}
+/* The primary list-editor action belongs with the title, not above the mobile navigation. */
+.map-list-manager .list-editor-screen-header {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.map-list-manager .list-editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-list-manager .list-editor-header-submit {
+  height: 34px;
+  min-width: 48px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 4px 10px rgb(37 99 235 / .18);
+  font-size: .62rem;
+  font-weight: 850;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.map-list-manager .list-editor-header-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 6px 13px rgb(37 99 235 / .24);
+  transform: translateY(-1px);
+}
+
+.map-list-manager .list-editor-header-submit:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-screen-form { padding-bottom: 2px; }
+  .map-list-manager .list-editor-header-submit { height: 36px; min-width: 54px; border-radius: 11px; font-size: .67rem; }
+}
+/* Text actions use their own header space; do not inherit the old icon-only column. */
+.map-list-manager .list-editor-screen-header:has(.list-editor-header-actions) {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.map-list-manager .list-editor-screen-header > div:nth-child(2),
+.map-list-manager .list-editor-header-actions,
+.map-list-manager .list-detail-header:has(.list-detail-edit-action),
+.map-list-manager .list-editor-screen,
+.map-list-manager .mobile-sheet-content {
+  min-width: 0;
+}
+
+.map-list-manager .list-editor-header-actions { flex: 0 0 auto; }
+
+.map-list-manager .list-editor-delete-action {
+  height: 34px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 10px;
+  color: #c95764;
+  background: transparent;
+  font-size: .62rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.map-list-manager .list-editor-delete-action:hover { color: #b84250; background: #fff4f5; }
+
+.map-list-manager .list-detail-header:has(.list-detail-edit-action) {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+}
+
+.map-list-manager .list-detail-edit-action {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #dbe7f5;
+  border-radius: 9px;
+  color: #526b89;
+  background: #fff;
+  font-size: .61rem;
+  font-weight: 850;
+  white-space: nowrap;
+  transition: border-color .18s ease, color .18s ease, background .18s ease;
+}
+
+.map-list-manager .list-detail-edit-action:hover { border-color: #a6c4ea; color: #2563eb; background: #f8fbff; }
+
+@media (max-width: 700px) {
+  .map-list-manager .mobile-sheet-content { overflow-x: hidden; }
+  .map-list-manager .list-editor-delete-action { height: 36px; padding-inline: 6px; font-size: .64rem; }
+  .map-list-manager .list-detail-edit-action { height: 34px; padding-inline: 9px; font-size: .65rem; }
+}
+/* Deletion uses the same deliberate hit area as the save action. */
+.map-list-manager .list-editor-delete-action,
+.map-list-manager .list-editor-header-submit {
+  width: 72px;
+  min-width: 72px;
+  height: 34px;
+  padding: 0;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-delete-action,
+  .map-list-manager .list-editor-header-submit {
+    width: 72px;
+    min-width: 72px;
+    height: 36px;
+  }
+}
+/* A stronger lift makes the active route-preference handle easier to track. */
+.planner-panel .route-option-toggle-handle {
+  box-shadow: 0 5px 12px rgb(15 23 42 / .18), 0 1px 2px rgb(15 23 42 / .1);
+}
+
+.planner-panel .route-option-toggle.route-option-fast .route-option-toggle-handle {
+  box-shadow: 0 5px 12px rgb(194 65 12 / .24), 0 1px 2px rgb(15 23 42 / .1);
+}
+
+.planner-panel .route-option-toggle.route-option-balanced .route-option-toggle-handle {
+  box-shadow: 0 5px 13px rgb(37 99 235 / .28), 0 1px 2px rgb(15 23 42 / .1);
+}
+
+.planner-panel .route-option-toggle.route-option-comfort .route-option-toggle-handle {
+  box-shadow: 0 5px 12px rgb(21 128 61 / .24), 0 1px 2px rgb(15 23 42 / .1);
+}
+/* Keep the route-preference long-press hint fully inside every mobile viewport. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .planner-footer,
+  .planner-panel.mobile-sheet-panel .route-primary-group,
+  .planner-panel.mobile-sheet-panel .route-option-control {
+    position: relative;
+    overflow: visible;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-footer { z-index: 8; }
+  .planner-panel.mobile-sheet-panel .route-option-control { z-index: 1; }
+
+  .planner-panel.mobile-sheet-panel .route-option-hint {
+    top: calc(100% + 8px);
+    right: auto;
+    left: 50%;
+    box-sizing: border-box;
+    width: min(218px, 100%);
+    max-width: 100%;
+    min-width: 0;
+    padding: 8px 10px;
+    transform: translateX(-50%);
+  }
+
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-0 {
+    right: auto;
+    left: 0;
+    transform: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-1 {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-2 {
+    right: 0;
+    left: auto;
+    transform: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-0::before {
+    left: 16.6667%;
+  }
+
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-1::before {
+    left: 50%;
+  }
+
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-2::before {
+    right: 16.6667%;
+    left: auto;
+    transform: translateX(50%);
+  }
+}
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-0,
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-2 {
+    animation-name: route-option-hint-edge-in;
+  }
+}
+
+@keyframes route-option-hint-edge-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-0,
+  .planner-panel.mobile-sheet-panel .route-option-hint.route-option-index-2 { animation: none; }
+}
+/* Collection rows use stable grid areas so the title and metadata never overlap. */
+.map-list-manager .place-list-overview .place-list-collection .place-list-card {
+  grid-template-areas: "emblem copy arrow";
+}
+
+.map-list-manager .place-list-overview .place-list-collection .list-color-emblem {
+  grid-area: emblem;
+}
+
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy {
+  display: grid;
+  grid-area: copy;
+  min-width: 0;
+  align-content: center;
+  grid-template-rows: minmax(0, auto) minmax(0, auto);
+}
+
+.map-list-manager .place-list-overview .place-list-collection .list-card-arrow {
+  grid-area: arrow;
+  justify-self: end;
+}
+/* The compact mobile search and route controls need a real visual gutter. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .naver-search-form {
+    margin-bottom: 18px;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-footer {
+    margin-top: 0;
+  }
+}
+/* Desktop collection overlay: reserve a concrete grid row for the scrollable list. */
+@media (min-width: 701px) {
+  .map-list-manager .place-list-overview {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection {
+    display: grid;
+    min-height: 0;
+    height: 100%;
+    align-content: start;
+    overflow-y: auto;
+  }
+}
+/* Desktop saved-place detail reserves its own scroll row, independent of search or pagination. */
+@media (min-width: 701px) {
+  .map-list-manager .place-list-detail {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  }
+
+  .map-list-manager .place-list-detail .list-detail-header { grid-row: 1; }
+  .map-list-manager .place-list-detail .list-detail-context { grid-row: 2; }
+  .map-list-manager .place-list-detail .saved-place-search { grid-row: 3; }
+
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection {
+    grid-row: 4;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .map-list-manager .place-list-detail .list-pagination { grid-row: 5; }
+}
+/* Let grid rows size the collection body; a 100% child height would overlap pagination. */
+@media (min-width: 701px) {
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection {
+    height: auto;
+    max-height: none;
+    align-self: stretch;
+    scrollbar-width: thin;
+    scrollbar-color: #b9c9dc transparent;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection::-webkit-scrollbar,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection::-webkit-scrollbar-thumb,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #b9c9dc;
+  }
+}
+/* The desktop overlay keeps the mobile-content wrapper, so it must participate in height calculation. */
+@media (min-width: 701px) {
+  .map-list-manager > .mobile-sheet-chrome {
+    display: none;
+  }
+
+  .map-list-manager > .mobile-sheet-content {
+    display: flex;
+    min-height: 0;
+    height: 100%;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .map-list-manager > .mobile-sheet-content > .saved-places-panel {
+    min-height: 0;
+    height: 100%;
+    flex: 1 1 auto;
+  }
+}
+/* Use one flex gap for the mobile planner's search, preference and stops blocks. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-content {
+    row-gap: 16px;
+  }
+
+  .planner-panel.mobile-sheet-panel .naver-search-form,
+  .planner-panel.mobile-sheet-panel .planner-footer {
+    margin: 0;
+  }
+}
+/* Balance visual spacing around the mobile route-preference control. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-content {
+    row-gap: 0;
+  }
+
+  .planner-panel.mobile-sheet-panel .naver-search-form {
+    margin: 0 0 26px;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-footer {
+    margin: 0;
+  }
 }

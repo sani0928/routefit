@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { List, MapPin, MoveLeft, MoveRight, Waypoints } from "lucide-react";
+import { List, MapPin, MoveLeft, MoveRight , Waypoints } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { SavePlaceDialog } from "@/components/member/SavePlaceDialog";
@@ -588,7 +588,7 @@ export default function Home() {
     const currentIndex = ROUTE_OPTIONS.indexOf(routeOption);
     const nextIndex = event.key === "ArrowLeft" || event.key === "ArrowDown"
       ? Math.max(0, currentIndex - 1)
-      : event.key === "ArrowRight" || event.key === "ArrowUp"
+      : event.key === "MoveRight " || event.key === "ArrowUp"
         ? Math.min(ROUTE_OPTIONS.length - 1, currentIndex + 1)
         : event.key === "Home"
           ? 0
@@ -698,7 +698,7 @@ export default function Home() {
               >
                 <span className="route-option-toggle-track" aria-hidden="true">
                   {routeOption !== "trafast" && <MoveLeft />}
-                  {routeOption !== "tracomfort" && <MoveRight />}
+                  {routeOption !== "tracomfort" && <MoveRight  />}
                 </span>
                 <span className="route-option-toggle-handle">{selectedRouteOption.label}</span>
               </div>

@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, MapPinPlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Check, ChevronLeft, ChevronRight, MapPinned, MapPinPlus, Plus, Search, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { LIST_COLORS, type MemberPlaceList, type SavedPlace } from "@/features/member/types";
+import { notify } from "@/lib/notify";
 
 interface Props {
   lists: MemberPlaceList[];
@@ -20,7 +21,7 @@ interface Props {
 
 type EditorMode = "create" | "edit" | null;
 const ITEMS_PER_PAGE = 10;
-const formatUpdatedDate = (value: string) => `${value.slice(5, 7)}.${value.slice(8, 10)} 수정`;
+const formatUpdatedDate = (value: string) => `마지막 업데이트 ${value.slice(0, 10).replaceAll("-", ".")}`;
 
 export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute, onBrowsePlaces }: Props) {
   const [editorMode, setEditorMode] = useState<EditorMode>(null);
@@ -29,6 +30,7 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
   const [listPage, setListPage] = useState(0);
   const [placePage, setPlacePage] = useState(0);
   const [placeQuery, setPlaceQuery] = useState("");
+  const deleteConfirmationExpiresAtRef = useRef(0);
   const totalListPages = Math.max(1, Math.ceil(lists.length / ITEMS_PER_PAGE));
   const normalizedPlaceQuery = placeQuery.trim().toLocaleLowerCase();
   const filteredPlaces = useMemo(() => places.filter((place) => {
@@ -65,10 +67,6 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
     setEditorMode("edit");
   }
 
-  function addToRoute(place: SavedPlace) {
-    onAddToRoute(place);
-  }
-
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
@@ -77,39 +75,73 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
     setEditorMode(null);
   }
 
+  function requestListDeletion() {
+    if (!activeList) return;
+    if (Date.now() >= deleteConfirmationExpiresAtRef.current) {
+      deleteConfirmationExpiresAtRef.current = Date.now() + 3_000;
+      notify.info("한 번 더 누르면 리스트가 삭제됩니다.");
+      return;
+    }
+
+    deleteConfirmationExpiresAtRef.current = 0;
+    onDeleteList(activeList.id);
+    setEditorMode(null);
+  }
+
+  if (editorMode) {
+    const isCreate = editorMode === "create";
+    return <section className="saved-places-panel place-list-editor-screen" style={{ "--list-color": color } as CSSProperties}>
+      <header className="list-editor-screen-header">
+        <button className="list-icon-button list-editor-back" type="button" onClick={() => setEditorMode(null)} aria-label={isCreate ? "장소 리스트로 돌아가기" : "리스트 상세로 돌아가기"}><ChevronLeft size={20} /></button>
+        <div><span>나의 컬렉션</span><h2>{isCreate ? "새 장소 리스트" : "리스트 정보 수정"}</h2></div>
+        <div className="list-editor-header-actions">
+          {!isCreate && activeList && <button className="list-editor-delete-action" type="button" onClick={requestListDeletion}>삭제</button>}
+          <button className="list-editor-header-submit" type="submit" form="place-list-editor-form" disabled={!name.trim()}>{isCreate ? "만들기" : "저장"}</button>
+        </div>
+      </header>
+      <form id="place-list-editor-form" className="list-editor-screen-form" onSubmit={submit}>
+        <label className="list-editor-name-field">
+          <span>리스트 이름</span>
+          <div><input autoFocus value={name} maxLength={40} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
+        </label>
+        <fieldset className="list-editor-colors">
+          <legend>대표 색상</legend>
+          <p>지도와 장소 리스트에서 이 색상으로 구분됩니다.</p>
+          <div className="list-editor-color-options">
+            {LIST_COLORS.map((option) => <button key={option} type="button" className={option === color ? "selected" : ""} style={{ backgroundColor: option }} onClick={() => setColor(option)} aria-label={`${option} 색상 선택`} aria-pressed={option === color}><Check size={16} /></button>)}
+          </div>
+        </fieldset>
+        <div className="list-editor-preview" aria-label="리스트 미리 보기">
+          <span className="list-editor-preview-emblem"><MapPinned size={20} aria-hidden="true" /></span>
+          <div><span>미리 보기</span><strong>{name.trim() || "장소 리스트 이름"}</strong></div>
+        </div>
+
+      </form>
+    </section>;
+  }
+
   if (activeList) {
-    return <section className="saved-places-panel place-list-detail">
+    return <section className="saved-places-panel place-list-detail" style={{ "--list-color": activeList.color } as CSSProperties}>
       <header className="list-detail-header">
         <button className="list-icon-button" type="button" onClick={onBack} aria-label="장소 리스트로 돌아가기"><ChevronLeft size={18} /></button>
-        <button className="list-detail-title" type="button" onClick={openEdit} title="리스트 편집"><span style={{ backgroundColor: activeList.color }} /><strong>{activeList.name}</strong></button>
-        <button className="list-icon-button" type="button" onClick={openEdit} aria-label="리스트 편집"><Pencil size={16} /></button>
+        <button className="list-detail-title" type="button" onClick={openEdit} title="리스트 정보 수정"><span className="list-detail-emblem"><MapPinned size={16} aria-hidden="true" /></span><strong>{activeList.name}</strong></button>
+        <button className="list-detail-edit-action" type="button" onClick={openEdit}>리스트 수정</button>
       </header>
-      <div className="list-detail-context" aria-label={`${activeList.placeCount}곳 저장됨`}>
-        <span><b>{activeList.placeCount}</b>곳 저장됨</span>
-        <span>지도에 표시 중</span>
-      </div>
-      {places.length > 0 && <div className="saved-place-search">
-        <Search size={15} aria-hidden="true" />
-        <input value={placeQuery} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />
-        {placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장 장소 검색어 지우기"><X size={14} /></button>}
-      </div>}
-      {pagedPlaces.length > 0 && <ol className="saved-place-list">{pagedPlaces.map((place) => <li key={place.id}>
-        <div><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></div>
-        <div className="saved-place-actions"><button className="saved-place-add-action" type="button" onClick={() => addToRoute(place)} title="방문 장소에 추가" aria-label={`${place.name} 방문 장소에 추가`}><MapPinPlus size={16} /><span>추가</span></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div>
-      </li>)}</ol>}
-      {places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장 장소가 없습니다.</p>}
+      <div className="list-detail-context" aria-label={`${activeList.placeCount}곳 저장됨`}><span><b>{activeList.placeCount}</b>곳 저장됨</span><span>지도에 표시 중</span></div>
+      {places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
+      {pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><div><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></div><div className="saved-place-actions"><button className="saved-place-add-action" type="button" onClick={() => onAddToRoute(place)} title="방문 장소에 추가" aria-label={`${place.name} 방문 장소에 추가`}><MapPinPlus size={16} /><span>추가</span></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>)}</ol>}
+      {places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장한 장소가 없습니다.</p>}
       {places.length === 0 && <div className="list-empty-state list-empty-action-area"><p>아직 저장한 장소가 없습니다.</p><span>검색 결과의 저장 버튼으로 이 리스트에 장소를 모아보세요.</span><button type="button" onClick={onBrowsePlaces}><Search size={15} />장소 검색하기</button></div>}
-      {filteredPlaces.length > ITEMS_PER_PAGE && <Pagination page={placePage} totalPages={totalPlacePages} ariaLabel="저장 장소 페이지" onPageChange={setPlacePage} />}
-      {editorMode === "edit" && <ListEditor mode="edit" name={name} color={color} onNameChange={setName} onColorChange={setColor} onClose={() => setEditorMode(null)} onSubmit={submit} onDelete={() => { onDeleteList(activeList.id); setEditorMode(null); }} />}
+      {filteredPlaces.length > ITEMS_PER_PAGE && <Pagination page={placePage} totalPages={totalPlacePages} ariaLabel="저장한 장소 페이지" onPageChange={setPlacePage} />}
     </section>;
   }
 
   return <section className="saved-places-panel place-list-overview">
-    <header className="list-overview-header"><div><h2>장소 리스트</h2><p>리스트 선택 시 저장 장소를 지도에서 볼 수 있어요.</p></div><div><button className="list-icon-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
-    {pagedLists.length > 0 && <ol className="place-list-cards">{pagedLists.map((list) => <li key={list.id}><button type="button" className="place-list-card" onClick={() => onSelect(list.id)} title={list.name}><span className="list-color-dot" style={{ backgroundColor: list.color }} /><span className="list-card-copy"><strong>{list.name}</strong><small>{list.placeCount}곳 · {formatUpdatedDate(list.updatedAt)}</small></span><ChevronRight className="list-card-arrow" size={16} aria-hidden="true" /></button></li>)}</ol>}
+    <header className="list-overview-header"><div className="list-overview-heading"><span>나의 컬렉션</span><h2>장소 리스트</h2><p>선택한 리스트의 장소를 지도에서 바로 확인하세요.</p></div><div><button className="list-icon-button list-create-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button list-close-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
+    <div className="list-overview-meta"><span><b>{lists.length}</b>개 컬렉션</span><span>색상으로 구분</span></div>
+    {pagedLists.length > 0 && <ol className="place-list-cards place-list-collection">{pagedLists.map((list) => <li key={list.id}><button type="button" className="place-list-card" onClick={() => onSelect(list.id)} title={list.name}><span className="list-color-emblem" style={{ backgroundColor: list.color }}><MapPinned size={18} aria-hidden="true" /></span><span className="list-card-copy"><strong>{list.name}</strong><small><b>{list.placeCount}</b>곳 · {formatUpdatedDate(list.updatedAt)}</small></span><ChevronRight className="list-card-arrow" size={18} aria-hidden="true" /></button></li>)}</ol>}
     {lists.length > ITEMS_PER_PAGE && <Pagination page={listPage} totalPages={totalListPages} ariaLabel="장소 리스트 페이지" onPageChange={setListPage} />}
     {lists.length === 0 && <div className="list-empty-state list-empty-action-area"><p>첫 장소 리스트를 만들어 보세요.</p><span>자주 방문하는 장소를 주제별로 정리할 수 있어요.</span><button type="button" onClick={openCreate}><Plus size={15} />첫 리스트 만들기</button></div>}
-    {editorMode === "create" && <ListEditor mode="create" name={name} color={color} onNameChange={setName} onColorChange={setColor} onClose={() => setEditorMode(null)} onSubmit={submit} />}
   </section>;
 }
 
@@ -119,31 +151,4 @@ function Pagination({ page, totalPages, ariaLabel, onPageChange }: { page: numbe
     <span>{`${page + 1} / ${totalPages}`}</span>
     <button type="button" onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))} disabled={page === totalPages - 1} aria-label="다음 페이지"><ChevronRight size={16} /></button>
   </nav>;
-}
-
-interface ListEditorProps {
-  mode: Exclude<EditorMode, null>;
-  name: string;
-  color: string;
-  onNameChange: (name: string) => void;
-  onColorChange: (color: string) => void;
-  onClose: () => void;
-  onSubmit: (event: FormEvent) => void;
-  onDelete?: () => void;
-}
-
-function ListEditor({ mode, name, color, onNameChange, onColorChange, onClose, onSubmit, onDelete }: ListEditorProps) {
-  const heading = mode === "create" ? "리스트 생성" : "리스트 편집";
-  return <div className="list-editor-backdrop" role="presentation" onMouseDown={onClose}>
-    <form className="list-editor-dialog" onSubmit={onSubmit} onMouseDown={(event) => event.stopPropagation()}>
-      <header><strong>{heading}</strong><button type="button" onClick={onClose} className="list-editor-close" aria-label="닫기"><X size={17} /></button></header>
-      <input autoFocus value={name} maxLength={40} onChange={(event) => onNameChange(event.target.value)} placeholder="리스트 이름" aria-label="리스트 이름" />
-      <ColorPicker value={color} onChange={onColorChange} />
-      <footer>{onDelete ? <button type="button" className="list-editor-delete" onClick={onDelete} aria-label="리스트 삭제" title="리스트 삭제"><Trash2 size={17} /></button> : <span />}<button className="list-editor-confirm" type="submit" aria-label={mode === "create" ? "리스트 추가" : "변경 저장"}><Check size={17} /></button></footer>
-    </form>
-  </div>;
-}
-
-function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
-  return <div className="list-color-picker" aria-label="리스트 색상 선택">{LIST_COLORS.map((option) => <button key={option} type="button" className={option === value ? "selected" : ""} style={{ backgroundColor: option }} onClick={() => onChange(option)} aria-label={`${option} 색상`} />)}</div>;
 }
