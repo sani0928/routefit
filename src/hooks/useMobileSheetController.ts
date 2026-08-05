@@ -9,6 +9,7 @@ type MobileSheetDrag = {
   startX: number;
   startY: number;
   sheetState: MobileSheetState;
+  startHeight: number;
   scrollContainers: HTMLElement[];
   pointerId: number;
   inputSource: "pointer" | "touch";
@@ -20,7 +21,30 @@ const MOBILE_QUERY = "(max-width: 700px)";
 const DRAG_CLAIM_DISTANCE = 10;
 const DRAG_COMMIT_DISTANCE = 42;
 const HANDLE_TAP_DISTANCE = 18;
+const COLLAPSED_SHEET_HEIGHT = 44;
 
+function getSheetStageHeights() {
+  const root = document.documentElement;
+  const layoutViewportHeight = Number.parseFloat(root.style.getPropertyValue("--mobile-layout-viewport-height")) || window.innerHeight;
+  const navHeight = document.querySelector<HTMLElement>(".mobile-bottom-nav")?.getBoundingClientRect().height ?? 64;
+  const peekHeight = Math.min(layoutViewportHeight * 0.48, 430);
+  const expandedMapPeek = Math.min(96, Math.max(72, layoutViewportHeight * 0.1));
+  const expandedHeight = Math.max(peekHeight, layoutViewportHeight - navHeight - expandedMapPeek);
+
+  return { collapsed: COLLAPSED_SHEET_HEIGHT, peek: peekHeight, expanded: expandedHeight } satisfies Record<MobileSheetState, number>;
+}
+
+function clampSheetHeight(height: number) {
+  const stages = getSheetStageHeights();
+  return Math.min(stages.expanded, Math.max(stages.collapsed, height));
+}
+
+function getNearestSheetState(height: number): MobileSheetState {
+  const stages = getSheetStageHeights();
+  return (Object.entries(stages) as Array<[MobileSheetState, number]>).reduce((nearest, candidate) => (
+    Math.abs(candidate[1] - height) < Math.abs(nearest[1] - height) ? candidate : nearest
+  ))[0];
+}
 function isMobileViewport() {
   return typeof window !== "undefined" && window.matchMedia(MOBILE_QUERY).matches;
 }
@@ -48,8 +72,43 @@ function findScrollableAncestors(target: EventTarget | null, sheet: HTMLElement)
 export function useMobileSheetController(initialTab: MobileTab = "places") {
   const [mobileTab, setMobileTab] = useState<MobileTab>(initialTab);
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>("collapsed");
+  const [mobileSheetDragging, setMobileSheetDragging] = useState(false);
   const dragRef = useRef<MobileSheetDrag | null>(null);
+  const dragPreviewClearFrameRef = useRef<number | null>(null);
   const stableViewportRef = useRef({ width: 0, height: 0 });
+
+  const showDragPreview = useCallback((height: number) => {
+    if (dragPreviewClearFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragPreviewClearFrameRef.current);
+      dragPreviewClearFrameRef.current = null;
+    }
+    document.documentElement.style.setProperty("--mobile-sheet-drag-height", `${Math.round(height)}px`);
+    setMobileSheetDragging(true);
+  }, []);
+
+  const clearDragPreview = useCallback(() => {
+    if (dragPreviewClearFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragPreviewClearFrameRef.current);
+      dragPreviewClearFrameRef.current = null;
+    }
+    document.documentElement.style.removeProperty("--mobile-sheet-drag-height");
+    setMobileSheetDragging(false);
+  }, []);
+
+  const deferDragPreviewClear = useCallback(() => {
+    if (dragPreviewClearFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragPreviewClearFrameRef.current);
+    }
+    dragPreviewClearFrameRef.current = window.requestAnimationFrame(() => {
+      // Keep the preview value for one more frame. Removing it while the dragging
+      // class is still rendered leaves the CSS height declaration without a value.
+      setMobileSheetDragging(false);
+      dragPreviewClearFrameRef.current = window.requestAnimationFrame(() => {
+        dragPreviewClearFrameRef.current = null;
+        document.documentElement.style.removeProperty("--mobile-sheet-drag-height");
+      });
+    });
+  }, []);
 
   useEffect(() => {
     if (!isMobileViewport()) return;
@@ -143,7 +202,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     return drag.scrollContainers.every((container) => container.scrollTop <= 1);
   }, []);
 
-  const beginDrag = useCallback((input: Omit<MobileSheetDrag, "claimed" | "scrollContainers"> & { target: EventTarget | null; sheet: HTMLElement }) => {
+  const beginDrag = useCallback((input: Omit<MobileSheetDrag, "claimed" | "scrollContainers" | "startHeight"> & { target: EventTarget | null; sheet: HTMLElement }) => {
     if (!isMobileViewport()) return;
     if (!input.fromHandle && input.sheetState !== "peek" && isInteractiveTarget(input.target)) return;
 
@@ -151,6 +210,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       startX: input.startX,
       startY: input.startY,
       sheetState: input.sheetState,
+      startHeight: getSheetStageHeights()[input.sheetState],
       scrollContainers: input.fromHandle ? [] : findScrollableAncestors(input.target, input.sheet),
       pointerId: input.pointerId,
       inputSource: input.inputSource,
@@ -173,12 +233,13 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     }
 
     if (drag.claimed) {
+      showDragPreview(clampSheetHeight(drag.startHeight - distance));
       preventDefault();
       return true;
     }
 
     return false;
-  }, [canClaimDrag]);
+  }, [canClaimDrag, showDragPreview]);
 
   const endDrag = useCallback((clientY: number, pointerId: number, inputSource: MobileSheetDrag["inputSource"]) => {
     const drag = dragRef.current;
@@ -191,12 +252,17 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       return;
     }
 
-    if (Math.abs(distance) >= DRAG_COMMIT_DISTANCE) stepMobileSheet(distance < 0 ? "up" : "down");
-  }, [cycleMobileSheet, stepMobileSheet]);
+    const finalHeight = clampSheetHeight(drag.startHeight - distance);
+    setMobileSheetState(getNearestSheetState(finalHeight));
+    deferDragPreviewClear();
+  }, [cycleMobileSheet, deferDragPreviewClear]);
 
   const cancelDrag = useCallback((inputSource?: MobileSheetDrag["inputSource"]) => {
-    if (!inputSource || dragRef.current?.inputSource === inputSource) dragRef.current = null;
-  }, []);
+    if (!inputSource || dragRef.current?.inputSource === inputSource) {
+      dragRef.current = null;
+      clearDragPreview();
+    }
+  }, [clearDragPreview]);
 
   const onSheetPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     if (!event.isPrimary || event.pointerType === "touch") return;
@@ -298,6 +364,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   return {
     mobileTab,
     mobileSheetState,
+    mobileSheetDragging,
     setMobileTab,
     setMobileSheetState,
     selectMobileTab,

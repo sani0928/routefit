@@ -129,6 +129,7 @@ export default function Home() {
   const {
     mobileTab,
     mobileSheetState,
+    mobileSheetDragging,
     setMobileTab,
     setMobileSheetState,
     selectMobileTab,
@@ -654,7 +655,7 @@ export default function Home() {
   }
 
   return (
-    <main className={`app-shell mobile-tab-${mobileTab} mobile-sheet-${mobileSheetState}`}>
+    <main className={`app-shell mobile-tab-${mobileTab} mobile-sheet-${mobileSheetState}${mobileSheetDragging ? " mobile-sheet-dragging" : ""}`}>
       <aside
         id="mobile-places-panel"
         className="planner-panel mobile-sheet-panel"

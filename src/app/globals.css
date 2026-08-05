@@ -3763,3 +3763,454 @@
   .segment-focus-card.segment-swipe-start,
   .segment-focus-card.segment-swipe-end { animation: none; }
 }
+/* Mobile place cards expose compact swipe-only actions without expanding the list vertically. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .sortable-place-item:has(.place-item.mobile-swipe-actions),
+  .planner-panel.mobile-sheet-panel .sortable-place-item:has(.place-item.mobile-swipe-stay) {
+    --place-swipe-reveal: 132px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #f4f8fd;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions,
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay {
+    position: relative;
+    z-index: 1;
+    transition: transform .26s cubic-bezier(.2, .8, .2, 1);
+    will-change: transform;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions {
+    transform: translateX(calc(-1 * var(--place-swipe-reveal)));
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay {
+    transform: translateX(var(--place-swipe-reveal));
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-mobile-status,
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-mobile-status {
+    visibility: hidden;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-actions {
+    position: absolute !important;
+    top: 0;
+    right: calc(-1 * var(--place-swipe-reveal));
+    bottom: 0;
+    display: grid !important;
+    width: var(--place-swipe-reveal);
+    height: auto;
+    grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));
+    gap: 0;
+    margin: 0 !important;
+    padding: 0 4px;
+    border: 0;
+    border-left: 1px solid #dce8f5;
+    border-radius: 0;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    background: #f4f8fd;
+    transform: none !important;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-actions .icon-action,
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-order-lock {
+    display: grid !important;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 44px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-actions svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-action-label { display: none !important; }
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-delete-action { color: #c2414d; }
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-save-action { color: #2563eb; }
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-order-lock { color: #43556a; }
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-order-lock.locked { color: #2563eb; }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control {
+    position: absolute !important;
+    top: 0;
+    bottom: 0;
+    left: calc(-1 * var(--place-swipe-reveal));
+    display: flex !important;
+    width: var(--place-swipe-reveal);
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 !important;
+    padding: 7px 8px;
+    border: 0;
+    border-right: 1px solid #d7e7fb;
+    border-radius: 0;
+    background: #f2f8ff;
+    transform: none !important;
+    animation: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control > span {
+    display: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control .stay-stepper {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 28px minmax(0, 1fr) 28px;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control .stay-step {
+    width: 28px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: #e5f0ff;
+    font-size: 1rem;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control .stay-value {
+    height: 32px;
+    gap: 2px;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control .stay-duration-input {
+    width: 40px;
+    height: 28px;
+    padding: 0;
+    font-size: .88rem;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control .stay-duration-unit {
+    font-size: .66rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions,
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay { transition: none; }
+}
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-actions,
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-stay {
+    --place-swipe-reveal: 132px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #f4f8fd;
+    isolation: isolate;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions,
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay {
+    --place-swipe-reveal: 132px;
+  }
+}
+/* On touch screens, card editing and ordering use intentionally separate gesture surfaces. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .sortable-place-item > .place-item.draggable {
+    touch-action: pan-y;
+  }
+
+  .planner-panel.mobile-sheet-panel .sortable-place-item > .place-item.draggable .drag-handle:not(.placeholder) {
+    touch-action: none;
+  }
+}
+/* Dedicated swipe trays bypass legacy hover and inline-editor action rules. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .mobile-swipe-action-tray,
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray {
+    display: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-actions > .mobile-swipe-action-tray {
+    position: absolute;
+    z-index: 2;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    width: var(--place-swipe-reveal, 132px);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    align-items: stretch;
+    overflow: hidden;
+    border-left: 1px solid #dce8f5;
+    background: #f4f8fd;
+  }
+
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-actions > .mobile-swipe-action-tray > button {
+    display: grid !important;
+    min-width: 0;
+    min-height: 44px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-action-tray svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-delete { color: #c2414d; }
+  .planner-panel.mobile-sheet-panel .mobile-swipe-save { color: #2563eb; }
+  .planner-panel.mobile-sheet-panel .mobile-swipe-lock { color: #43556a; }
+  .planner-panel.mobile-sheet-panel .mobile-swipe-lock.locked { color: #2563eb; }
+
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-stay > .mobile-swipe-stay-tray {
+    position: absolute;
+    z-index: 2;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    width: var(--place-swipe-reveal, 132px);
+    grid-template-columns: 26px minmax(0, 1fr) auto 26px;
+    gap: 3px;
+    align-items: center;
+    padding: 7px 5px;
+    border-right: 1px solid #d7e7fb;
+    background: #f2f8ff;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray > button {
+    display: grid;
+    width: 26px;
+    height: 32px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: #2563eb;
+    background: #e5f0ff;
+    font-size: 1rem;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray input {
+    min-width: 0;
+    height: 32px;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 8px;
+    color: #1d4ed8;
+    background: #fff;
+    font-size: .82rem;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray span {
+    color: #526b89;
+    font-size: .64rem;
+    font-weight: 800;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-actions .place-actions,
+  .planner-panel.mobile-sheet-panel .place-item.mobile-swipe-stay .place-stay-control {
+    display: none !important;
+  }
+}
+/* Mobile swipe editors are deliberately temporary and use an unobtrusive tray. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-actions > .mobile-swipe-action-tray,
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-stay > .mobile-swipe-stay-tray {
+    z-index: 3;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-actions > .mobile-swipe-action-tray {
+    background: #f7faff;
+  }
+
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-stay {
+    --place-swipe-reveal: 118px;
+    background: #f7faff;
+  }
+
+  .planner-panel.mobile-sheet-panel .sortable-place-item.mobile-swipe-stay > .mobile-swipe-stay-tray {
+    width: var(--place-swipe-reveal);
+    grid-template-columns: 26px minmax(0, 1fr) 16px 26px;
+    gap: 1px;
+    padding: 6px 4px;
+    background: #f7faff;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray > button {
+    width: 26px;
+    height: 28px;
+    border-radius: 999px;
+    background: transparent;
+    color: #3c6fa8;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray > button:active {
+    background: #e6f0ff;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray input {
+    height: 28px;
+    border-radius: 0;
+    background: transparent;
+    color: #1d4ed8;
+    font-size: .82rem;
+    font-weight: 800;
+  }
+
+  .planner-panel.mobile-sheet-panel .mobile-swipe-stay-tray span {
+    color: #7088a6;
+    font-size: .62rem;
+    font-weight: 700;
+  }
+}
+/* Keep the same snap animation while a swipe tray closes. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .sortable-place-item > .place-item.draggable {
+    transition: transform .24s cubic-bezier(.2, .8, .2, 1), border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel.mobile-sheet-panel .sortable-place-item > .place-item.draggable {
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+  }
+}
+/* Planner copy is intentionally disabled outside editable form controls. */
+.app-shell,
+.app-shell * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.app-shell input,
+.app-shell textarea,
+.app-shell [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+/* Swipe-only controls must never render outside the mobile sheet. */
+.mobile-swipe-action-tray,
+.mobile-swipe-stay-tray {
+  display: none;
+}
+/* During a mobile sheet drag, the visible sheet height follows the finger before snapping. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    height: var(--mobile-sheet-drag-height) !important;
+    transform: translateY(0) !important;
+    transition: none !important;
+  }
+}
+/* Smooth the live drag slightly without disconnecting the sheet from the finger. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager {
+    transition-duration: .36s, .36s, .2s;
+    transition-timing-function: cubic-bezier(.22, .61, .36, 1), cubic-bezier(.22, .61, .36, 1), ease;
+  }
+
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    will-change: height;
+    transition: height .08s linear !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    transition: none !important;
+  }
+}
+/* Collapsed uses the same physical height model as the drag preview.
+   This avoids a height expansion plus translate transition when a drag snaps down. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-collapsed .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .map-list-manager {
+    height: var(--mobile-sheet-visible-handle, 44px) !important;
+    transform: translateY(0) !important;
+  }
+}
+/* Keep long-press route hints inside the desktop route control at both slider edges. */
+@media (min-width: 701px) {
+  .planner-panel .route-option-control,
+  .planner-panel .planner-footer,
+  .planner-panel .planner-footer .route-primary-group {
+    overflow: visible;
+  }
+
+  .planner-panel .route-option-hint {
+    box-sizing: border-box;
+    width: min(218px, 100%);
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .planner-panel .route-option-hint.route-option-index-0 {
+    left: 0;
+    transform: none;
+    animation-name: route-option-hint-edge-in;
+  }
+
+  .planner-panel .route-option-hint.route-option-index-1 {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .planner-panel .route-option-hint.route-option-index-2 {
+    right: 0;
+    left: auto;
+    transform: none;
+    animation-name: route-option-hint-edge-in;
+  }
+
+  .planner-panel .route-option-hint.route-option-index-0::before {
+    left: 16.6667%;
+  }
+
+  .planner-panel .route-option-hint.route-option-index-2::before {
+    right: 16.6667%;
+    left: auto;
+    transform: translateX(50%);
+  }
+}

@@ -25,7 +25,7 @@ export async function searchKakaoPlaces(query: string): Promise<ExternalPlaceMat
   if (!apiKey) return null;
   let response: Response;
   try {
-    response = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5&sort=accuracy`, {
+    response = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=10&sort=accuracy`, {
       headers: { Authorization: `KakaoAK ${apiKey}` }, signal: AbortSignal.timeout(12_000), cache: "no-store",
     });
   } catch (error) {

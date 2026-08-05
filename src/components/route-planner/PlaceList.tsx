@@ -1,6 +1,7 @@
 "use client";
 
-import { DragDropProvider } from "@dnd-kit/react";
+import { DragDropProvider, KeyboardSensor, PointerSensor } from "@dnd-kit/react";
+import { PointerActivationConstraints } from "@dnd-kit/dom";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Clock3, ListPlus, LocateFixed, Lock, LockOpen, RotateCcw, Square, SquareCheck, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
@@ -23,6 +24,15 @@ interface Props {
   onCurrentLocationToggle: () => void;
 }
 
+const sortableSensors = [
+  PointerSensor.configure({
+    activationConstraints(event) {
+      if (event.pointerType !== "touch") return undefined;
+      return [new PointerActivationConstraints.Delay({ value: 140, tolerance: 8 })];
+    },
+  }),
+  KeyboardSensor,
+];
 type SortablePlaceItemProps = {
   place: Place;
   index: number;
@@ -54,7 +64,7 @@ function SortablePlaceItem({
   onRemove,
   onStayDurationChange,
 }: SortablePlaceItemProps) {
-  const { ref, isDragging, isDropTarget } = useSortable({
+  const { ref, handleRef, isDragging, isDropTarget } = useSortable({
     id: place.id,
     index,
     disabled: place.isCurrentLocation === true || isDestination,
@@ -62,14 +72,37 @@ function SortablePlaceItem({
   });
   const stayDuration = place.stayDurationMinutes ?? 0;
   const [stayInput, setStayInput] = useState(String(stayDuration));
+  const [mobileSwipe, setMobileSwipe] = useState<"actions" | "stay" | null>(null);
+  const itemRef = useRef<HTMLLIElement | null>(null);
   const latestStayDurationChangeRef = useRef(onStayDurationChange);
   const holdStartTimeoutRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const swipeHandledRef = useRef(false);
   latestStayDurationChangeRef.current = onStayDurationChange;
 
   useEffect(() => {
     setStayInput(String(stayDuration));
   }, [stayDuration]);
+  function closeMobileSwipe() {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && itemRef.current?.contains(activeElement)) activeElement.blur();
+    setMobileSwipe(null);
+  }
+  useEffect(() => {
+    if (!mobileSwipe) return;
+
+    const closeSwipeOnOutsidePointer = (event: PointerEvent) => {
+      if (!itemRef.current?.contains(event.target as Node)) closeMobileSwipe();
+    };
+
+    document.addEventListener("pointerdown", closeSwipeOnOutsidePointer, true);
+    return () => document.removeEventListener("pointerdown", closeSwipeOnOutsidePointer, true);
+  }, [mobileSwipe]);
+
+  useEffect(() => {
+    if (isDragging) closeMobileSwipe();
+  }, [isDragging]);
 
   function commitStayDuration() {
     const requestedMinutes = Number(stayInput);
@@ -112,16 +145,66 @@ function SortablePlaceItem({
 
   useEffect(() => clearStayStepHold, []);
 
+  function isMobileViewport() {
+    return typeof window !== "undefined" && window.matchMedia("(max-width: 700px)").matches;
+  }
+
+  function handleMobileSwipeStart(event: ReactPointerEvent<HTMLElement>) {
+    if (!isMobileViewport() || event.pointerType === "mouse" || (event.target as HTMLElement).closest("button, input, .drag-handle, .place-stay-control")) return;
+    swipeStartRef.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function handleMobileSwipeEnd(event: ReactPointerEvent<HTMLElement>) {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || start.pointerId !== event.pointerId) return;
+
+    const horizontalDistance = event.clientX - start.x;
+    const verticalDistance = event.clientY - start.y;
+    const isHorizontalSwipe = Math.abs(horizontalDistance) > Math.abs(verticalDistance);
+    const isClosingGesture = mobileSwipe === "actions"
+      ? horizontalDistance >= 18
+      : mobileSwipe === "stay" && horizontalDistance <= -18;
+
+    if (isClosingGesture || Math.abs(horizontalDistance) < 18 || !isHorizontalSwipe) {
+      if (mobileSwipe) closeMobileSwipe();
+      return;
+    }
+
+    if (Math.abs(horizontalDistance) < 44) return;
+
+    const nextSwipe = horizontalDistance < 0 ? "actions" : canSetStayDuration ? "stay" : null;
+    swipeHandledRef.current = true;
+    setMobileSwipe((current) => current === nextSwipe ? null : nextSwipe);
+  }
+
   return (
     <li
-      ref={ref}
-      className={`sortable-place-item${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}`}
+      ref={(node) => {
+        itemRef.current = node;
+        ref(node);
+      }}
+      className={`sortable-place-item${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${mobileSwipe ? ` mobile-swipe-${mobileSwipe}` : ""}`}
+      onPointerDownCapture={handleMobileSwipeStart}
+      onPointerUpCapture={handleMobileSwipeEnd}
+      onPointerCancelCapture={() => { swipeStartRef.current = null; }}
     >
       <div
-        className={`place-item draggable${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isSelected ? " selected-place" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}`}
-        onClick={(event) => onCardClick(event, place)}
+        className={`place-item draggable${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isSelected ? " selected-place" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}${mobileSwipe ? ` mobile-swipe-${mobileSwipe}` : ""}`}
+
+        onClick={(event) => {
+          if (swipeHandledRef.current) {
+            swipeHandledRef.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          if (isMobileViewport()) return;
+          onCardClick(event, place);
+        }}
       >
-        <span className={`drag-handle${isDestination ? " placeholder" : ""}`} aria-label={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"} title={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"}>⠿</span>
+        <span ref={isDestination ? undefined : handleRef} className={`drag-handle${isDestination ? " placeholder" : ""}`} aria-label={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"} title={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"}>⠿</span>
         <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{index + 1}</div>
         <div className="place-main">
           <strong>{place.name}</strong>
@@ -248,6 +331,35 @@ function SortablePlaceItem({
           </div>
         )}
       </div>
+      <div className="mobile-swipe-action-tray" inert={mobileSwipe !== "actions"}>
+        <button type="button" className="mobile-swipe-delete" aria-label={`${place.name} 삭제`} title="삭제" onClick={(event) => { stopCardToggle(event); onRemove(place.id); }}>
+          <Trash2 aria-hidden="true" />
+        </button>
+        {onSavePlace && (
+          <button type="button" className="mobile-swipe-save" aria-label={`${place.name} 장소 리스트에 저장`} title="리스트 저장" onClick={(event) => {
+            stopCardToggle(event);
+            onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, stayDurationMinutes: 0 });
+          }}>
+            <ListPlus aria-hidden="true" />
+          </button>
+        )}
+        {canSetStayDuration && (
+          <button type="button" className={`mobile-swipe-lock${isOrderLocked ? " locked" : ""}`} aria-label={isOrderLocked ? `${index + 1}번째 방문 순서 고정 해제` : `${index + 1}번째 방문 순서 고정`} title={isOrderLocked ? "순서 고정 해제" : "순서 보장"} aria-pressed={isOrderLocked} onClick={(event) => {
+            stopCardToggle(event);
+            onFixedVisitOrderChange(place.id, index + 1);
+          }}>
+            {isOrderLocked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
+          </button>
+        )}
+      </div>
+      {canSetStayDuration && (
+        <div className="mobile-swipe-stay-tray" inert={mobileSwipe !== "stay"}>
+          <button type="button" aria-label="머무는 시간 5분 줄이기" onPointerDown={(event) => startStayStepHold(event, -5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(-5); }}>−</button>
+          <input type="number" min="0" max="1440" step="1" inputMode="numeric" aria-label="머무는 시간(분)" value={stayInput} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => setStayInput(event.target.value)} onBlur={commitStayDuration} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
+          <span aria-hidden="true">분</span>
+          <button type="button" aria-label="머무는 시간 5분 늘리기" onPointerDown={(event) => startStayStepHold(event, 5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(5); }}>+</button>
+        </div>
+      )}
     </li>
   );
 }
@@ -360,6 +472,7 @@ export function PlaceList({
           </div>
         ) : (
         <DragDropProvider
+        sensors={sortableSensors}
         onDragStart={() => {
           if (dragReleaseTimeoutRef.current !== null) window.clearTimeout(dragReleaseTimeoutRef.current);
           didDragRef.current = true;
