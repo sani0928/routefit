@@ -4214,3 +4214,11 @@
     transform: translateX(50%);
   }
 }
+/* The sheet must track the finger directly; reserve easing for the post-release snap. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    transition: none !important;
+  }
+}

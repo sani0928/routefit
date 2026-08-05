@@ -77,38 +77,68 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const dragPreviewClearFrameRef = useRef<number | null>(null);
   const stableViewportRef = useRef({ width: 0, height: 0 });
 
-  const showDragPreview = useCallback((height: number) => {
+  const dragPreviewFrameRef = useRef<number | null>(null);
+  const pendingDragPreviewHeightRef = useRef<number | null>(null);
+  const dragPreviewActiveRef = useRef(false);
+
+  const cancelDeferredPreviewClear = useCallback(() => {
     if (dragPreviewClearFrameRef.current !== null) {
       window.cancelAnimationFrame(dragPreviewClearFrameRef.current);
       dragPreviewClearFrameRef.current = null;
     }
-    document.documentElement.style.setProperty("--mobile-sheet-drag-height", `${Math.round(height)}px`);
-    setMobileSheetDragging(true);
   }, []);
+
+  const commitDragPreview = useCallback((height: number) => {
+    if (dragPreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragPreviewFrameRef.current);
+      dragPreviewFrameRef.current = null;
+    }
+    pendingDragPreviewHeightRef.current = null;
+    document.documentElement.style.setProperty("--mobile-sheet-drag-height", `${Math.round(height)}px`);
+  }, []);
+
+  const showDragPreview = useCallback((height: number) => {
+    cancelDeferredPreviewClear();
+    pendingDragPreviewHeightRef.current = height;
+
+    if (!dragPreviewActiveRef.current) {
+      dragPreviewActiveRef.current = true;
+      setMobileSheetDragging(true);
+    }
+
+    if (dragPreviewFrameRef.current !== null) return;
+    dragPreviewFrameRef.current = window.requestAnimationFrame(() => {
+      dragPreviewFrameRef.current = null;
+      const nextHeight = pendingDragPreviewHeightRef.current;
+      if (nextHeight === null) return;
+      pendingDragPreviewHeightRef.current = null;
+      document.documentElement.style.setProperty("--mobile-sheet-drag-height", `${Math.round(nextHeight)}px`);
+    });
+  }, [cancelDeferredPreviewClear]);
 
   const clearDragPreview = useCallback(() => {
-    if (dragPreviewClearFrameRef.current !== null) {
-      window.cancelAnimationFrame(dragPreviewClearFrameRef.current);
-      dragPreviewClearFrameRef.current = null;
+    cancelDeferredPreviewClear();
+    if (dragPreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragPreviewFrameRef.current);
+      dragPreviewFrameRef.current = null;
     }
+    pendingDragPreviewHeightRef.current = null;
+    dragPreviewActiveRef.current = false;
     document.documentElement.style.removeProperty("--mobile-sheet-drag-height");
     setMobileSheetDragging(false);
-  }, []);
+  }, [cancelDeferredPreviewClear]);
 
   const deferDragPreviewClear = useCallback(() => {
-    if (dragPreviewClearFrameRef.current !== null) {
-      window.cancelAnimationFrame(dragPreviewClearFrameRef.current);
-    }
+    cancelDeferredPreviewClear();
     dragPreviewClearFrameRef.current = window.requestAnimationFrame(() => {
-      // Keep the preview value for one more frame. Removing it while the dragging
-      // class is still rendered leaves the CSS height declaration without a value.
+      dragPreviewActiveRef.current = false;
       setMobileSheetDragging(false);
       dragPreviewClearFrameRef.current = window.requestAnimationFrame(() => {
         dragPreviewClearFrameRef.current = null;
         document.documentElement.style.removeProperty("--mobile-sheet-drag-height");
       });
     });
-  }, []);
+  }, [cancelDeferredPreviewClear]);
 
   useEffect(() => {
     if (!isMobileViewport()) return;
@@ -253,9 +283,11 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     }
 
     const finalHeight = clampSheetHeight(drag.startHeight - distance);
-    setMobileSheetState(getNearestSheetState(finalHeight));
+    const nextSheetState = getNearestSheetState(finalHeight);
+    commitDragPreview(getSheetStageHeights()[nextSheetState]);
+    setMobileSheetState(nextSheetState);
     deferDragPreviewClear();
-  }, [cycleMobileSheet, deferDragPreviewClear]);
+  }, [commitDragPreview, cycleMobileSheet, deferDragPreviewClear]);
 
   const cancelDrag = useCallback((inputSource?: MobileSheetDrag["inputSource"]) => {
     if (!inputSource || dragRef.current?.inputSource === inputSource) {
