@@ -8,10 +8,85 @@ import { routeColor } from "@/lib/route-colors";
 
 type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
+type MapFocusPlace = Pick<MapPlace, "latitude" | "longitude">;
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
+const MOBILE_SHEET_SETTLE_DURATION_MS = 380;
 
+function getMobileMapInsets(mapNode: HTMLElement | null, preferredSheetId?: string) {
+  const mapRect = mapNode?.getBoundingClientRect();
+  if (!mapRect) return { top: 34, right: 30, bottom: 32, left: 30, coveredHeight: 0 };
+
+  const candidates = [
+    preferredSheetId ? document.getElementById(preferredSheetId) : null,
+    document.getElementById("mobile-places-panel"),
+    document.getElementById("mobile-lists-panel"),
+    document.getElementById("mobile-results-panel"),
+    document.querySelector<HTMLElement>(".mobile-bottom-nav"),
+  ].filter((element): element is HTMLElement => Boolean(element));
+
+  const coveredHeight = candidates.reduce((maximum, element) => {
+    const rect = element.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0 && rect.bottom > mapRect.top && rect.top < mapRect.bottom;
+    if (!isVisible) return maximum;
+    return Math.max(maximum, Math.max(0, Math.min(mapRect.height, mapRect.bottom - Math.max(mapRect.top, rect.top))));
+  }, 0);
+
+  return {
+    top: 34,
+    right: 30,
+    bottom: Math.max(32, Math.round(coveredHeight) + 28),
+    left: 30,
+    coveredHeight,
+  };
+}
+
+type MapMargin = { top: number; right: number; bottom: number; left: number };
+
+function getFocusMargin(margin: MapMargin): MapMargin {
+  return {
+    top: margin.top + 20,
+    right: margin.right + 20,
+    bottom: margin.bottom + 56,
+    left: margin.left + 20,
+  };
+}
+
+function getPathFocusTarget(map: naver.maps.Map, path: [number, number][], margin: MapMargin, fixedZoom?: number) {
+  const size = map.getSize();
+  const visibleWidth = Math.max(1, size.width - margin.left - margin.right);
+  const visibleHeight = Math.max(1, size.height - margin.top - margin.bottom);
+  const projection = map.getProjection();
+  const points = path.map(([longitude, latitude]) => projection.fromCoordToPoint(new window.naver.maps.LatLng(latitude, longitude)));
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+  const minZoom = Math.ceil(map.getMinZoom());
+  const maxZoom = Math.floor(map.getMaxZoom());
+  let zoom = fixedZoom ?? minZoom;
+
+  if (fixedZoom === undefined) {
+    for (let candidate = maxZoom; candidate >= minZoom; candidate -= 1) {
+      const factor = projection.factor(candidate);
+      if ((maxX - minX) * factor <= visibleWidth && (maxY - minY) * factor <= visibleHeight) {
+        zoom = candidate;
+        break;
+      }
+    }
+  }
+
+  const factor = projection.factor(zoom);
+  const desiredX = margin.left + (visibleWidth / 2);
+  const desiredY = margin.top + (visibleHeight / 2);
+  const centerPoint = new window.naver.maps.Point(
+    (minX + maxX) / 2 + ((size.width / 2) - desiredX) / factor,
+    (minY + maxY) / 2 + ((size.height / 2) - desiredY) / factor,
+  );
+
+  return { center: projection.fromPointToCoord(centerPoint), zoom };
+}
 function createPlaceInfoContent(place: MapPlace, onAdd?: () => void) {
   const container = document.createElement("div");
   container.className = "nearby-place-popup map-place-popup";
@@ -48,7 +123,7 @@ function createCurrentLocationPopupContent(address?: string) {
   return container;
 }
 
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, onSegmentSelect, onMapPlaceSelect, currentLocationActive, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
@@ -356,38 +431,158 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       const color = routeColor(index);
       const isHighlighted = highlightedSegmentIndex === index;
       const isDimmed = highlightedSegmentIndex !== null && !isHighlighted;
-      if (isHighlighted) {
-        const outerGlow = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 18, strokeOpacity: 0.12 });
-        const innerGlow = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 11, strokeOpacity: 0.28 });
-        overlays.current.push(outerGlow, innerGlow);
-      }
       const selectSegment = () => segmentSelectRef.current?.(index);
       const hitArea = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 22, strokeOpacity: 0.01, clickable: true });
-      const polyline = new window.naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: isHighlighted ? 6 : 5, strokeOpacity: isDimmed ? 0.28 : 0.9, clickable: true });
+      const polyline = new window.naver.maps.Polyline({
+        map,
+        path,
+        strokeColor: color,
+        strokeWeight: isHighlighted ? 8 : 4,
+        strokeOpacity: isDimmed ? 0.42 : (isHighlighted ? 1 : 0.76),
+        zIndex: isHighlighted ? 20 : 10,
+        clickable: true,
+      });
       window.naver.maps.Event.addListener(hitArea, "click", selectSegment);
       window.naver.maps.Event.addListener(polyline, "click", selectSegment);
       overlays.current.push(hitArea, polyline);
     });
     const placesKey = markerPlaces.map((place) => `${place.id}:${place.latitude}:${place.longitude}`).join("|");
-    if (markerPlaces.length > 1 && fittedPlacesKeyRef.current !== placesKey) {
+    if (!listPlaces && markerPlaces.length > 1 && fittedPlacesKeyRef.current !== placesKey) {
       const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
-      map.fitBounds(bounds, isMobileMap ? { top: 32, right: 32, bottom: 32, left: 32 } : { top: 48, right: 48, bottom: 48, left: 48 });
-      if (isMobileMap) window.requestAnimationFrame(() => map.setZoom(map.getZoom() + 1, false));
+      const mobileInsets = getMobileMapInsets(nodeRef.current);
+      map.fitBounds(bounds, isMobileMap
+        ? { top: mobileInsets.top, right: mobileInsets.right, bottom: mobileInsets.bottom, left: mobileInsets.left }
+        : { top: 48, right: 48, bottom: 48, left: 48 });
+      if (isMobileMap) map.setZoom(map.getZoom() + 1, false);
       fittedPlacesKeyRef.current = placesKey;
     }
   }, [places, segments, highlightedSegmentIndex, listPlaces]);
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || !window.naver || !listPlaces || listPlaces.length === 0 || focusedPlace) return;
+
+    const first = listPlaces[0];
+    const bounds = new window.naver.maps.LatLngBounds(
+      new window.naver.maps.LatLng(first.latitude, first.longitude),
+      new window.naver.maps.LatLng(first.latitude, first.longitude),
+    );
+    listPlaces.forEach((place) => bounds.extend(new window.naver.maps.LatLng(place.latitude, place.longitude)));
+
+    const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+    const placesKey = listPlaces.map((place) => `${place.id}:${place.latitude}:${place.longitude}`).join("|");
+    const fitKey = `list:${placesKey}:${isMobileMap ? "mobile" : "desktop"}`;
+    if (fittedPlacesKeyRef.current === fitKey) return;
+
+    const fitListBounds = () => {
+      const mobileInsets = getMobileMapInsets(nodeRef.current, "mobile-lists-panel");
+      if (listPlaces.length === 1) {
+        const targetZoom = Math.max(map.getZoom(), 15);
+        const target = getPathFocusTarget(
+          map,
+          [[first.longitude, first.latitude]],
+          isMobileMap ? getFocusMargin(mobileInsets) : { top: 48, right: 48, bottom: 48, left: 48 },
+          targetZoom,
+        );
+        const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+        if (map.getZoom() === target.zoom) map.panTo(target.center, transition);
+        else map.morph(target.center, target.zoom, transition);
+      } else if (!isMobileMap) {
+        map.fitBounds(bounds, { top: 48, right: 48, bottom: 48, left: 48 });
+      } else {
+        const target = getPathFocusTarget(
+          map,
+          listPlaces.map((place) => [place.longitude, place.latitude]),
+          getFocusMargin(mobileInsets),
+        );
+        const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+        if (map.getZoom() === target.zoom) map.panTo(target.center, transition);
+        else map.morph(target.center, target.zoom, transition);
+      }
+      fittedPlacesKeyRef.current = fitKey;
+    };
+
+    if (!isMobileMap) {
+      const frame = window.requestAnimationFrame(fitListBounds);
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const settleTimer = window.setTimeout(fitListBounds, MOBILE_SHEET_SETTLE_DURATION_MS);
+    return () => window.clearTimeout(settleTimer);
+  }, [listPlaces, focusedPlace, mapInitialized]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !window.naver || focusedSegmentIndex === null || focusedSegmentIndex === undefined) return;
     const segment = segments[focusedSegmentIndex];
     if (!segment || segment.path.length < 2) return;
-    const [firstLongitude, firstLatitude] = segment.path[0];
-    const bounds = new window.naver.maps.LatLngBounds(new window.naver.maps.LatLng(firstLatitude, firstLongitude), new window.naver.maps.LatLng(firstLatitude, firstLongitude));
-    segment.path.forEach(([longitude, latitude]) => bounds.extend(new window.naver.maps.LatLng(latitude, longitude)));
     const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
-    map.fitBounds(bounds, isMobileMap ? { top: 36, right: 30, bottom: 36, left: 30 } : { top: 52, right: 52, bottom: 52, left: 52 });
+    const moveToFocusedSegment = () => {
+      const baseMargin = isMobileMap
+        ? getMobileMapInsets(nodeRef.current, "mobile-results-panel")
+        : { top: 52, right: 52, bottom: 52, left: 52 };
+      const target = getPathFocusTarget(map, segment.path, getFocusMargin(baseMargin));
+      const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+
+      if (map.getZoom() === target.zoom) map.panTo(target.center, transition);
+      else map.morph(target.center, target.zoom, transition);
+    };
+
+    if (!isMobileMap) {
+      const frame = window.requestAnimationFrame(moveToFocusedSegment);
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const settleTimer = window.setTimeout(moveToFocusedSegment, MOBILE_SHEET_SETTLE_DURATION_MS);
+    return () => window.clearTimeout(settleTimer);
   }, [segments, focusedSegmentIndex, mapInitialized]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !window.naver || !focusedPlace) return;
+
+    const target = new window.naver.maps.LatLng(focusedPlace.latitude, focusedPlace.longitude);
+    const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+    const targetZoom = Math.max(map.getZoom(), isMobileMap ? 15 : 16);
+    const moveToFocusedPlace = (duration = 420) => {
+      const mapRect = nodeRef.current?.getBoundingClientRect();
+      if (!mapRect) return;
+
+      const insets = isMobileMap
+        ? getMobileMapInsets(nodeRef.current, "mobile-lists-panel")
+        : { top: 0, right: 0, bottom: 0, left: 0 };
+      const desiredX = mapRect.width / 2;
+      const visibleHeight = Math.max(1, mapRect.height - insets.top - insets.bottom);
+      const desiredY = isMobileMap ? insets.top + (visibleHeight / 2) : mapRect.height / 2;
+
+      // Calculate the final centre before moving. This keeps a single-point marker
+      // centred in the visible map area above the mobile sheet without a second
+      // setCenter/panBy correction that would make the camera jump.
+      const projection = map.getProjection();
+      const targetPoint = projection.fromCoordToPoint(target);
+      const zoomFactor = projection.factor(targetZoom);
+      const adjustedCenter = projection.fromPointToCoord(new window.naver.maps.Point(
+        targetPoint.x + (mapRect.width / 2 - desiredX) / zoomFactor,
+        targetPoint.y + (mapRect.height / 2 - desiredY) / zoomFactor,
+      ));
+      const transition = { duration, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+
+      if (map.getZoom() !== targetZoom) {
+        map.morph(adjustedCenter, targetZoom, transition);
+      } else {
+        map.panTo(adjustedCenter, transition);
+      }
+    };
+
+    if (!isMobileMap) {
+      const frame = window.requestAnimationFrame(() => moveToFocusedPlace());
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const settleTimer = window.setTimeout(() => moveToFocusedPlace(), MOBILE_SHEET_SETTLE_DURATION_MS);
+    return () => window.clearTimeout(settleTimer);
+  }, [focusedPlace?.latitude, focusedPlace?.longitude, focusedPlaceRequestId, mapInitialized]);
+
   if (!clientId) {
     return (
       <div className="map-placeholder">

@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type TouchEvent as ReactTouchEvent } from "react";
+import {
+  clampMobileSheetHeight,
+  getMobileSheetStageHeights,
+  getNearestMobileSheetState,
+  stepMobileSheetState,
+  type MobileSheetState,
+} from "@/lib/mobile-sheet";
 
 export type MobileTab = "places" | "lists" | "results";
-export type MobileSheetState = "collapsed" | "peek" | "expanded";
+export type { MobileSheetState } from "@/lib/mobile-sheet";
 
 type MobileSheetDrag = {
   startX: number;
@@ -21,29 +28,19 @@ const MOBILE_QUERY = "(max-width: 700px)";
 const DRAG_CLAIM_DISTANCE = 10;
 const DRAG_COMMIT_DISTANCE = 42;
 const HANDLE_TAP_DISTANCE = 18;
-const COLLAPSED_SHEET_HEIGHT = 44;
-
 function getSheetStageHeights() {
   const root = document.documentElement;
   const layoutViewportHeight = Number.parseFloat(root.style.getPropertyValue("--mobile-layout-viewport-height")) || window.innerHeight;
   const navHeight = document.querySelector<HTMLElement>(".mobile-bottom-nav")?.getBoundingClientRect().height ?? 64;
-  const peekHeight = Math.min(layoutViewportHeight * 0.48, 430);
-  const expandedMapPeek = Math.min(96, Math.max(72, layoutViewportHeight * 0.1));
-  const expandedHeight = Math.max(peekHeight, layoutViewportHeight - navHeight - expandedMapPeek);
-
-  return { collapsed: COLLAPSED_SHEET_HEIGHT, peek: peekHeight, expanded: expandedHeight } satisfies Record<MobileSheetState, number>;
+  return getMobileSheetStageHeights(layoutViewportHeight, navHeight);
 }
 
 function clampSheetHeight(height: number) {
-  const stages = getSheetStageHeights();
-  return Math.min(stages.expanded, Math.max(stages.collapsed, height));
+  return clampMobileSheetHeight(height, getSheetStageHeights());
 }
 
 function getNearestSheetState(height: number): MobileSheetState {
-  const stages = getSheetStageHeights();
-  return (Object.entries(stages) as Array<[MobileSheetState, number]>).reduce((nearest, candidate) => (
-    Math.abs(candidate[1] - height) < Math.abs(nearest[1] - height) ? candidate : nearest
-  ))[0];
+  return getNearestMobileSheetState(height, getSheetStageHeights());
 }
 function isMobileViewport() {
   return typeof window !== "undefined" && window.matchMedia(MOBILE_QUERY).matches;
@@ -199,10 +196,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   }, []);
 
   const stepMobileSheet = useCallback((direction: "up" | "down") => {
-    setMobileSheetState((current) => {
-      if (direction === "up") return current === "collapsed" ? "peek" : "expanded";
-      return current === "expanded" ? "peek" : "collapsed";
-    });
+    setMobileSheetState((current) => stepMobileSheetState(current, direction));
   }, []);
 
   const cycleMobileSheet = useCallback(() => {

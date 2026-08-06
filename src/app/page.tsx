@@ -124,6 +124,8 @@ export default function Home() {
   const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
   const [listManagerOpen, setListManagerOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [focusedSavedPlace, setFocusedSavedPlace] = useState<SavedPlace | null>(null);
+  const [focusedSavedPlaceRequest, setFocusedSavedPlaceRequest] = useState(0);
   const [savedPlacesByListId, setSavedPlacesByListId] = useState<Record<string, SavedPlace[]>>({});
   const [saveTarget, setSaveTarget] = useState<PlaceInput | null>(null);
   const {
@@ -142,6 +144,14 @@ export default function Home() {
   const start = places[0];
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
   const savedListPlaces = selectedListId ? savedPlacesByListId[selectedListId] ?? [] : [];
+  const mapListPlaces = useMemo(
+    () => listManagerOpen && activeList
+      ? savedListPlaces.map((place) => ({ ...place, color: activeList.color }))
+      : undefined,
+    [activeList?.color, activeList?.id, listManagerOpen, savedListPlaces],
+  );
+  const isWorkspaceLoading = !memberStateReady || (member.authenticated && !workspaceRestored);
+  const isPlaceListLoading = Boolean(selectedListId && !Object.prototype.hasOwnProperty.call(savedPlacesByListId, selectedListId));
   const selectedRouteOption = ROUTE_OPTION_META[routeOption];
 
   useEffect(() => () => {
@@ -512,7 +522,13 @@ export default function Home() {
     return addResult;
   }
 
-  function closeListManager() { setListManagerOpen(false); setSelectedListId(null); }
+  function closeListManager() { setListManagerOpen(false); setSelectedListId(null); setFocusedSavedPlace(null); }
+
+  function focusSavedPlace(place: SavedPlace) {
+    setFocusedSavedPlace(place);
+    setFocusedSavedPlaceRequest((current) => current + 1);
+    if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("peek");
+  }
 
   function closeMobileSheet() {
     setMobileSheetState("collapsed");
@@ -523,6 +539,7 @@ export default function Home() {
   function handleMobileTabSelect(nextTab: "places" | "lists" | "results") {
     selectMobileTab(nextTab);
     setListManagerOpen(nextTab === "lists");
+    if (nextTab !== "lists") setFocusedSavedPlace(null);
   }
 
   function clearRouteOptionHoldTimer() {
@@ -680,7 +697,7 @@ export default function Home() {
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
         </header>
         <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} />
-        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} />
+        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} isLoading={isWorkspaceLoading} />
         <div className="planner-footer">
           <div className="route-primary-group">
             <div className="route-option-control">
@@ -729,10 +746,13 @@ export default function Home() {
           currentLocationActive={currentLocationActive}
           onCurrentLocationUpdate={updateCurrentLocation}
           onCurrentLocationTrackingChange={handleCurrentLocationTrackingChange}
-          onMapError={notify.error}          listPlaces={listManagerOpen && activeList ? savedListPlaces.map((place) => ({ ...place, color: activeList.color })) : undefined}
+          onMapError={notify.error}
+          listPlaces={mapListPlaces}
           onListPlaceAdd={addPlace}
           onListManagerToggle={member.authenticated ? () => listManagerOpen ? closeListManager() : setListManagerOpen(true) : undefined}
           isListManagerOpen={listManagerOpen}
+          focusedPlace={focusedSavedPlace}
+          focusedPlaceRequestId={focusedSavedPlaceRequest}
         />
 
         {listManagerOpen && (
@@ -753,19 +773,41 @@ export default function Home() {
               />
             </div>
             <div className="mobile-sheet-content">
-              {member.authenticated ? (
+              {isWorkspaceLoading ? (
+                <SavedPlacesPanel
+                  lists={[]}
+                  activeList={null}
+                  places={[]}
+                  routePlaces={places}
+                  onBack={closeListManager}
+                  onSelect={() => undefined}
+                  onCreate={() => undefined}
+                  onUpdate={() => undefined}
+                  onDeleteList={() => undefined}
+                  onDeletePlace={() => undefined}
+                  onAddToRoute={() => ({ added: false })}
+                  onBrowsePlaces={browseSavedPlaces}
+                  isLoading
+                />
+              ) : member.authenticated ? (
               <SavedPlacesPanel
               lists={member.placeLists}
               activeList={activeList}
               places={savedListPlaces}
+              routePlaces={places}
               onBack={() => activeList ? setSelectedListId(null) : closeListManager()}
-              onSelect={setSelectedListId}
+              onSelect={(id) => {
+                setFocusedSavedPlace(null);
+                setSelectedListId(id);
+              }}
               onCreate={(name, color) => void createList(name, color)}
               onUpdate={(id, name, color) => void updateList(id, name, color)}
               onDeleteList={(id) => void deleteList(id)}
               onDeletePlace={(id) => void deleteSavedPlace(id)}
               onAddToRoute={addSavedPlaceToRoute}
                 onBrowsePlaces={browseSavedPlaces}
+                isPlacesLoading={isPlaceListLoading}
+                onPlaceSelect={focusSavedPlace}
               />
               ) : (
                 <div className="mobile-list-auth-gate" role="status">

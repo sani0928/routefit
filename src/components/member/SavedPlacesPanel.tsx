@@ -4,11 +4,13 @@ import { Check, ChevronLeft, ChevronRight, MapPinned, MapPinPlus, Plus, Search, 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { LIST_COLORS, type MemberPlaceList, type SavedPlace } from "@/features/member/types";
 import { notify } from "@/lib/notify";
+import { ContentLoading } from "@/components/ui/ContentLoading";
 
 interface Props {
   lists: MemberPlaceList[];
   activeList: MemberPlaceList | null;
   places: SavedPlace[];
+  routePlaces: Array<Pick<SavedPlace, "latitude" | "longitude">>;
   onBack: () => void;
   onSelect: (id: string) => void;
   onCreate: (name: string, color: string) => void;
@@ -17,19 +19,23 @@ interface Props {
   onDeletePlace: (id: string) => void;
   onAddToRoute: (place: SavedPlace) => { added: boolean; message?: string };
   onBrowsePlaces: () => void;
+  onPlaceSelect?: (place: SavedPlace) => void;
+  isLoading?: boolean;
+  isPlacesLoading?: boolean;
 }
 
 type EditorMode = "create" | "edit" | null;
 const ITEMS_PER_PAGE = 10;
-const formatUpdatedDate = (value: string) => `마지막 업데이트 ${value.slice(0, 10).replaceAll("-", ".")}`;
+const formatUpdatedDate = (value: string) => `${value.slice(0, 10).replaceAll("-", ".")} \uC5C5\uB370\uC774\uD2B8`;
 
-export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute, onBrowsePlaces }: Props) {
+export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute, onBrowsePlaces, onPlaceSelect, isLoading = false, isPlacesLoading = false }: Props) {
   const [editorMode, setEditorMode] = useState<EditorMode>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(LIST_COLORS[0]);
   const [listPage, setListPage] = useState(0);
   const [placePage, setPlacePage] = useState(0);
   const [placeQuery, setPlaceQuery] = useState("");
+  const isPlaceOnRoute = (place: SavedPlace) => routePlaces.some((routePlace) => Math.abs(routePlace.latitude - place.latitude) < 0.000001 && Math.abs(routePlace.longitude - place.longitude) < 0.000001);
   const deleteConfirmationExpiresAtRef = useRef(0);
   const totalListPages = Math.max(1, Math.ceil(lists.length / ITEMS_PER_PAGE));
   const normalizedPlaceQuery = placeQuery.trim().toLocaleLowerCase();
@@ -128,13 +134,19 @@ export function SavedPlacesPanel({ lists, activeList, places, onBack, onSelect, 
         <button className="list-detail-edit-action" type="button" onClick={openEdit}>리스트 수정</button>
       </header>
       <div className="list-detail-context" aria-label={`${activeList.placeCount}곳 저장됨`}><span><b>{activeList.placeCount}</b>곳 저장됨</span><span>지도에 표시 중</span></div>
-      {places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
-      {pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><div><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></div><div className="saved-place-actions"><button className="saved-place-add-action" type="button" onClick={() => onAddToRoute(place)} title="방문 장소에 추가" aria-label={`${place.name} 방문 장소에 추가`}><MapPinPlus size={16} /><span>추가</span></button><button type="button" onClick={() => onDeletePlace(place.id)} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>)}</ol>}
-      {places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장한 장소가 없습니다.</p>}
-      {places.length === 0 && <div className="list-empty-state list-empty-action-area"><p>아직 저장한 장소가 없습니다.</p><span>검색 결과의 저장 버튼으로 이 리스트에 장소를 모아보세요.</span><button type="button" onClick={onBrowsePlaces}><Search size={15} />장소 검색하기</button></div>}
-      {filteredPlaces.length > ITEMS_PER_PAGE && <Pagination page={placePage} totalPages={totalPlacePages} ariaLabel="저장한 장소 페이지" onPageChange={setPlacePage} />}
+      {!isPlacesLoading && places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
+      {isPlacesLoading && <ContentLoading variant="saved-places" />}
+      {!isPlacesLoading && pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => {
+        const isOnRoute = isPlaceOnRoute(place);
+        return <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><button type="button" className="saved-place-focus" onClick={() => onPlaceSelect?.(place)} aria-label={place.name}><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></button><div className="saved-place-actions"><button className="saved-place-add-action" type="button" disabled={isOnRoute} onClick={(event) => { event.stopPropagation(); onAddToRoute(place); }} title={isOnRoute ? "이미 방문 장소에 추가됨" : "방문 장소에 추가"} aria-label={`${place.name} ${isOnRoute ? "이미 방문 장소에 추가됨" : "방문 장소에 추가"}`}><>{isOnRoute ? <Check size={16} /> : <MapPinPlus size={16} />}</><span>{isOnRoute ? "추가됨" : "추가"}</span></button><button type="button" onClick={(event) => { event.stopPropagation(); onDeletePlace(place.id); }} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>;
+      })}</ol>}
+      {!isPlacesLoading && places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장한 장소가 없습니다.</p>}
+      {!isPlacesLoading && places.length === 0 && <div className="list-empty-state list-empty-action-area"><p>아직 저장한 장소가 없습니다.</p><span>검색 결과의 저장 버튼으로 이 리스트에 장소를 모아보세요.</span><button type="button" onClick={onBrowsePlaces}><Search size={15} />장소 검색하기</button></div>}
+      {!isPlacesLoading && filteredPlaces.length > ITEMS_PER_PAGE && <Pagination page={placePage} totalPages={totalPlacePages} ariaLabel="저장한 장소 페이지" onPageChange={setPlacePage} />}
     </section>;
   }
+
+  if (isLoading) return <section className="saved-places-panel place-list-overview"><ContentLoading variant="collections" /></section>;
 
   return <section className="saved-places-panel place-list-overview">
     <header className="list-overview-header"><div className="list-overview-heading"><span>나의 컬렉션</span><h2>장소 리스트</h2><p>선택한 리스트의 장소를 지도에서 바로 확인하세요.</p></div><div><button className="list-icon-button list-create-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button list-close-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>

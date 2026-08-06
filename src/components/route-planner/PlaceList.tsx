@@ -7,6 +7,7 @@ import { Clock3, ListPlus, LocateFixed, Lock, LockOpen, RotateCcw, Square, Squar
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
+import { ContentLoading } from "@/components/ui/ContentLoading";
 
 interface Props {
   places: Place[];
@@ -22,6 +23,7 @@ interface Props {
   currentLocationActive: boolean;
   currentLocationLocating: boolean;
   onCurrentLocationToggle: () => void;
+  isLoading?: boolean;
 }
 
 const sortableSensors = [
@@ -391,6 +393,7 @@ export function PlaceList({
   currentLocationActive,
   currentLocationLocating,
   onCurrentLocationToggle,
+  isLoading = false,
 }: Props) {
   const [stayEditingPlaceId, setStayEditingPlaceId] = useState<string | null>(null);
   const [isSorting, setIsSorting] = useState(false);
@@ -465,7 +468,9 @@ export function PlaceList({
           </button>
         </div>
       </div>      <div className="place-list-scroll">
-        {places.length === 0 ? (
+        {isLoading ? (
+          <ContentLoading variant="places" />
+        ) : places.length === 0 ? (
           <div className="place-empty-state">
             <img src="/icons/nothing.png" alt="" aria-hidden="true" />
             <p>동선을 최적화 할 장소를 추가하세요.</p>
