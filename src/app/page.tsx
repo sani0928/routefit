@@ -394,6 +394,8 @@ export default function Home() {
       notify.info("동일한 장소는 중복 등록할 수 없습니다.");
       return;
     }
+    setHoveredSegmentIndex(null);
+    setSelectedSegmentIndex(null);
     const destination = returnToStart ? null : places.at(-1) ?? null;
     const waypoints = returnToStart ? places.slice(1) : places.slice(1, -1);
     const calculationCurrentLocation = start.isCurrentLocation
