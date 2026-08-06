@@ -23,6 +23,7 @@ interface Props {
   currentLocationActive: boolean;
   currentLocationLocating: boolean;
   onCurrentLocationToggle: () => void;
+  mobileSheetExpanded: boolean;
   isLoading?: boolean;
 }
 
@@ -30,7 +31,7 @@ const sortableSensors = [
   PointerSensor.configure({
     activationConstraints(event) {
       if (event.pointerType !== "touch") return undefined;
-      return [new PointerActivationConstraints.Delay({ value: 140, tolerance: 8 })];
+      return [new PointerActivationConstraints.Delay({ value: 120, tolerance: 12 })];
     },
   }),
   KeyboardSensor,
@@ -44,6 +45,8 @@ type SortablePlaceItemProps = {
   isOrderLocked: boolean;
   isSelected: boolean;
   isStayEditing: boolean;
+  mobileSheetExpanded: boolean;
+  isMobileViewportActive: boolean;
   onCardClick: (event: MouseEvent<HTMLDivElement>, place: Place) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
   onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
@@ -60,16 +63,20 @@ function SortablePlaceItem({
   isOrderLocked,
   isSelected,
   isStayEditing,
+  mobileSheetExpanded,
+  isMobileViewportActive,
   onCardClick,
   onFixedVisitOrderChange,
   onSavePlace,
   onRemove,
   onStayDurationChange,
 }: SortablePlaceItemProps) {
+  const mobileReorderDisabled = isMobileViewportActive && !mobileSheetExpanded;
+  const dragDisabled = place.isCurrentLocation === true || isDestination || mobileReorderDisabled;
   const { ref, handleRef, isDragging, isDropTarget } = useSortable({
     id: place.id,
     index,
-    disabled: place.isCurrentLocation === true || isDestination,
+    disabled: dragDisabled,
     transition: { duration: 180, easing: "cubic-bezier(.2,.8,.2,1)", idle: true },
   });
   const stayDuration = place.stayDurationMinutes ?? 0;
@@ -206,7 +213,7 @@ function SortablePlaceItem({
           onCardClick(event, place);
         }}
       >
-        <span ref={isDestination ? undefined : handleRef} className={`drag-handle${isDestination ? " placeholder" : ""}`} aria-label={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"} title={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"}>⠿</span>
+        <span ref={dragDisabled ? undefined : handleRef} className={`drag-handle${isDestination ? " placeholder" : ""}${mobileReorderDisabled ? " disabled" : ""}`} aria-label={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"} title={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"}>⠿</span>
         <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{index + 1}</div>
         <div className="place-main">
           <strong>{place.name}</strong>
@@ -393,15 +400,25 @@ export function PlaceList({
   currentLocationActive,
   currentLocationLocating,
   onCurrentLocationToggle,
+  mobileSheetExpanded,
   isLoading = false,
 }: Props) {
   const [stayEditingPlaceId, setStayEditingPlaceId] = useState<string | null>(null);
   const [isSorting, setIsSorting] = useState(false);
+  const [isMobileViewportActive, setIsMobileViewportActive] = useState(false);
   const didDragRef = useRef(false);
   const dragReleaseTimeoutRef = useRef<number | null>(null);
   const resetConfirmationExpiresAtRef = useRef(0);
   const fixedPlaceIds = new Set(fixedVisitOrders.map((fixed) => fixed.placeId));
   const returnStop = returnToStart && places[0] ? places[0] : null;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 700px)");
+    const syncViewport = () => setIsMobileViewportActive(mediaQuery.matches);
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
 
   useEffect(() => {
     if (!stayEditingPlaceId) return;
@@ -516,6 +533,8 @@ export function PlaceList({
                 isOrderLocked={fixedPlaceIds.has(place.id)}
                 isSelected={stayEditingPlaceId === place.id}
                 isStayEditing={stayEditingPlaceId === place.id && canSetStayDuration}
+                mobileSheetExpanded={mobileSheetExpanded}
+                isMobileViewportActive={isMobileViewportActive}
                 onCardClick={handleCardClick}
                 onFixedVisitOrderChange={onFixedVisitOrderChange}
                 onSavePlace={onSavePlace}

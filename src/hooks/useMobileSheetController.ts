@@ -144,18 +144,30 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   }, [mobileSheetState]);
 
   useEffect(() => {
-    if (!isMobileViewport() || mobileSheetState !== "peek") return;
+    if (!isMobileViewport()) return;
 
     const preventNestedScroll = (event: TouchEvent) => {
-      if (event.touches.length !== 1 || !event.cancelable) return;
+      const drag = dragRef.current;
+      if (!drag || drag.inputSource !== "touch" || event.touches.length !== 1 || !event.cancelable) return;
       if (!(event.target instanceof Element) || !event.target.closest(".mobile-sheet-panel, .map-list-manager")) return;
-      event.preventDefault();
+      if (event.target.closest(".drag-handle:not(.placeholder):not(.disabled)")) return;
+
+      const touch = Array.from(event.touches).find((item) => item.identifier === drag.pointerId);
+      if (!touch) return;
+      const verticalDistance = touch.clientY - drag.startY;
+      const horizontalDistance = touch.clientX - drag.startX;
+      if (Math.abs(horizontalDistance) > Math.abs(verticalDistance)) return;
+
+      const expandsSheet = drag.sheetState === "peek";
+      const collapsesExpandedSheet = drag.sheetState === "expanded"
+        && verticalDistance > 0
+        && (drag.fromHandle || drag.scrollContainers.every((container) => container.scrollTop <= 1));
+      if (expandsSheet || collapsesExpandedSheet) event.preventDefault();
     };
 
     document.addEventListener("touchmove", preventNestedScroll, { passive: false });
     return () => document.removeEventListener("touchmove", preventNestedScroll);
   }, [mobileSheetState]);
-
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_QUERY);
@@ -352,6 +364,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
 
   const onSheetTouchStart = useCallback((event: ReactTouchEvent<HTMLElement>) => {
     if (event.touches.length !== 1) return;
+    if (event.target instanceof Element && event.target.closest(".drag-handle:not(.placeholder):not(.disabled)")) return;
     const touch = event.touches[0];
     const fromHandle = event.target instanceof Element && Boolean(event.target.closest(".mobile-sheet-handle"));
     beginDrag({

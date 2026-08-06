@@ -4440,3 +4440,20 @@
     touch-action: none;
   }
 }
+/* Give the mobile reorder grip a dependable touch target without changing card layout. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel .place-item.draggable .drag-handle:not(.placeholder) {
+    display: grid;
+    width: 40px;
+    height: 44px;
+    margin: -8px -11px;
+    place-items: center;
+    border-radius: 10px;
+  }
+
+  .planner-panel.mobile-sheet-panel .place-item.draggable .drag-handle.disabled {
+    cursor: default;
+    opacity: .45;
+    touch-action: pan-y;
+  }
+}

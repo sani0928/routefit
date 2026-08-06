@@ -647,6 +647,7 @@ export default function Home() {
   }
 
   function handleResultSegmentSelect(index: number | null, source: "stop" | "segment" = "segment") {
+    setHoveredSegmentIndex(null);
     setSelectedSegmentIndex(index);
 
     if (index !== null && source === "segment" && window.matchMedia("(max-width: 700px)").matches) {
@@ -697,7 +698,7 @@ export default function Home() {
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
         </header>
         <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} />
-        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} isLoading={isWorkspaceLoading} />
+        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
         <div className="planner-footer">
           <div className="route-primary-group">
             <div className="route-option-control">
