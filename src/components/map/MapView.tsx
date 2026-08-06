@@ -145,6 +145,18 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   const listAddRef = useRef(onListPlaceAdd);
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
   const [mapInitialized, setMapInitialized] = useState(false);
+  const zoomBy = useCallback((amount: number) => {
+    const map = mapRef.current;
+    if (!map || !window.naver) return;
+
+    const targetZoom = Math.max(
+      Math.ceil(map.getMinZoom()),
+      Math.min(Math.floor(map.getMaxZoom()), map.getZoom() + amount),
+    );
+    if (targetZoom === map.getZoom()) return;
+
+    map.morph(map.getCenter(), targetZoom, { duration: 260, easing: "easeOutCubic" } as naver.maps.TransitionOptions);
+  }, []);
 
   const updateCurrentLocationPlace = useCallback((latitude: number, longitude: number, address?: string | null) => {
     currentLocationUpdateRef.current({
@@ -609,11 +621,11 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         </button>
       )}
       <div className="map-zoom-control" aria-label={"지도 확대 및 축소"}>
-        <button type="button" aria-label={"지도 확대"} onClick={() => mapRef.current?.setZoom(mapRef.current.getZoom() + 1)}>
+        <button type="button" aria-label={"지도 확대"} onClick={() => zoomBy(1)}>
           +
         </button>
         <span aria-hidden="true" />
-        <button type="button" aria-label={"지도 축소"} onClick={() => mapRef.current?.setZoom(mapRef.current.getZoom() - 1)}>
+        <button type="button" aria-label={"지도 축소"} onClick={() => zoomBy(-1)}>
           −
         </button>
       </div>

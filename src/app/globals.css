@@ -4429,3 +4429,14 @@
   background: #f1f8f4;
   opacity: 1;
 }
+/* At peek, a vertical gesture belongs to the sheet even when it begins in a nested list. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-peek .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-peek .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-peek .map-list-manager,
+  .app-shell.mobile-sheet-peek .mobile-sheet-content :is(.place-list-scroll, .saved-place-list, .place-list-cards, .search-results) {
+    overflow-y: hidden;
+    overscroll-behavior-y: none;
+    touch-action: none;
+  }
+}

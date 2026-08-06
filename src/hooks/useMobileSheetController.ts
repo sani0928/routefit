@@ -144,6 +144,20 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   }, [mobileSheetState]);
 
   useEffect(() => {
+    if (!isMobileViewport() || mobileSheetState !== "peek") return;
+
+    const preventNestedScroll = (event: TouchEvent) => {
+      if (event.touches.length !== 1 || !event.cancelable) return;
+      if (!(event.target instanceof Element) || !event.target.closest(".mobile-sheet-panel, .map-list-manager")) return;
+      event.preventDefault();
+    };
+
+    document.addEventListener("touchmove", preventNestedScroll, { passive: false });
+    return () => document.removeEventListener("touchmove", preventNestedScroll);
+  }, [mobileSheetState]);
+
+
+  useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_QUERY);
     const legacyMediaQuery = mediaQuery as MediaQueryList & {
       addListener(listener: (event: MediaQueryListEvent) => void): void;
