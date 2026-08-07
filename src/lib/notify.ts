@@ -13,6 +13,8 @@ function show(kind: ToastKind, message: string) {
   const normalizedMessage = message.trim();
   if (!normalizedMessage) return;
 
+  toast.clearWaitingQueue();
+  toast.dismiss();
   return toast[kind](normalizedMessage, optionsFor(kind));
 }
 

@@ -17,6 +17,7 @@ import { useMobileSheetController } from "@/hooks/useMobileSheetController";
 
 type Status = "IDLE" | "BUILDING_MATRIX" | "OPTIMIZING" | "FETCHING_FINAL_ROUTE" | "SUCCESS" | "ERROR";
 type PlaceInput = Omit<Place, "id" | "type">;
+type SavePlaceInput = PlaceInput & { categoryGroupCode?: string };
 type MobileTab = "places" | "lists" | "results";
 type MobileSheetState = "collapsed" | "peek" | "expanded";
 type AddPlaceResult = { added: boolean; message?: string };
@@ -26,6 +27,11 @@ const CURRENT_LOCATION_RECALCULATE_DISTANCE_METERS = 150;
 const EMPTY_MEMBER: MemberState = { authenticated: false, authConfigured: false, placeLists: [] };
 const newId = () => crypto.randomUUID();
 const GUEST_WORKSPACE_KEY = "routefit-guest-workspace";
+type RouteResultSnapshot = {
+  returnToStart: boolean;
+  fixedVisitOrders: FixedVisitOrder[];
+};
+
 type WorkspaceSnapshot = {
   returnToStart: boolean;
   places: Place[];
@@ -105,6 +111,7 @@ export default function Home() {
   const [returnToStart, setReturnToStart] = useState(true);
   const [fixedVisitOrders, setFixedVisitOrders] = useState<FixedVisitOrder[]>([]);
   const [result, setResult] = useState<OptimizationResponse | null>(null);
+  const [resultSnapshot, setResultSnapshot] = useState<RouteResultSnapshot | null>(null);
   const [routeNeedsRecalculation, setRouteNeedsRecalculation] = useState(false);
   const [status, setStatus] = useState<Status>("IDLE");
   const [routeOption, setRouteOption] = useState<RouteOption>("traoptimal");
@@ -122,12 +129,13 @@ export default function Home() {
   const [currentLocationLocating, setCurrentLocationLocating] = useState(false);
   const workspaceRestoredRef = useRef(false);
   const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
+  const routeInputVersionRef = useRef(0);
   const [listManagerOpen, setListManagerOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [focusedSavedPlace, setFocusedSavedPlace] = useState<SavedPlace | null>(null);
   const [focusedSavedPlaceRequest, setFocusedSavedPlaceRequest] = useState(0);
   const [savedPlacesByListId, setSavedPlacesByListId] = useState<Record<string, SavedPlace[]>>({});
-  const [saveTarget, setSaveTarget] = useState<PlaceInput | null>(null);
+  const [saveTarget, setSaveTarget] = useState<SavePlaceInput | null>(null);
   const {
     mobileTab,
     mobileSheetState,
@@ -153,6 +161,12 @@ export default function Home() {
   const isWorkspaceLoading = !memberStateReady || (member.authenticated && !workspaceRestored);
   const isPlaceListLoading = Boolean(selectedListId && !Object.prototype.hasOwnProperty.call(savedPlacesByListId, selectedListId));
   const selectedRouteOption = ROUTE_OPTION_META[routeOption];
+  const resultReturnToStart = resultSnapshot?.returnToStart ?? returnToStart;
+  const resultFixedVisitOrders = resultSnapshot?.fixedVisitOrders ?? fixedVisitOrders;
+  const savedListIdsForSaveTarget = useMemo(() => {
+    if (!saveTarget) return [];
+    return member.placeLists.filter((list) => (savedPlacesByListId[list.id] ?? []).some((place) => place.name === saveTarget.name && Math.abs(place.latitude - saveTarget.latitude) < 0.000001 && Math.abs(place.longitude - saveTarget.longitude) < 0.000001)).map((list) => list.id);
+  }, [member.placeLists, saveTarget, savedPlacesByListId]);
 
   useEffect(() => () => {
     if (routeOptionHoldTimerRef.current !== null) window.clearTimeout(routeOptionHoldTimerRef.current);
@@ -240,8 +254,28 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [listManagerOpen, selectedListId, savedPlacesByListId]);
   useEffect(() => {
+    if (!saveTarget || !member.authenticated) return;
+    const missingListIds = member.placeLists.filter((list) => !Object.prototype.hasOwnProperty.call(savedPlacesByListId, list.id)).map((list) => list.id);
+    if (missingListIds.length === 0) return;
+    let cancelled = false;
+    void Promise.all(missingListIds.map(async (listId) => {
+      const response = await fetch(`/api/place-lists/${listId}/places`);
+      const places = response.ok ? (await response.json() as { places: SavedPlace[] }).places : [];
+      return [listId, places] as const;
+    })).then((entries) => {
+      if (cancelled) return;
+      setSavedPlacesByListId((current) => {
+        const next = { ...current };
+        for (const [listId, listPlaces] of entries) if (!Object.prototype.hasOwnProperty.call(next, listId)) next[listId] = listPlaces;
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [member.authenticated, member.placeLists, saveTarget, savedPlacesByListId]);
+  useEffect(() => {
     if (result) return;
     calculatedCurrentLocationRef.current = null;
+    setResultSnapshot(null);
     setRouteNeedsRecalculation(false);
   }, [result]);
   useEffect(() => {
@@ -258,6 +292,14 @@ export default function Home() {
     const ordered = result.orderedPlaces;
     return ordered.length > 1 && ordered[0].id === ordered.at(-1)?.id ? ordered.slice(0, -1) : ordered;
   }, [places, result]);
+  const markRouteStale = useCallback(() => {
+    routeInputVersionRef.current += 1;
+    if (!result) return;
+    setRouteNeedsRecalculation(true);
+    setHoveredSegmentIndex(null);
+    setSelectedSegmentIndex(null);
+  }, [result]);
+
   const addPlace = useCallback((input: PlaceInput): AddPlaceResult => {
     const isDuplicate = places.some((place) => Math.abs(place.latitude - input.latitude) < 0.000001 && Math.abs(place.longitude - input.longitude) < 0.000001);
     if (isDuplicate) {
@@ -271,16 +313,16 @@ export default function Home() {
       return { added: false, message };
     }
     setPlaces((current) => normalizePlaceRoles([...current, { ...input, id: newId(), type: "WAYPOINT", stayDurationMinutes: 0 }]));
-    setResult(null);
+    markRouteStale();
     return { added: true };
-  }, [places]);
+  }, [places, markRouteStale]);
   const updateCurrentLocation = useCallback((input: PlaceInput) => {
     const calculatedCurrentLocation = calculatedCurrentLocationRef.current;
     if (
       calculatedCurrentLocation
       && distanceInMeters(calculatedCurrentLocation, input) >= CURRENT_LOCATION_RECALCULATE_DISTANCE_METERS
     ) {
-      setRouteNeedsRecalculation(true);
+      markRouteStale();
     }
 
     setPlaces((current) => {
@@ -308,7 +350,7 @@ export default function Home() {
         ...current.filter((place) => !place.isCurrentLocation),
       ]);
     });
-  }, []);
+  }, [markRouteStale]);
 
   const handleCurrentLocationTrackingChange = useCallback((locating: boolean) => {
     setCurrentLocationLocating((current) => current === locating ? current : locating);
@@ -319,7 +361,7 @@ export default function Home() {
       setCurrentLocationActive(false);
       setCurrentLocationLocating(false);
       setPlaces((current) => normalizePlaceRoles(current.filter((place) => !place.isCurrentLocation)));
-      setResult(null);
+      markRouteStale();
       return;
     }
 
@@ -333,9 +375,10 @@ export default function Home() {
       return;
     }
 
+    markRouteStale();
     setCurrentLocationLocating(true);
     setCurrentLocationActive(true);
-  }, [currentLocationActive, places]);
+  }, [currentLocationActive, places, markRouteStale]);
   function reorderPlace(id: string, destinationIndex: number) {
     setPlaces((current) => {
       const sourceIndex = current.findIndex((place) => place.id === id);
@@ -368,19 +411,19 @@ export default function Home() {
 
       return normalized;
     });
-    setResult(null);
+    markRouteStale();
   }
   function toggleFixedVisitOrder(placeId: string, visitOrder: number) {
     setFixedVisitOrders((current) => current.some((fixed) => fixed.placeId === placeId) ? current.filter((fixed) => fixed.placeId !== placeId) : [...current.filter((fixed) => fixed.visitOrder !== visitOrder), { placeId, visitOrder }]);
-    setResult(null);
+    markRouteStale();
   }
   function setReturn(value: boolean) {
     setReturnToStart(value);
     if (!value) setPlaces((current) => current.map((place, index) => index === current.length - 1 ? { ...place, stayDurationMinutes: 0 } : place));
-    setResult(null);
+    markRouteStale();
   }
-  function removePlace(id: string) { if (places.some((place) => place.id === id && place.isCurrentLocation)) { setCurrentLocationActive(false); setCurrentLocationLocating(false); } setPlaces((current) => normalizePlaceRoles(current.filter((place) => place.id !== id))); setResult(null); }
-  function setStayDuration(id: string, minutes: number) { setPlaces((current) => current.map((place) => place.id === id && !place.isCurrentLocation ? { ...place, stayDurationMinutes: minutes } : place)); setResult(null); }  async function optimize() {
+  function removePlace(id: string) { if (places.some((place) => place.id === id && place.isCurrentLocation)) { setCurrentLocationActive(false); setCurrentLocationLocating(false); } setPlaces((current) => normalizePlaceRoles(current.filter((place) => place.id !== id))); markRouteStale(); }
+  function setStayDuration(id: string, minutes: number) { setPlaces((current) => current.map((place) => place.id === id && !place.isCurrentLocation ? { ...place, stayDurationMinutes: minutes } : place)); markRouteStale(); }  async function optimize() {
     if (places.length < 2 || !start) return;
     const coordinateKeys = new Set<string>();
     const hasDuplicatePlace = places.some((place) => {
@@ -401,6 +444,11 @@ export default function Home() {
     const calculationCurrentLocation = start.isCurrentLocation
       ? { latitude: start.latitude, longitude: start.longitude }
       : null;
+    const calculationSnapshot: RouteResultSnapshot = {
+      returnToStart,
+      fixedVisitOrders: fixedVisitOrders.map((fixed) => ({ ...fixed })),
+    };
+    const calculationInputVersion = routeInputVersionRef.current;
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("results");
       setMobileSheetState((current) => current === "collapsed" ? "peek" : current);
@@ -414,8 +462,9 @@ export default function Home() {
       if (!response.ok) throw new Error(body.error?.message || "동선 계산에 실패했습니다.");
       setStatus("FETCHING_FINAL_ROUTE");
       setResult(body);
+      setResultSnapshot(calculationSnapshot);
       calculatedCurrentLocationRef.current = calculationCurrentLocation;
-      setRouteNeedsRecalculation(false);
+      setRouteNeedsRecalculation(routeInputVersionRef.current !== calculationInputVersion);
       setStatus("SUCCESS");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "동선 계산에 실패했습니다.";
@@ -493,37 +542,78 @@ export default function Home() {
     }
   }
 
-  async function savePlace(listId: string) {
+  async function savePlace(selectedListIds: string[], initiallySelectedListIds: string[]) {
     if (!saveTarget) return;
     const target = saveTarget;
-    const optimisticId = `optimistic-${newId()}`;
-    const cacheWasLoaded = Object.prototype.hasOwnProperty.call(savedPlacesByListId, listId);
-    const optimisticPlace: SavedPlace = { id: optimisticId, placeListId: listId, name: target.name, address: target.address, latitude: target.latitude, longitude: target.longitude, createdAt: new Date().toISOString() };
+    const selectedListIdSet = new Set(selectedListIds);
+    const initiallySelectedListIdSet = new Set(initiallySelectedListIds);
+    const listIdsToCreate = selectedListIds.filter((listId) => !initiallySelectedListIdSet.has(listId));
+    const listIdsToRemove = initiallySelectedListIds.filter((listId) => !selectedListIdSet.has(listId));
+    if (listIdsToCreate.length === 0 && listIdsToRemove.length === 0) return;
     setSaveTarget(null);
-    if (cacheWasLoaded) updateCachedPlaces(listId, (current) => [...current, optimisticPlace]);
-    updateListCount(listId, 1);
-    const response = await fetch(`/api/place-lists/${listId}/places`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(target) });
-    const body = await response.json() as { saved?: { id: string; created: boolean }; error?: { message?: string } };
-    if (!response.ok || !body.saved) {
-      if (cacheWasLoaded) updateCachedPlaces(listId, (current) => current.filter((place) => place.id !== optimisticId));
-      updateListCount(listId, -1);
-      return notify.error(body.error?.message || "장소를 저장하지 못했습니다.");
-    }
-    if (!body.saved.created) {
-      if (cacheWasLoaded) updateCachedPlaces(listId, (current) => current.filter((place) => place.id !== optimisticId));
-      updateListCount(listId, -1);
-      notify.info("해당 장소는 이미 장소 리스트에 저장되어 있습니다.");
-      return;
-    }
-    if (cacheWasLoaded) updateCachedPlaces(listId, (current) => current.map((place) => place.id === optimisticId ? { ...place, id: body.saved!.id } : place));
-  }
 
+    const createOutcomes = await Promise.all(listIdsToCreate.map(async (listId) => {
+      const optimisticId = `optimistic-${newId()}`;
+      const cacheWasLoaded = Object.prototype.hasOwnProperty.call(savedPlacesByListId, listId);
+      const optimisticPlace: SavedPlace = { id: optimisticId, placeListId: listId, name: target.name, address: target.address, latitude: target.latitude, longitude: target.longitude, createdAt: new Date().toISOString() };
+      if (cacheWasLoaded) updateCachedPlaces(listId, (current) => [...current, optimisticPlace]);
+      updateListCount(listId, 1);
+      try {
+        const response = await fetch(`/api/place-lists/${listId}/places`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(target) });
+        const body = await response.json() as { saved?: { id: string; created: boolean }; error?: { message?: string } };
+        if (!response.ok || !body.saved) throw new Error(body.error?.message || "장소를 저장하지 못했습니다.");
+        if (!body.saved.created) {
+          if (cacheWasLoaded) updateCachedPlaces(listId, (current) => current.filter((place) => place.id !== optimisticId));
+          updateListCount(listId, -1);
+          return "duplicate";
+        }
+        if (cacheWasLoaded) updateCachedPlaces(listId, (current) => current.map((place) => place.id === optimisticId ? { ...place, id: body.saved!.id } : place));
+        return "created";
+      } catch (error) {
+        if (cacheWasLoaded) updateCachedPlaces(listId, (current) => current.filter((place) => place.id !== optimisticId));
+        updateListCount(listId, -1);
+        return error instanceof Error ? error.message : "장소를 저장하지 못했습니다.";
+      }
+    }));
+
+    const removeOutcomes = await Promise.all(listIdsToRemove.map(async (listId) => {
+      const savedPlace = (savedPlacesByListId[listId] ?? []).find((place) => place.name === target.name && Math.abs(place.latitude - target.latitude) < 0.000001 && Math.abs(place.longitude - target.longitude) < 0.000001);
+      if (!savedPlace) return "저장한 장소를 찾지 못했습니다.";
+      updateCachedPlaces(listId, (current) => current.filter((place) => place.id !== savedPlace.id));
+      updateListCount(listId, -1);
+      try {
+        const response = await fetch(`/api/place-lists/${listId}/places?placeId=${savedPlace.id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error("저장한 장소를 삭제하지 못했습니다.");
+        return "removed";
+      } catch (error) {
+        updateCachedPlaces(listId, (current) => [...current, savedPlace]);
+        updateListCount(listId, 1);
+        return error instanceof Error ? error.message : "저장한 장소를 삭제하지 못했습니다.";
+      }
+    }));
+
+    const outcomes = [...createOutcomes, ...removeOutcomes];
+    const createdCount = outcomes.filter((outcome) => outcome === "created").length;
+    const removedCount = outcomes.filter((outcome) => outcome === "removed").length;
+    const duplicateCount = outcomes.filter((outcome) => outcome === "duplicate").length;
+    const failure = outcomes.find((outcome) => outcome !== "created" && outcome !== "removed" && outcome !== "duplicate");
+    const completedActions = [createdCount > 0 && `${createdCount}개 장소 리스트에 저장`, removedCount > 0 && `${removedCount}개 장소 리스트에서 제거`].filter(Boolean).join("하고 ");
+    if (failure) return notify.error(completedActions ? `${completedActions}했지만 일부는 반영하지 못했습니다.` : failure);
+    if (completedActions) return notify.success(`${completedActions}했습니다.`);
+    if (duplicateCount > 0) notify.info("선택한 장소 리스트에 이미 저장되어 있습니다.");
+  }
   function addSavedPlaceToRoute(place: SavedPlace): AddPlaceResult {
     const addResult = addPlace(place);
     if (addResult.added) notify.success("\uBC29\uBB38 \uC7A5\uC18C\uC5D0 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
     return addResult;
   }
 
+  function removeSavedPlaceFromRoute(place: SavedPlace) {
+    const routePlace = places.find((candidate) => !candidate.isCurrentLocation && Math.abs(candidate.latitude - place.latitude) < 0.000001 && Math.abs(candidate.longitude - place.longitude) < 0.000001);
+    if (!routePlace) return;
+    removePlace(routePlace.id);
+    notify.info("방문 장소에서 제거되었습니다.");
+  }
   function closeListManager() { setListManagerOpen(false); setSelectedListId(null); setFocusedSavedPlace(null); }
 
   function focusSavedPlace(place: SavedPlace) {
@@ -576,7 +666,7 @@ export default function Home() {
   function selectRouteOption(option: RouteOption) {
     setRouteOption(option);
     setRouteOptionHint(null);
-    setResult(null);
+    markRouteStale();
   }
 
   function selectRouteOptionFromPointer(event: ReactPointerEvent<HTMLDivElement>) {
@@ -741,7 +831,7 @@ export default function Home() {
         <MapView
           places={mapPlaces}
           segments={listManagerOpen && activeList ? [] : result?.segments ?? []}
-          returnToStart={returnToStart}
+          returnToStart={result ? resultReturnToStart : returnToStart}
           highlightedSegmentIndex={hoveredSegmentIndex ?? selectedSegmentIndex}
           focusedSegmentIndex={selectedSegmentIndex}
           onSegmentSelect={handleMapSegmentSelect}
@@ -789,6 +879,7 @@ export default function Home() {
                   onDeleteList={() => undefined}
                   onDeletePlace={() => undefined}
                   onAddToRoute={() => ({ added: false })}
+                  onRemoveFromRoute={() => undefined}
                   onBrowsePlaces={browseSavedPlaces}
                   isLoading
                 />
@@ -808,6 +899,7 @@ export default function Home() {
               onDeleteList={(id) => void deleteList(id)}
               onDeletePlace={(id) => void deleteSavedPlace(id)}
               onAddToRoute={addSavedPlaceToRoute}
+              onRemoveFromRoute={removeSavedPlaceFromRoute}
                 onBrowsePlaces={browseSavedPlaces}
                 isPlacesLoading={isPlaceListLoading}
                 onPlaceSelect={focusSavedPlace}
@@ -850,10 +942,10 @@ export default function Home() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} routeOption={result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isCurrentLocationStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} />
+            <RouteSummary result={result} routeOption={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status) ? routeOption : result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} />
         </div>
       </aside>
-      <SavePlaceDialog place={saveTarget} lists={member.placeLists} onSave={(listId) => void savePlace(listId)} onClose={() => setSaveTarget(null)} />
+      <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
     </main>
   );
 }

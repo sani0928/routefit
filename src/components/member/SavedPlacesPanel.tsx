@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, MapPinned, MapPinPlus, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, MapPinned, MapPinPlus, MapPinX, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { LIST_COLORS, type MemberPlaceList, type SavedPlace } from "@/features/member/types";
 import { notify } from "@/lib/notify";
@@ -18,6 +18,7 @@ interface Props {
   onDeleteList: (id: string) => void;
   onDeletePlace: (id: string) => void;
   onAddToRoute: (place: SavedPlace) => { added: boolean; message?: string };
+  onRemoveFromRoute: (place: SavedPlace) => void;
   onBrowsePlaces: () => void;
   onPlaceSelect?: (place: SavedPlace) => void;
   isLoading?: boolean;
@@ -28,7 +29,7 @@ type EditorMode = "create" | "edit" | null;
 const ITEMS_PER_PAGE = 10;
 const formatUpdatedDate = (value: string) => `${value.slice(0, 10).replaceAll("-", ".")} \uC5C5\uB370\uC774\uD2B8`;
 
-export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute, onBrowsePlaces, onPlaceSelect, isLoading = false, isPlacesLoading = false }: Props) {
+export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute, onRemoveFromRoute, onBrowsePlaces, onPlaceSelect, isLoading = false, isPlacesLoading = false }: Props) {
   const [editorMode, setEditorMode] = useState<EditorMode>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(LIST_COLORS[0]);
@@ -138,7 +139,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
       {isPlacesLoading && <ContentLoading variant="saved-places" />}
       {!isPlacesLoading && pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => {
         const isOnRoute = isPlaceOnRoute(place);
-        return <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><button type="button" className="saved-place-focus" onClick={() => onPlaceSelect?.(place)} aria-label={place.name}><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></button><div className="saved-place-actions"><button className="saved-place-add-action" type="button" disabled={isOnRoute} onClick={(event) => { event.stopPropagation(); onAddToRoute(place); }} title={isOnRoute ? "이미 방문 장소에 추가됨" : "방문 장소에 추가"} aria-label={`${place.name} ${isOnRoute ? "이미 방문 장소에 추가됨" : "방문 장소에 추가"}`}><>{isOnRoute ? <Check size={16} /> : <MapPinPlus size={16} />}</><span>{isOnRoute ? "추가됨" : "추가"}</span></button><button type="button" onClick={(event) => { event.stopPropagation(); onDeletePlace(place.id); }} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>;
+        return <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><button type="button" className="saved-place-focus" onClick={() => onPlaceSelect?.(place)} aria-label={place.name}><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></button><div className="saved-place-actions"><button className={`saved-place-add-action${isOnRoute ? " is-on-route" : ""}`} type="button" onClick={(event) => { event.stopPropagation(); if (isOnRoute) onRemoveFromRoute(place); else onAddToRoute(place); }} title={isOnRoute ? "방문 장소에서 제거" : "방문 장소에 추가"} aria-label={`${place.name} ${isOnRoute ? "방문 장소에서 제거" : "방문 장소에 추가"}`}>{isOnRoute ? <><MapPinX size={16} /><span>제거</span></> : <><MapPinPlus size={16} /><span>추가</span></>}</button><button type="button" onClick={(event) => { event.stopPropagation(); onDeletePlace(place.id); }} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>;
       })}</ol>}
       {!isPlacesLoading && places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장한 장소가 없습니다.</p>}
       {!isPlacesLoading && places.length === 0 && <div className="list-empty-state list-empty-action-area"><p>아직 저장한 장소가 없습니다.</p><span>검색 결과의 저장 버튼으로 이 리스트에 장소를 모아보세요.</span><button type="button" onClick={onBrowsePlaces}><Search size={15} />장소 검색하기</button></div>}
