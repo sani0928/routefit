@@ -173,7 +173,7 @@ export default function Home() {
   }, [member.placeLists, saveTarget, savedPlacesByListId]);
 
   const triggerMobileNavigationHaptic = useCallback(() => {
-    navigator.vibrate?.(100);
+    navigator.vibrate?.(80);
   }, []);
 
   useEffect(() => () => {

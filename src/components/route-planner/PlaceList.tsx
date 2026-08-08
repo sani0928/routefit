@@ -560,6 +560,7 @@ export function PlaceList({
         <DragDropProvider
         sensors={sortableSensors}
         onDragStart={() => {
+          navigator.vibrate?.(80);
           if (dragReleaseTimeoutRef.current !== null) window.clearTimeout(dragReleaseTimeoutRef.current);
           didDragRef.current = true;
           setIsSorting(true);

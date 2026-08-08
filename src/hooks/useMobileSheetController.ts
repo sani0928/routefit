@@ -203,8 +203,9 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       const visibleHeight = Math.round(visualViewport?.height ?? window.innerHeight);
       // In iOS installed fullscreen mode, visualViewport can exclude the transparent
       // system-bar area while the layout viewport still occupies the full screen.
-      // Keep the sheet layout aligned with that full layout viewport; only the
-      // visual viewport should shrink when the keyboard is open.
+      // Keep the sheet geometry anchored to that full layout viewport. Shrinking the
+      // entire fixed layout with the keyboard makes Safari's own focus scrolling and
+      // the sheet expansion compete, which is most visible in the search field.
       const layoutViewportHeight = Math.round(Math.max(
         visibleHeight,
         window.innerHeight,
@@ -221,10 +222,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       const keyboardHeight = Math.max(0, layoutHeight - visibleHeight);
       const keyboardOpen = keyboardHeight >= KEYBOARD_OPEN_THRESHOLD;
       root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
-      // iOS already moves fixed elements above its keyboard. Repositioning them
-      // by the keyboard height causes a second, incorrect offset. Only switch
-      // the layout sizing basis to the visible viewport while typing.
-      root.style.setProperty("--mobile-layout-viewport-height", `${keyboardOpen ? visibleHeight : layoutHeight}px`);
+      root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
       root.style.setProperty("--mobile-keyboard-height", `${keyboardHeight}px`);
       root.toggleAttribute("data-mobile-keyboard-open", keyboardOpen);
     };
@@ -268,7 +266,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
 
   const prepareSearchFocus = useCallback(() => {
     if (!isMobileViewport()) return;
-    setMobileSheetState((current) => current === "peek" ? "expanded" : current);
+    setMobileSheetState("expanded");
   }, []);
 
   const canClaimDrag = useCallback((drag: MobileSheetDrag, direction: "up" | "down") => {
