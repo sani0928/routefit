@@ -189,13 +189,22 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
 
       const width = Math.round(visualViewport?.width ?? window.innerWidth);
       const visibleHeight = Math.round(visualViewport?.height ?? window.innerHeight);
+      // In iOS installed fullscreen mode, visualViewport can exclude the transparent
+      // system-bar area while the layout viewport still occupies the full screen.
+      // Keep the sheet layout aligned with that full layout viewport; only the
+      // visual viewport should shrink when the keyboard is open.
+      const layoutViewportHeight = Math.round(Math.max(
+        visibleHeight,
+        window.innerHeight,
+        document.documentElement.clientHeight,
+      ));
       const viewportChanged = stableViewportRef.current.width !== width;
 
-      if (viewportChanged || visibleHeight > stableViewportRef.current.height) {
-        stableViewportRef.current = { width, height: visibleHeight };
+      if (viewportChanged || layoutViewportHeight > stableViewportRef.current.height) {
+        stableViewportRef.current = { width, height: layoutViewportHeight };
       }
 
-      const layoutHeight = stableViewportRef.current.height || visibleHeight;
+      const layoutHeight = stableViewportRef.current.height || layoutViewportHeight;
       const keyboardHeight = Math.max(0, layoutHeight - visibleHeight);
       root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
       root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
