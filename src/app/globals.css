@@ -1607,7 +1607,6 @@
   :root {
     --mobile-visual-viewport-height: 100dvh;
     --mobile-layout-viewport-height: 100dvh;
-    --mobile-keyboard-height: 0px;
     --mobile-sheet-visible-handle: 44px;
   }
 

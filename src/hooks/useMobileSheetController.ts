@@ -193,7 +193,6 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       if (!mediaQuery.matches) {
         root.style.removeProperty("--mobile-visual-viewport-height");
         root.style.removeProperty("--mobile-layout-viewport-height");
-        root.style.removeProperty("--mobile-keyboard-height");
         root.removeAttribute("data-mobile-keyboard-open");
         stableViewportRef.current = { width: 0, height: 0 };
         return;
@@ -223,7 +222,6 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       const keyboardOpen = keyboardHeight >= KEYBOARD_OPEN_THRESHOLD;
       root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
       root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
-      root.style.setProperty("--mobile-keyboard-height", `${keyboardHeight}px`);
       root.toggleAttribute("data-mobile-keyboard-open", keyboardOpen);
     };
 
@@ -242,7 +240,6 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       else legacyMediaQuery.removeListener(syncVisibleViewport);
       root.style.removeProperty("--mobile-visual-viewport-height");
       root.style.removeProperty("--mobile-layout-viewport-height");
-      root.style.removeProperty("--mobile-keyboard-height");
       root.removeAttribute("data-mobile-keyboard-open");
     };
   }, []);
