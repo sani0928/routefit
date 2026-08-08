@@ -84,6 +84,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const dragRef = useRef<MobileSheetDrag | null>(null);
   const dragPreviewClearFrameRef = useRef<number | null>(null);
   const stableViewportRef = useRef({ width: 0, height: 0 });
+  const keyboardOffsetSheetRef = useRef<HTMLElement | null>(null);
 
   const dragPreviewFrameRef = useRef<number | null>(null);
   const pendingDragPreviewHeightRef = useRef<number | null>(null);
@@ -189,8 +190,38 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     const root = document.documentElement;
     const visualViewport = window.visualViewport;
 
+    const clearKeyboardSheetOffset = () => {
+      const sheet = keyboardOffsetSheetRef.current;
+      if (!sheet) return;
+      sheet.style.removeProperty("--mobile-keyboard-sheet-offset");
+      sheet.removeAttribute("data-mobile-keyboard-sheet-offset");
+      keyboardOffsetSheetRef.current = null;
+    };
+
+    const syncKeyboardSheetOffset = (keyboardOpen: boolean, layoutHeight: number) => {
+      clearKeyboardSheetOffset();
+      if (!keyboardOpen) return;
+
+      const activeElement = document.activeElement;
+      if (!(activeElement instanceof HTMLElement)) return;
+
+      const sheet = activeElement.closest<HTMLElement>(".planner-panel.mobile-sheet-panel, .result-panel.mobile-sheet-panel, .map-list-manager");
+      if (!sheet?.closest(".app-shell.mobile-sheet-expanded")) return;
+
+      const navigationHeight = document.querySelector<HTMLElement>(".mobile-bottom-nav")?.getBoundingClientRect().height ?? 64;
+      const { expanded } = getMobileSheetStageHeights(layoutHeight, navigationHeight);
+      const expectedTop = layoutHeight - navigationHeight - expanded;
+      const offset = Math.max(0, Math.round(expectedTop - sheet.getBoundingClientRect().top));
+      if (offset < 2) return;
+
+      sheet.style.setProperty("--mobile-keyboard-sheet-offset", `${offset}px`);
+      sheet.setAttribute("data-mobile-keyboard-sheet-offset", "");
+      keyboardOffsetSheetRef.current = sheet;
+    };
+
     const syncVisibleViewport = () => {
       if (!mediaQuery.matches) {
+        clearKeyboardSheetOffset();
         root.style.removeProperty("--mobile-visual-viewport-height");
         root.style.removeProperty("--mobile-layout-viewport-height");
         root.removeAttribute("data-mobile-keyboard-open");
@@ -223,12 +254,14 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
       root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
       root.toggleAttribute("data-mobile-keyboard-open", keyboardOpen);
+      window.requestAnimationFrame(() => syncKeyboardSheetOffset(keyboardOpen, layoutHeight));
     };
 
     syncVisibleViewport();
     visualViewport?.addEventListener("resize", syncVisibleViewport);
     visualViewport?.addEventListener("scroll", syncVisibleViewport);
     window.addEventListener("resize", syncVisibleViewport);
+    document.addEventListener("focusin", syncVisibleViewport);
     if ("addEventListener" in mediaQuery) mediaQuery.addEventListener("change", syncVisibleViewport);
     else legacyMediaQuery.addListener(syncVisibleViewport);
 
@@ -236,6 +269,8 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       visualViewport?.removeEventListener("resize", syncVisibleViewport);
       visualViewport?.removeEventListener("scroll", syncVisibleViewport);
       window.removeEventListener("resize", syncVisibleViewport);
+      document.removeEventListener("focusin", syncVisibleViewport);
+      clearKeyboardSheetOffset();
       if ("removeEventListener" in mediaQuery) mediaQuery.removeEventListener("change", syncVisibleViewport);
       else legacyMediaQuery.removeListener(syncVisibleViewport);
       root.style.removeProperty("--mobile-visual-viewport-height");
