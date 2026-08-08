@@ -28,6 +28,7 @@ const MOBILE_QUERY = "(max-width: 700px)";
 const DRAG_CLAIM_DISTANCE = 10;
 const DRAG_COMMIT_DISTANCE = 42;
 const HANDLE_TAP_DISTANCE = 18;
+const KEYBOARD_OPEN_THRESHOLD = 120;
 
 function getIosStandaloneScreenHeight() {
   const iosNavigator = navigator as Navigator & { standalone?: boolean };
@@ -40,7 +41,10 @@ function getIosStandaloneScreenHeight() {
 
 function getSheetStageHeights() {
   const root = document.documentElement;
-  const layoutViewportHeight = Number.parseFloat(root.style.getPropertyValue("--mobile-layout-viewport-height")) || window.innerHeight;
+  const viewportVariable = root.hasAttribute("data-mobile-keyboard-open")
+    ? "--mobile-visual-viewport-height"
+    : "--mobile-layout-viewport-height";
+  const layoutViewportHeight = Number.parseFloat(root.style.getPropertyValue(viewportVariable)) || window.innerHeight;
   const navHeight = document.querySelector<HTMLElement>(".mobile-bottom-nav")?.getBoundingClientRect().height ?? 64;
   return getMobileSheetStageHeights(layoutViewportHeight, navHeight);
 }
@@ -193,6 +197,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
         root.style.removeProperty("--mobile-visual-viewport-height");
         root.style.removeProperty("--mobile-layout-viewport-height");
         root.style.removeProperty("--mobile-keyboard-height");
+        root.removeAttribute("data-mobile-keyboard-open");
         stableViewportRef.current = { width: 0, height: 0 };
         return;
       }
@@ -220,6 +225,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
       root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
       root.style.setProperty("--mobile-keyboard-height", `${keyboardHeight}px`);
+      root.toggleAttribute("data-mobile-keyboard-open", keyboardHeight >= KEYBOARD_OPEN_THRESHOLD);
     };
 
     syncVisibleViewport();
@@ -238,6 +244,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       root.style.removeProperty("--mobile-visual-viewport-height");
       root.style.removeProperty("--mobile-layout-viewport-height");
       root.style.removeProperty("--mobile-keyboard-height");
+      root.removeAttribute("data-mobile-keyboard-open");
     };
   }, []);
 
@@ -274,6 +281,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
 
   const beginDrag = useCallback((input: Omit<MobileSheetDrag, "claimed" | "scrollContainers" | "startHeight"> & { target: EventTarget | null; sheet: HTMLElement }) => {
     if (!isMobileViewport()) return;
+    if (document.documentElement.hasAttribute("data-mobile-keyboard-open")) return;
     if (!input.fromHandle && input.sheetState !== "peek" && isInteractiveTarget(input.target)) return;
 
     dragRef.current = {

@@ -119,7 +119,7 @@ export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, o
     <label className="sr-only" htmlFor="search">장소 또는 주소 검색</label>
     <div className="search-control">
       <div className={`search-input-row ${feedback !== "idle" ? `search-feedback ${feedback}` : ""}`}>
-        <input id="search" value={query} onPointerDown={() => onSearchPointerDown?.()} onFocus={() => { setExpanded(true); onSearchFocus?.(); }} onChange={(event) => { setQuery(event.target.value); setExpanded(true); }} placeholder="장소, 주소 검색" autoComplete="off" aria-expanded={isExpanded && results.length > 0} aria-controls="place-search-results" />
+        <input id="search" value={query} onPointerDown={() => onSearchPointerDown?.()} onFocus={() => { setExpanded(true); onSearchFocus?.(); }} onBlur={() => { if (!query.trim()) clearSearch(); }} onChange={(event) => { setQuery(event.target.value); setExpanded(true); }} placeholder="장소, 주소 검색" autoComplete="off" aria-expanded={isExpanded && results.length > 0} aria-controls="place-search-results" />
         {(query || showClearAction) && <button className="search-clear" type="button" aria-label="검색 결과 닫기" onClick={clearSearch}><X size={16} /></button>}
         <button className="search-submit" type="submit" aria-label="전체 검색 결과 보기" disabled={query.trim().length < 2 || loading}><Search size={18} /></button>
       </div>
