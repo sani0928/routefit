@@ -10,10 +10,12 @@ import { routeColor } from "@/lib/route-colors";
 type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
 type MapFocusPlace = Pick<MapPlace, "latitude" | "longitude">;
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; }
+type MarkerPopupPlace = Pick<MapPlace, "name" | "latitude" | "longitude"> & { id?: string; providerId?: string };
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListPlaceRemove?: (place: MapPlace) => void; isListPlaceAdded?: (place: MapPlace) => boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 const MOBILE_SHEET_SETTLE_DURATION_MS = 380;
+const markerPopupKey = (scope: string, place: MarkerPopupPlace) => `${scope}:${place.id ?? place.providerId ?? place.name}:${place.latitude}:${place.longitude}`;
 
 function getMobileMapInsets(mapNode: HTMLElement | null, preferredSheetId?: string) {
   const mapRect = mapNode?.getBoundingClientRect();
@@ -106,7 +108,7 @@ function getPathFocusTarget(map: naver.maps.Map, path: [number, number][], margi
 
   return { center: projection.fromPointToCoord(centerPoint), zoom };
 }
-function createPlaceInfoContent(place: MapPlace, onAdd?: () => void) {
+function createPlaceInfoContent(place: MapPlace, action?: { label: string; onClick: () => void; className?: string }) {
   const container = document.createElement("div");
   container.className = "nearby-place-popup map-place-popup";
   const name = document.createElement("strong");
@@ -116,13 +118,13 @@ function createPlaceInfoContent(place: MapPlace, onAdd?: () => void) {
   address.className = "map-place-popup-address";
   address.textContent = place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`;
   container.append(name, address);
-  if (onAdd) {
-    const addButton = document.createElement("button");
-    addButton.type = "button";
-    addButton.className = "current-location-start";
-    addButton.textContent = "방문 장소에 추가";
-    addButton.addEventListener("click", onAdd);
-    container.append(addButton);
+  if (action) {
+    const actionButton = document.createElement("button");
+    actionButton.type = "button";
+    actionButton.className = `current-location-start${action.className ? ` ${action.className}` : ""}`;
+    actionButton.textContent = action.label;
+    actionButton.addEventListener("click", action.onClick);
+    container.append(actionButton);
   }
   return container;
 }
@@ -142,7 +144,7 @@ function createCurrentLocationPopupContent(address?: string) {
   return container;
 }
 
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
@@ -155,12 +157,15 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   const popupRef = useRef<naver.maps.InfoWindow | null>(null);
   const requestIdRef = useRef(0);
   const popupOpenRef = useRef(false);
+  const popupMarkerKeyRef = useRef<string | null>(null);
   const selectRef = useRef(onMapPlaceSelect);
   const segmentSelectRef = useRef(onSegmentSelect);
   const currentLocationUpdateRef = useRef(onCurrentLocationUpdate);
   const trackingChangeRef = useRef(onCurrentLocationTrackingChange);
   const errorRef = useRef(onMapError);
   const listAddRef = useRef(onListPlaceAdd);
+  const listRemoveRef = useRef(onListPlaceRemove);
+  const isListPlaceAddedRef = useRef(isListPlaceAdded);
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
   const [mapInitialized, setMapInitialized] = useState(false);
   const zoomBy = useCallback((amount: number) => {
@@ -236,6 +241,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         if (!coordinates || !map) return;
 
         const markerPosition = new window.naver.maps.LatLng(coordinates.latitude, coordinates.longitude);
+        popupMarkerKeyRef.current = null;
         popupRef.current?.setContent(createCurrentLocationPopupContent(currentLocationAddressRef.current ?? undefined));
         popupRef.current?.setPosition(markerPosition);
         popupRef.current?.open(map, markerPosition);
@@ -280,7 +286,9 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     trackingChangeRef.current = onCurrentLocationTrackingChange;
     errorRef.current = onMapError;
     listAddRef.current = onListPlaceAdd;
-  }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, onListPlaceAdd]);
+    listRemoveRef.current = onListPlaceRemove;
+    isListPlaceAddedRef.current = isListPlaceAdded;
+  }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded]);
 
   useEffect(() => {
     if (!mapInitialized || currentLocationActive) return;
@@ -369,6 +377,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         const latitude = coordinate.lat();
         const longitude = coordinate.lng();
         const requestId = ++requestIdRef.current;
+        popupMarkerKeyRef.current = null;
         popupRef.current?.setContent(createPopupContent());
         popupRef.current?.setPosition(coordinate);
         popupRef.current?.open(map, coordinate);
@@ -393,6 +402,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
           if (requestId !== requestIdRef.current) return;
           popupRef.current?.close();
           popupOpenRef.current = false;
+          popupMarkerKeyRef.current = null;
           errorRef.current(reason instanceof Error ? reason.message : "주변 장소를 찾지 못했습니다.");
         }
       };
@@ -422,13 +432,14 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
           requestIdRef.current += 1;
           popupRef.current?.close();
           popupOpenRef.current = false;
+          popupMarkerKeyRef.current = null;
         }
       });
     };
     const script = document.createElement("script");
     script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`;
     script.async = true; script.onload = init; document.head.appendChild(script);
-    return () => { resizeObserver?.disconnect(); if (syncMapSize) window.removeEventListener("resize", syncMapSize); if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame); script.remove(); popupRef.current?.close(); currentLocationMarkerRef.current?.setMap(null); currentLocationMarkerRef.current = null; popupRef.current = null; popupOpenRef.current = false; setMapInitialized(false); mapRef.current = null; };
+    return () => { resizeObserver?.disconnect(); if (syncMapSize) window.removeEventListener("resize", syncMapSize); if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame); script.remove(); popupRef.current?.close(); currentLocationMarkerRef.current?.setMap(null); currentLocationMarkerRef.current = null; popupRef.current = null; popupOpenRef.current = false; popupMarkerKeyRef.current = null; setMapInitialized(false); mapRef.current = null; };
   }, [clientId]);
 
   useEffect(() => {
@@ -436,6 +447,13 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     overlays.current.forEach((overlay) => overlay.setMap(null)); overlays.current = [];
     const isSearchResults = searchResults !== undefined;
     const markerPlaces = searchResults ?? listPlaces ?? places.filter((place) => !place.isCurrentLocation);
+    const markerScope = isSearchResults ? "search" : listPlaces ? `list:${listPlaces.map((place) => place.id).join("|")}` : "route";
+    const visibleMarkerPopupKeys = new Set(markerPlaces.map((place) => markerPopupKey(markerScope, place)));
+    if (popupMarkerKeyRef.current && !visibleMarkerPopupKeys.has(popupMarkerKeyRef.current)) {
+      popupRef.current?.close();
+      popupOpenRef.current = false;
+      popupMarkerKeyRef.current = null;
+    }
     const first = markerPlaces[0] ?? { latitude: CENTER.latitude, longitude: CENTER.longitude };
     const initial = new window.naver.maps.LatLng(first.latitude, first.longitude);
     const bounds = new window.naver.maps.LatLngBounds(initial, initial);
@@ -455,10 +473,36 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}"${markerStyle}>${label}</div>`, anchor: new window.naver.maps.Point(16, 16) } });
       window.naver.maps.Event.addListener(marker, "click", () => {
         requestIdRef.current += 1;
-        popupRef.current?.setContent(createPlaceInfoContent(place, listColor ? () => listAddRef.current?.({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude }) : undefined));
+        const popupPlace = { name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude };
+        const popupKey = markerPopupKey(markerScope, place);
+        const isAddedToRoute = Boolean(listPlaces && isListPlaceAddedRef.current?.(popupPlace));
+        const action = listPlaces
+          ? isAddedToRoute
+            ? {
+              label: "방문 장소에서 제거",
+              className: "map-place-popup-remove",
+              onClick: () => {
+                listRemoveRef.current?.(popupPlace);
+                popupRef.current?.close();
+                popupOpenRef.current = false;
+                popupMarkerKeyRef.current = null;
+              },
+            }
+            : {
+              label: "방문 장소에 추가",
+              onClick: () => {
+                listAddRef.current?.(popupPlace);
+                popupRef.current?.close();
+                popupOpenRef.current = false;
+                popupMarkerKeyRef.current = null;
+              },
+            }
+          : undefined;
+        popupRef.current?.setContent(createPlaceInfoContent(popupPlace, action));
         popupRef.current?.setPosition(position);
         popupRef.current?.open(map, position);
         popupOpenRef.current = true;
+        popupMarkerKeyRef.current = popupKey;
       });
       overlays.current.push(marker);
     });
@@ -536,11 +580,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     if (!map || !window.naver || !listPlaces || listPlaces.length === 0 || focusedPlace) return;
 
     const first = listPlaces[0];
-    const bounds = new window.naver.maps.LatLngBounds(
-      new window.naver.maps.LatLng(first.latitude, first.longitude),
-      new window.naver.maps.LatLng(first.latitude, first.longitude),
-    );
-    listPlaces.forEach((place) => bounds.extend(new window.naver.maps.LatLng(place.latitude, place.longitude)));
 
     const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
     const placesKey = listPlaces.map((place) => `${place.id}:${place.latitude}:${place.longitude}`).join("|");
@@ -561,7 +600,14 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         if (map.getZoom() === target.zoom) map.panTo(target.center, transition);
         else map.morph(target.center, target.zoom, transition);
       } else if (!isMobileMap) {
-        map.fitBounds(bounds, { top: 48, right: 48, bottom: 48, left: 48 });
+        const target = getPathFocusTarget(
+          map,
+          listPlaces.map((place) => [place.longitude, place.latitude]),
+          { top: 48, right: 48, bottom: 48, left: 48 },
+        );
+        const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+        if (map.getZoom() === target.zoom) map.panTo(target.center, transition);
+        else map.morph(target.center, target.zoom, transition);
       } else {
         const target = getPathFocusTarget(
           map,

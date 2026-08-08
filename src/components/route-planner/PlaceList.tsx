@@ -76,7 +76,7 @@ function SortablePlaceItem({
   onMobileInputFocus,
 }: SortablePlaceItemProps) {
   const mobileReorderDisabled = isMobileViewportActive && !mobileSheetExpanded;
-  const dragDisabled = isDestination || mobileReorderDisabled;
+  const dragDisabled = mobileReorderDisabled;
   const { ref, handleRef, isDragging, isDropTarget } = useSortable({
     id: place.id,
     index,
@@ -133,6 +133,16 @@ function SortablePlaceItem({
 
   function applyStayStep(delta: number) {
     latestStayDurationChangeRef.current(place.id, delta);
+  }
+
+  function focusAfterSheetExpansion(event: ReactPointerEvent<HTMLInputElement>) {
+    event.stopPropagation();
+    onMobileInputFocus?.();
+    if (!isMobileViewportActive) return;
+
+    event.preventDefault();
+    const input = event.currentTarget;
+    window.requestAnimationFrame(() => input.focus({ preventScroll: true }));
   }
 
   function clearStayStepHold() {
@@ -204,7 +214,7 @@ function SortablePlaceItem({
       onPointerCancelCapture={() => { swipeStartRef.current = null; }}
     >
       <div
-        className={`place-item draggable${place.isCurrentLocation ? " current-location-stop" : ""}${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isSelected ? " selected-place" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}${mobileSwipe ? ` mobile-swipe-${mobileSwipe}` : ""}`}
+        className={`place-item draggable${place.isCurrentLocation ? " current-location-stop" : ""}${isStart ? " start-stop" : ""}${isDestination ? " destination-stop" : ""}${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isSelected ? " selected-place" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}${mobileSwipe ? ` mobile-swipe-${mobileSwipe}` : ""}`}
 
         onClick={(event) => {
           if (swipeHandledRef.current) {
@@ -217,7 +227,7 @@ function SortablePlaceItem({
           onCardClick(event, place);
         }}
       >
-        <span ref={dragDisabled ? undefined : handleRef} className={`drag-handle${isDestination ? " placeholder" : ""}${mobileReorderDisabled ? " disabled" : ""}`} aria-label={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"} title={isDestination ? "도착지는 순서를 변경할 수 없습니다." : "드래그하여 순서 변경"}>⠿</span>
+        <span ref={dragDisabled ? undefined : handleRef} className={`drag-handle${mobileReorderDisabled ? " disabled" : ""}`} aria-label="드래그하여 순서 변경" title="드래그하여 순서 변경">⠿</span>
         <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{index + 1}</div>
         <div className="place-main">
           <strong>{place.name}</strong>
@@ -314,7 +324,7 @@ function SortablePlaceItem({
                 inputMode="numeric"
                 aria-label="머무는 시간(분)"
                 value={stayInput}
-                onPointerDown={(event) => { event.stopPropagation(); onMobileInputFocus?.(); }}
+                onPointerDown={focusAfterSheetExpansion}
                 onFocus={() => onMobileInputFocus?.()}
                 onChange={(event) => setStayInput(event.target.value)}
                 onBlur={commitStayDuration}
@@ -369,7 +379,7 @@ function SortablePlaceItem({
       {canSetStayDuration && (
         <div className="mobile-swipe-stay-tray" inert={mobileSwipe !== "stay"}>
           <button type="button" aria-label="머무는 시간 5분 줄이기" onPointerDown={(event) => startStayStepHold(event, -5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(-5); }}>−</button>
-          <input type="number" min="0" max="1440" step="1" inputMode="numeric" aria-label="머무는 시간(분)" value={stayInput} onPointerDown={(event) => { event.stopPropagation(); onMobileInputFocus?.(); }} onFocus={() => onMobileInputFocus?.()} onChange={(event) => setStayInput(event.target.value)} onBlur={commitStayDuration} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
+          <input type="number" min="0" max="1440" step="1" inputMode="numeric" aria-label="머무는 시간(분)" value={stayInput} onPointerDown={focusAfterSheetExpansion} onFocus={() => onMobileInputFocus?.()} onChange={(event) => setStayInput(event.target.value)} onBlur={commitStayDuration} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
           <span aria-hidden="true">분</span>
           <button type="button" aria-label="머무는 시간 5분 늘리기" onPointerDown={(event) => startStayStepHold(event, 5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(5); }}>+</button>
         </div>
@@ -585,8 +595,8 @@ export function PlaceList({
         <ol className={`place-list${isSorting ? " dnd-sorting" : ""}`}>
           {places.map((place, index) => {
             const isStart = index === 0;
-            const isDestination = !returnToStart && index === places.length - 1;
-            const canSetStayDuration = !place.isCurrentLocation && !isStart && !isDestination;
+            const isDestination = !returnToStart && places.length > 1 && index === places.length - 1;
+            const canSetStayDuration = !place.isCurrentLocation && !isStart;
 
             return (
               <SortablePlaceItem

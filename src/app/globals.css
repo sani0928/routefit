@@ -10,6 +10,8 @@
 .result-panel { background:#f6f8fc; padding:20px 16px; }
 .route-summary-panel { width:100%; color:#172033; }
 .result-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.result-header-leading { display:flex; min-width:0; align-items:center; gap:8px; }
+.route-summary-clear { display:none; }
 .result-eyebrow { display:flex; align-items:center; gap:7px; color:#537092; font-size:.71rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
 .status-orb { width:8px; height:8px; border-radius:50%; background:#b8c5d6; box-shadow:0 0 0 4px #e5ebf3; }
 .status-orb.success { background:#22c55e; box-shadow:0 0 0 4px #dcfce7; }
@@ -52,10 +54,10 @@
 .planner-panel .place-list { gap:8px; margin:12px 0 0; }
 .planner-panel .place-item { gap:8px; padding:10px; border-color:#e7edf5; border-radius:12px; background:#fff; box-shadow:0 2px 5px #0f172a05; }
 .planner-panel .place-item:hover { border-color:#cfdcf0; }
-.planner-panel .place-item.return-stop { border-color:#fee2e2; background:linear-gradient(135deg,#fffafa,#fff5f5); box-shadow:none; }
-.planner-panel .place-item.current-location-stop { border-color:#bbebcf; background:linear-gradient(135deg,#f4fdf7,#ecfdf3); box-shadow:none; }
-.planner-panel .place-item.current-location-stop .place-main > strong { color:#166534; }
-.planner-panel .place-item.current-location-stop,
+.planner-panel .place-item.return-stop,.planner-panel .place-item.destination-stop { border-color:#fee2e2; background:linear-gradient(135deg,#fffafa,#fff5f5); box-shadow:none; }
+.planner-panel .place-item.start-stop { border-color:#bbebcf; background:linear-gradient(135deg,#f4fdf7,#ecfdf3); box-shadow:none; }
+.planner-panel .place-item.start-stop .place-main > strong { color:#166534; }
+.planner-panel .place-item.start-stop,
 .planner-panel .place-item.return-stop { position:relative; }
 .planner-panel .place-badge { width:24px; height:24px; flex-basis:24px; font-size:.68rem; }
 .planner-panel .place-main input { color:#263449; font-size:.84rem; }
@@ -249,6 +251,8 @@
 .planner-panel .place-item.draggable .drag-handle { cursor:grab; }
 .current-location-start { width:100%; margin-top:10px; padding:8px 10px; border:1px solid #c8daf7; border-radius:8px; color:#2563eb; background:#f4f8ff; font-size:.68rem; font-weight:800; transition:background-color .16s ease,border-color .16s ease; }
 .current-location-start:hover { border-color:#9fbeed; background:#eaf2ff; }
+.current-location-start.map-place-popup-remove { border-color:#f8c7c9; color:#dc2626; background:#fff7f7; }
+.current-location-start.map-place-popup-remove:hover { border-color:#f59da2; background:#fff1f2; }
 
 /* Mobile maps need an explicit viewport height for their 100%-height container. */
 @media (max-width:700px) {
@@ -836,6 +840,13 @@
   height:54px;
   min-height:54px;
 }
+
+/* Desktop collections use the same comfortable scroll area as the visit-place panel. */
+@media (min-width:701px) {
+  .planner-panel .map-list-manager {
+    height:clamp(300px,calc(100dvh - 285px),570px);
+  }
+}
 /* Inline stay-time editor: replace card actions without changing the card footprint. */
 .planner-panel .place-item.editing-stay {
   border-color:#a9c8fb;
@@ -1287,6 +1298,42 @@
   .result-panel.mobile-sheet-panel { overflow-y:auto; overscroll-behavior:contain; }
   .result-panel.mobile-sheet-panel .route-summary-empty { min-height:0; }
   .result-panel.mobile-sheet-panel .route-summary-panel { padding-bottom:10px; }
+  .result-panel.mobile-sheet-panel .result-header {
+    display:grid;
+    min-height:32px;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    gap:8px;
+  }
+  .result-panel.mobile-sheet-panel .result-header-leading { display:contents; }
+  .result-panel.mobile-sheet-panel .result-header.result-status-header { grid-template-columns:1fr; }
+  .result-panel.mobile-sheet-panel .route-summary-clear {
+    display:inline-flex;
+    min-height:32px;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    padding:6px 8px;
+    border:1px solid #d7e3f0;
+    border-radius:9px;
+    color:#5b718b;
+    background:#fff;
+    box-shadow:0 3px 9px #0f172a0d;
+    font-size:.64rem;
+    font-weight:800;
+    transition:border-color .18s ease,color .18s ease,background .18s ease;
+  }
+  .result-panel.mobile-sheet-panel .result-header .result-eyebrow {
+    position:static;
+    justify-self:center;
+    white-space:nowrap;
+  }
+  .result-panel.mobile-sheet-panel .result-header.result-status-header .result-eyebrow { grid-column:1; }
+  .result-panel.mobile-sheet-panel .route-summary-clear svg { width:14px; height:14px; }
+  .result-panel.mobile-sheet-panel .route-summary-clear.is-pending {
+    border-color:#f3c48d;
+    color:#b45309;
+    background:#fffbeb;
+  }
 
   .map-list-manager {
     top:auto;
@@ -4822,6 +4869,43 @@
 }
 
 @media (min-width:701px) {
+  .result-header {
+    display:grid;
+    min-height:32px;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    gap:8px;
+  }
+  .result-header-leading { display:contents; }
+  .result-panel .route-summary-clear {
+    display:inline-flex;
+    min-height:32px;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    padding:6px 8px;
+    border:1px solid #d7e3f0;
+    border-radius:9px;
+    color:#5b718b;
+    background:#fff;
+    box-shadow:0 3px 9px #0f172a0d;
+    font-size:.64rem;
+    font-weight:800;
+    transition:border-color .18s ease,color .18s ease,background .18s ease;
+  }
+  .result-panel .route-summary-clear svg { width:14px; height:14px; }
+  .result-panel .route-summary-clear.is-pending {
+    border-color:#f3c48d;
+    color:#b45309;
+    background:#fffbeb;
+  }
+  .result-header .result-eyebrow {
+    justify-self:center;
+    white-space:nowrap;
+  }
+  .result-header.result-status-header { grid-template-columns:1fr; }
+  .result-header.result-status-header .result-eyebrow { grid-column:1; }
+
   .planner-panel .naver-search-form:has(.search-list-toggle) {
     display:flex;
     align-items:center;

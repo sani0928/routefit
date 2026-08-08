@@ -69,9 +69,9 @@ function distanceInMeters(first: LocationCoordinates, second: LocationCoordinate
   return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function isFixedOrderValid(fixed: FixedVisitOrder, items: Place[], returnToStart: boolean) {
+function isFixedOrderValid(fixed: FixedVisitOrder, items: Place[]) {
   const index = items.findIndex((place) => place.id === fixed.placeId);
-  return index > 0 && (returnToStart || index < items.length - 1) && fixed.visitOrder >= 2 && fixed.visitOrder <= items.length;
+  return index > 0 && fixed.visitOrder >= 2 && fixed.visitOrder <= items.length;
 }
 
 type MobileSheetHandleProps = {
@@ -173,7 +173,7 @@ export default function Home() {
   }, [member.placeLists, saveTarget, savedPlacesByListId]);
 
   const triggerMobileNavigationHaptic = useCallback(() => {
-    navigator.vibrate?.(80);
+    navigator.vibrate?.(55);
   }, []);
 
   useEffect(() => () => {
@@ -240,7 +240,7 @@ export default function Home() {
     return () => document.removeEventListener("visibilitychange", flushWorkspace);
   }, [memberStateReady, member.authenticated, workspaceRestored, returnToStart, places, fixedVisitOrders, persistWorkspace]);
   useEffect(() => {
-    const next = fixedVisitOrders.flatMap((fixed) => isFixedOrderValid(fixed, places, returnToStart)
+    const next = fixedVisitOrders.flatMap((fixed) => isFixedOrderValid(fixed, places)
       ? [{ ...fixed, visitOrder: places.findIndex((place) => place.id === fixed.placeId) + 1 }]
       : []);
 
@@ -250,7 +250,7 @@ export default function Home() {
     if (JSON.stringify(next) !== JSON.stringify(fixedVisitOrders)) {
       setFixedVisitOrders(next);
     }
-  }, [places, returnToStart, fixedVisitOrders]);
+  }, [places, fixedVisitOrders]);
   useEffect(() => {
     if (!listManagerOpen || !selectedListId || savedPlacesByListId[selectedListId]) return;
     let cancelled = false;
@@ -379,21 +379,11 @@ export default function Home() {
   function reorderPlace(id: string, destinationIndex: number) {
     setPlaces((current) => {
       const sourceIndex = current.findIndex((place) => place.id === id);
-      const hasFixedDestination = !returnToStart;
-      const destinationPlaceIndex = current.length - 1;
-
-      // 현재 위치는 항상 출발지이며, 복귀하지 않는 경로의 마지막 장소는 도착지다.
-      // 두 역할은 수동 정렬로 변경되지 않도록 드래그 시작과 삽입 단계에서 모두 보호한다.
-      if (
-        sourceIndex < 0
-        || (hasFixedDestination && sourceIndex === destinationPlaceIndex)
-      ) return current;
+      if (sourceIndex < 0) return current;
 
       const next = [...current];
       const [moved] = next.splice(sourceIndex, 1);
-      const minimumInsertionIndex = 0;
-      const maximumInsertionIndex = hasFixedDestination ? next.length - 1 : next.length;
-      const insertionIndex = Math.max(minimumInsertionIndex, Math.min(destinationIndex, maximumInsertionIndex));
+      const insertionIndex = Math.max(0, Math.min(destinationIndex, next.length));
 
       if (sourceIndex === insertionIndex) return current;
       next.splice(insertionIndex, 0, moved);
@@ -414,7 +404,6 @@ export default function Home() {
   }
   function setReturn(value: boolean) {
     setReturnToStart(value);
-    if (!value) setPlaces((current) => current.map((place, index) => index === current.length - 1 ? { ...place, stayDurationMinutes: 0 } : place));
     markRouteStale();
   }
   function removePlace(id: string) { if (places.some((place) => place.id === id && place.isCurrentLocation)) setCurrentLocationLocating(false); setPlaces((current) => normalizePlaceRoles(current.filter((place) => place.id !== id))); markRouteStale(); }
@@ -510,7 +499,7 @@ export default function Home() {
   async function deleteList(id: string) {
     const previous = member.placeLists.find((list) => list.id === id);
     const previousPlaces = savedPlacesByListId[id];
-    if (!previous || !confirm("Delete this list and its saved places?")) return;
+    if (!previous) return;
     setMember((current) => ({ ...current, placeLists: current.placeLists.filter((list) => list.id !== id) }));
     setSavedPlacesByListId((current) => { const next = { ...current }; delete next[id]; return next; });
     setSelectedListId((current) => current === id ? null : current);
@@ -603,11 +592,19 @@ export default function Home() {
     return addResult;
   }
 
-  function removeSavedPlaceFromRoute(place: SavedPlace) {
+  function isListPlaceAddedToRoute(place: PlaceInput) {
+    return places.some((candidate) => !candidate.isCurrentLocation && Math.abs(candidate.latitude - place.latitude) < 0.000001 && Math.abs(candidate.longitude - place.longitude) < 0.000001);
+  }
+
+  function removeListPlaceFromRoute(place: PlaceInput) {
     const routePlace = places.find((candidate) => !candidate.isCurrentLocation && Math.abs(candidate.latitude - place.latitude) < 0.000001 && Math.abs(candidate.longitude - place.longitude) < 0.000001);
     if (!routePlace) return;
     removePlace(routePlace.id);
     notify.info("방문 장소에서 제거되었습니다.");
+  }
+
+  function removeSavedPlaceFromRoute(place: SavedPlace) {
+    removeListPlaceFromRoute(place);
   }
   function closeListManager() { setListManagerOpen(false); setSelectedListId(null); setFocusedSavedPlace(null); }
 
@@ -766,6 +763,16 @@ export default function Home() {
     setRouteOptionHint(null);
   }
 
+  function clearRouteResult() {
+    setHoveredSegmentIndex(null);
+    setSelectedSegmentIndex(null);
+    setResult(null);
+    setResultSnapshot(null);
+    setRouteNeedsRecalculation(false);
+    setStatus("IDLE");
+    calculatedCurrentLocationRef.current = null;
+  }
+
   function handleMapSegmentSelect(index: number) {
     setHoveredSegmentIndex(null);
     setSelectedSegmentIndex((current) => current === index ? null : index);
@@ -922,8 +929,10 @@ export default function Home() {
           onCurrentLocationTrackingChange={handleCurrentLocationTrackingChange}
           onMapError={notify.error}
           listPlaces={mapListPlaces}
-            onListPlaceAdd={addPlace}
-            focusedPlace={focusedSavedPlace}
+          onListPlaceAdd={addPlace}
+          onListPlaceRemove={removeListPlaceFromRoute}
+          isListPlaceAdded={isListPlaceAddedToRoute}
+          focusedPlace={focusedSavedPlace}
           focusedPlaceRequestId={focusedSavedPlaceRequest}
           searchResults={showSearchResultMarkers ? searchMapResults : undefined}
           focusedSearchResult={focusedSearchResult}
@@ -961,7 +970,7 @@ export default function Home() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} routeOption={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status) ? routeOption : result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} />
+            <RouteSummary result={result} routeOption={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status) ? routeOption : result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
