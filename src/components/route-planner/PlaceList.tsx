@@ -3,7 +3,7 @@
 import { DragDropProvider, KeyboardSensor, PointerSensor } from "@dnd-kit/react";
 import { PointerActivationConstraints } from "@dnd-kit/dom";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { Clock3, ListPlus, LocateFixed, Lock, LockOpen, RotateCcw, Square, SquareCheck, Trash2 } from "lucide-react";
+import { Clock3, List, ListPlus, LocateFixed, Lock, LockOpen, RotateCcw, Square, SquareCheck, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
@@ -23,6 +23,7 @@ interface Props {
   currentLocationActive: boolean;
   currentLocationLocating: boolean;
   onCurrentLocationToggle: () => void;
+  onSavedPlacesOpen?: () => void;
   mobileSheetExpanded: boolean;
   isLoading?: boolean;
 }
@@ -47,7 +48,7 @@ type SortablePlaceItemProps = {
   isStayEditing: boolean;
   mobileSheetExpanded: boolean;
   isMobileViewportActive: boolean;
-  onCardClick: (event: MouseEvent<HTMLDivElement>, place: Place) => void;
+  onCardClick: (event: MouseEvent<HTMLElement>, place: Place) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
   onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
   onRemove: (id: string) => void;
@@ -72,7 +73,7 @@ function SortablePlaceItem({
   onStayDurationChange,
 }: SortablePlaceItemProps) {
   const mobileReorderDisabled = isMobileViewportActive && !mobileSheetExpanded;
-  const dragDisabled = place.isCurrentLocation === true || isDestination || mobileReorderDisabled;
+  const dragDisabled = isDestination || mobileReorderDisabled;
   const { ref, handleRef, isDragging, isDropTarget } = useSortable({
     id: place.id,
     index,
@@ -200,7 +201,7 @@ function SortablePlaceItem({
       onPointerCancelCapture={() => { swipeStartRef.current = null; }}
     >
       <div
-        className={`place-item draggable${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isSelected ? " selected-place" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}${mobileSwipe ? ` mobile-swipe-${mobileSwipe}` : ""}`}
+        className={`place-item draggable${place.isCurrentLocation ? " current-location-stop" : ""}${isDragging ? " dragging" : ""}${isDropTarget && !isDragging ? " dnd-drop-target" : ""}${isSelected ? " selected-place" : ""}${isStayEditing ? " editing-stay" : ""}${canSetStayDuration && stayDuration > 0 ? " has-stay-duration" : ""}${mobileSwipe ? ` mobile-swipe-${mobileSwipe}` : ""}`}
 
         onClick={(event) => {
           if (swipeHandledRef.current) {
@@ -373,14 +374,63 @@ function SortablePlaceItem({
   );
 }
 
-function CurrentLocationStop({ place, index }: { place: Place; index: number }) {
+function useMobileActionSwipe() {
+  const [isOpen, setIsOpen] = useState(false);
+  const startRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+
+  function isMobileViewport() {
+    return typeof window !== "undefined" && window.matchMedia("(max-width: 700px)").matches;
+  }
+
+  function onPointerDownCapture(event: ReactPointerEvent<HTMLElement>) {
+    if (!isMobileViewport() || event.pointerType === "mouse" || (event.target as HTMLElement).closest("button")) return;
+    startRef.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function onPointerUpCapture(event: ReactPointerEvent<HTMLElement>) {
+    const start = startRef.current;
+    startRef.current = null;
+    if (!start || start.pointerId !== event.pointerId) return;
+
+    const horizontalDistance = event.clientX - start.x;
+    const verticalDistance = event.clientY - start.y;
+    if (Math.abs(horizontalDistance) < 44 || Math.abs(horizontalDistance) <= Math.abs(verticalDistance)) {
+      if (isOpen) setIsOpen(false);
+      return;
+    }
+    setIsOpen(horizontalDistance < 0);
+  }
+
+  return { isOpen, onPointerDownCapture, onPointerUpCapture, onPointerCancelCapture: () => { startRef.current = null; } };
+}
+
+function ReturnStop({ place, index, onReturnChange, onSavePlace }: {
+  place: Place;
+  index: number;
+  onReturnChange: (value: boolean) => void;
+  onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
+}) {
+  const swipe = useMobileActionSwipe();
   return (
-    <li className="place-item current-location-stop">
+    <li className={`place-item return-stop${swipe.isOpen ? " mobile-swipe-actions" : ""}`} onPointerDownCapture={swipe.onPointerDownCapture} onPointerUpCapture={swipe.onPointerUpCapture} onPointerCancelCapture={swipe.onPointerCancelCapture}>
       <span className="drag-handle placeholder" aria-hidden="true">⠿</span>
-      <div className="place-badge start">{index + 1}</div>
+      <div className="place-badge destination">{index + 1}</div>
       <div className="place-main">
         <strong>{place.name}</strong>
         <small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
+      </div>
+      <div className="place-actions">
+        <button type="button" className="danger icon-action place-delete-action" aria-label="복귀 지점 제거" title="복귀 해제" onClick={() => onReturnChange(false)}>
+          <Trash2 aria-hidden="true" />
+          <span className="place-action-label">복귀 해제</span>
+        </button>
+        {onSavePlace && (
+          <button type="button" className="icon-action place-save-action" aria-label={`${place.name} 장소 리스트에 저장`} title="장소 리스트에 저장" onClick={() => onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, stayDurationMinutes: 0 })}>
+            <ListPlus aria-hidden="true" />
+            <span className="place-action-label">리스트 저장</span>
+          </button>
+        )}
       </div>
     </li>
   );
@@ -400,6 +450,7 @@ export function PlaceList({
   currentLocationActive,
   currentLocationLocating,
   onCurrentLocationToggle,
+  onSavedPlacesOpen,
   mobileSheetExpanded,
   isLoading = false,
 }: Props) {
@@ -435,7 +486,7 @@ export function PlaceList({
     onStayDurationChange(id, nextMinutes);
   }
 
-  function handleCardClick(event: MouseEvent<HTMLDivElement>, place: Place) {
+  function handleCardClick(event: MouseEvent<HTMLElement>, place: Place) {
     if (didDragRef.current || (event.target as HTMLElement).closest("button, input, .drag-handle, .place-stay-control")) return;
     setStayEditingPlaceId((current) => (current === place.id ? null : place.id));
   }
@@ -464,16 +515,29 @@ export function PlaceList({
       <div className="section-heading">
         <h2>방문 장소</h2>
         <div className="place-heading-actions">
+          {onSavedPlacesOpen && (
+            <button
+              type="button"
+              className="saved-places-toggle"
+              aria-label="장소 리스트 열기"
+              title="장소 리스트"
+              onClick={onSavedPlacesOpen}
+            >
+              <List size={17} aria-hidden="true" />
+              <span>장소 리스트</span>
+            </button>
+          )}
           <button
             type="button"
             className={`current-location-toggle${currentLocationActive ? " active" : ""}${currentLocationLocating ? " locating" : ""}`}
-            aria-label={currentLocationActive ? "위치 추적 해제" : "위치 추적"}
+            aria-label="현재 위치"
             aria-pressed={currentLocationActive}
-            title={currentLocationActive ? "위치 추적 해제" : "현재 위치를 출발지로 설정"}
+            title="현재 위치를 업데이트합니다."
             onClick={onCurrentLocationToggle}
+            disabled={currentLocationLocating}
           >
             <LocateFixed size={18} aria-hidden="true" />
-            <span>위치 추적</span>
+            <span>현재 위치</span>
           </button>
           <button type="button" className="place-return-toggle" aria-pressed={returnToStart} onClick={() => onReturnChange(!returnToStart)} title="출발지로 복귀">
             {returnToStart ? <SquareCheck aria-hidden="true" /> : <Square aria-hidden="true" />}
@@ -516,11 +580,7 @@ export function PlaceList({
           {places.map((place, index) => {
             const isStart = index === 0;
             const isDestination = !returnToStart && index === places.length - 1;
-            const canSetStayDuration = !isStart && !isDestination;
-
-            if (place.isCurrentLocation) {
-              return <CurrentLocationStop key={place.id} place={place} index={index} />;
-            }
+            const canSetStayDuration = !place.isCurrentLocation && !isStart && !isDestination;
 
             return (
               <SortablePlaceItem
@@ -543,16 +603,7 @@ export function PlaceList({
               />
             );
           })}
-          {returnStop && (
-            <li className="place-item return-stop">
-              <span className="drag-handle placeholder" aria-hidden="true">⠿</span>
-              <div className="place-badge destination">{places.length + 1}</div>
-              <div className="place-main">
-                <strong>{returnStop.name}</strong>
-                <small>{returnStop.address || `${returnStop.latitude.toFixed(5)}, ${returnStop.longitude.toFixed(5)}`}</small>
-              </div>
-            </li>
-          )}
+          {returnStop && <ReturnStop place={returnStop} index={places.length} onReturnChange={onReturnChange} onSavePlace={onSavePlace} />}
           </ol>
         </DragDropProvider>
         )}

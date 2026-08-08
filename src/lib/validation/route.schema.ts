@@ -55,3 +55,15 @@ export const optimizeSchema = z.object({
 
 export const routeCostSchema = z.object({ origin: coordinate, destination: coordinate });
 export const geocodeQuerySchema = z.string().trim().min(2).max(200);
+export const placeSearchSchema = z.object({
+  query: geocodeQuerySchema,
+  page: z.coerce.number().int().min(1).max(45).default(1),
+  size: z.coerce.number().int().min(1).max(30).default(10),
+  sort: z.enum(["accuracy", "distance"]).default("accuracy"),
+  x: z.coerce.number().finite().min(124).max(132).optional(),
+  y: z.coerce.number().finite().min(33).max(39).optional(),
+}).superRefine((input, ctx) => {
+  if (input.sort === "distance" && (input.x === undefined || input.y === undefined)) {
+    ctx.addIssue({ code: "custom", message: "거리순 검색에는 기준 좌표가 필요합니다.", path: ["sort"] });
+  }
+});

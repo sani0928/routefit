@@ -1,15 +1,15 @@
 "use client";
 
-import { List } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Place, RouteSegment } from "@/features/route-optimization/types/route.types";
 import type { SavedPlace } from "@/features/member/types";
+import type { PlaceSearchResult } from "@/features/place-search/types";
 import { routeColor } from "@/lib/route-colors";
 
 type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
 type MapFocusPlace = Pick<MapPlace, "latitude" | "longitude">;
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListManagerToggle?: () => void; isListManagerOpen?: boolean; }
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 const MOBILE_SHEET_SETTLE_DURATION_MS = 380;
@@ -123,7 +123,7 @@ function createCurrentLocationPopupContent(address?: string) {
   return container;
 }
 
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListManagerToggle, isListManagerOpen }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
@@ -132,7 +132,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   const currentLocationAddressRef = useRef<string | null>(null);
   const currentLocationCoordinatesRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const currentLocationAddressRequestIdRef = useRef(0);
-  const currentLocationWatchIdRef = useRef<number | null>(null);
   const fittedPlacesKeyRef = useRef("");
   const popupRef = useRef<naver.maps.InfoWindow | null>(null);
   const requestIdRef = useRef(0);
@@ -236,10 +235,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     updateCurrentLocationPlace(latitude, longitude);
     if (coordinatesChanged || !currentLocationAddressRef.current) void resolveCurrentLocationAddress(latitude, longitude);
 
-    if (!previousCoordinates) {
-      activeMap.setCenter(position);
-      if (activeMap.getZoom() < 15) activeMap.setZoom(15);
-    }
+    activeMap.morph(position, Math.max(activeMap.getZoom(), 15), { duration: 260, easing: "easeOutCubic" } as naver.maps.TransitionOptions);
   }, [resolveCurrentLocationAddress, updateCurrentLocationPlace]);
   useEffect(() => {
     selectRef.current = onMapPlaceSelect;
@@ -251,28 +247,24 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, onListPlaceAdd]);
 
   useEffect(() => {
-    if (!mapInitialized) return;
+    if (!mapInitialized || currentLocationActive) return;
+    currentLocationMarkerRef.current?.setMap(null);
+    currentLocationMarkerRef.current = null;
+    currentLocationAddressRef.current = null;
+    currentLocationCoordinatesRef.current = null;
+    popupRef.current?.close();
+  }, [currentLocationActive, mapInitialized]);
 
-    if (!currentLocationActive) {
-      if (currentLocationWatchIdRef.current !== null) navigator.geolocation?.clearWatch(currentLocationWatchIdRef.current);
-      currentLocationWatchIdRef.current = null;
-      currentLocationMarkerRef.current?.setMap(null);
-      currentLocationMarkerRef.current = null;
-      currentLocationAddressRef.current = null;
-      currentLocationCoordinatesRef.current = null;
-      popupRef.current?.close();
-      trackingChangeRef.current?.(false);
-      return;
-    }
-
+  useEffect(() => {
+    if (!mapInitialized || !currentLocationRequestId) return;
     if (!navigator.geolocation) {
-      errorRef.current("이 브라우저에서는 현재 위치를 지원하지 않습니다.");
+      errorRef.current("브라우저에서 현재 위치를 지원하지 않습니다.");
       trackingChangeRef.current?.(false);
       return;
     }
 
     trackingChangeRef.current?.(true);
-    const watchId = navigator.geolocation.watchPosition(
+    navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         renderCurrentLocationMarker(coords.latitude, coords.longitude);
         trackingChangeRef.current?.(false);
@@ -283,14 +275,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       },
       { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
     );
-    currentLocationWatchIdRef.current = watchId;
-
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-      if (currentLocationWatchIdRef.current === watchId) currentLocationWatchIdRef.current = null;
-      trackingChangeRef.current?.(false);
-    };
-  }, [currentLocationActive, mapInitialized, renderCurrentLocationMarker]);  useEffect(() => {
+  }, [currentLocationRequestId, mapInitialized, renderCurrentLocationMarker]);  useEffect(() => {
     if (!clientId || !nodeRef.current || mapRef.current) return;
     const createPopupContent = (candidates?: NearbyCandidate[], addressFallback?: MapPlace) => {
       const container = document.createElement("div");
@@ -322,7 +307,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       if (!nodeRef.current || !window.naver) return;
       const map = new window.naver.maps.Map(nodeRef.current, { center: new window.naver.maps.LatLng(CENTER.latitude, CENTER.longitude), zoom: window.matchMedia("(max-width: 700px)").matches ? 13 : 12, zoomControl: false });
       mapRef.current = map;
-    setMapInitialized(true);
+      setMapInitialized(true);
       syncMapSize = () => {
         if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
         resizeFrame = window.requestAnimationFrame(() => {
@@ -413,20 +398,24 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   useEffect(() => {
     const map = mapRef.current; if (!map || !window.naver) return;
     overlays.current.forEach((overlay) => overlay.setMap(null)); overlays.current = [];
-    const markerPlaces = listPlaces ?? places.filter((place) => !place.isCurrentLocation);
+    const isSearchResults = searchResults !== undefined;
+    const markerPlaces = searchResults ?? listPlaces ?? places.filter((place) => !place.isCurrentLocation);
     const first = markerPlaces[0] ?? { latitude: CENTER.latitude, longitude: CENTER.longitude };
     const initial = new window.naver.maps.LatLng(first.latitude, first.longitude);
     const bounds = new window.naver.maps.LatLngBounds(initial, initial);
-    const isOptimized = !listPlaces && segments.length > 0;
+    const isOptimized = !isSearchResults && !listPlaces && segments.length > 0;
     markerPlaces.forEach((place, index) => {
       const position = new window.naver.maps.LatLng(place.latitude, place.longitude); bounds.extend(position);
-      const isStart = index === 0;
-      const isDestination = !returnToStart && index === markerPlaces.length - 1;
+      const visitOrder = isSearchResults || listPlaces || !("id" in place)
+        ? index + 1
+        : places.findIndex((candidate) => candidate.id === place.id) + 1;
+      const isStart = visitOrder === 1;
+      const isDestination = !returnToStart && visitOrder === places.length;
       const roleClass = isStart ? "start" : isDestination ? "destination" : "waypoint";
-      const label = String(index + 1 + (!listPlaces && places.some((place) => place.isCurrentLocation) ? 1 : 0));
+      const label = String(visitOrder);
       const listColor = listPlaces?.[index]?.color;
       const markerStyle = isOptimized ? ` style="--marker-color:${routeColor(index)}"` : listColor ? ` style="--marker-color:${listColor}"` : "";
-      const markerClass = isOptimized || listColor ? "optimized" : roleClass;
+      const markerClass = isSearchResults ? "search-result" : isOptimized || listColor ? "optimized" : roleClass;
       const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}"${markerStyle}>${label}</div>`, anchor: new window.naver.maps.Point(16, 16) } });
       window.naver.maps.Event.addListener(marker, "click", () => {
         requestIdRef.current += 1;
@@ -437,7 +426,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       });
       overlays.current.push(marker);
     });
-    if (!listPlaces) segments.forEach((segment, index) => {
+    if (!listPlaces && !isSearchResults) segments.forEach((segment, index) => {
       if (segment.path.length < 2) return;
       const path = segment.path.map(([longitude, latitude]) => new window.naver.maps.LatLng(latitude, longitude));
       const color = routeColor(index);
@@ -458,8 +447,8 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       window.naver.maps.Event.addListener(polyline, "click", selectSegment);
       overlays.current.push(hitArea, polyline);
     });
-    const placesKey = markerPlaces.map((place) => `${place.id}:${place.latitude}:${place.longitude}`).join("|");
-    if (!listPlaces && markerPlaces.length > 1 && fittedPlacesKeyRef.current !== placesKey) {
+    const placesKey = markerPlaces.map((place) => `${"id" in place ? place.id : place.providerId ?? place.name}:${place.latitude}:${place.longitude}`).join("|");
+    if (!listPlaces && !isSearchResults && markerPlaces.length > 1 && fittedPlacesKeyRef.current !== placesKey) {
       const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
       const mobileInsets = getMobileMapInsets(nodeRef.current);
       map.fitBounds(bounds, isMobileMap
@@ -468,7 +457,43 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       if (isMobileMap) map.setZoom(map.getZoom() + 1, false);
       fittedPlacesKeyRef.current = placesKey;
     }
-  }, [places, segments, highlightedSegmentIndex, listPlaces]);
+  }, [places, segments, highlightedSegmentIndex, listPlaces, searchResults]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !window.naver || !focusedSearchResult || !focusedSearchResultRequestId) return;
+    const target = new window.naver.maps.LatLng(focusedSearchResult.latitude, focusedSearchResult.longitude);
+    const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+    const targetZoom = Math.max(map.getZoom(), isMobileMap ? 15 : 16);
+    const moveToFocusedSearchResult = () => {
+      const mapRect = nodeRef.current?.getBoundingClientRect();
+      if (!mapRect) return;
+
+      const insets = isMobileMap
+        ? getMobileMapInsets(nodeRef.current, "mobile-places-panel")
+        : { top: 0, right: 0, bottom: 0, left: 0 };
+      const visibleHeight = Math.max(1, mapRect.height - insets.top - insets.bottom);
+      const desiredY = isMobileMap ? insets.top + (visibleHeight / 2) : mapRect.height / 2;
+      const projection = map.getProjection();
+      const targetPoint = projection.fromCoordToPoint(target);
+      const zoomFactor = projection.factor(targetZoom);
+      const adjustedCenter = projection.fromPointToCoord(new window.naver.maps.Point(
+        targetPoint.x,
+        targetPoint.y + (mapRect.height / 2 - desiredY) / zoomFactor,
+      ));
+      const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+      if (map.getZoom() === targetZoom) map.panTo(adjustedCenter, transition);
+      else map.morph(adjustedCenter, targetZoom, transition);
+    };
+
+    if (!isMobileMap) {
+      const frame = window.requestAnimationFrame(moveToFocusedSearchResult);
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const settleTimer = window.setTimeout(moveToFocusedSearchResult, MOBILE_SHEET_SETTLE_DURATION_MS);
+    return () => window.clearTimeout(settleTimer);
+  }, [focusedSearchResult?.latitude, focusedSearchResult?.longitude, focusedSearchResultRequestId, mapInitialized]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -609,17 +634,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   return (
     <div ref={viewRef} className="map-view">
       <div ref={nodeRef} className="map-canvas" aria-label={"NAVER 지도"} />
-      {onListManagerToggle && (
-        <button
-          type="button"
-          className={`map-list-control${isListManagerOpen ? " active" : ""}`}
-          aria-label={"장소 리스트 관리"}
-          aria-pressed={isListManagerOpen}
-          onClick={onListManagerToggle}
-        >
-          <List size={18} aria-hidden="true" />
-        </button>
-      )}
       <div className="map-zoom-control" aria-label={"지도 확대 및 축소"}>
         <button type="button" aria-label={"지도 확대"} onClick={() => zoomBy(1)}>
           +

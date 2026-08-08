@@ -7,6 +7,7 @@ import { MemberHeader } from "@/components/member/MemberHeader";
 import { SavePlaceDialog } from "@/components/member/SavePlaceDialog";
 import { SavedPlacesPanel } from "@/components/member/SavedPlacesPanel";
 import { LocationSearch } from "@/components/route-planner/LocationSearch";
+import { SearchResultsSheet } from "@/components/route-planner/SearchResultsSheet";
 import { PlaceList } from "@/components/route-planner/PlaceList";
 import { RouteSummary } from "@/components/route-planner/RouteSummary";
 import type { MemberPlaceList, MemberState, SavedPlace } from "@/features/member/types";
@@ -14,6 +15,7 @@ import type { FixedVisitOrder, OptimizationResponse, Place } from "@/features/ro
 import { ROUTE_OPTIONS, ROUTE_OPTION_META, type RouteOption } from "@/features/route-optimization/route-options";
 import { notify } from "@/lib/notify";
 import { useMobileSheetController } from "@/hooks/useMobileSheetController";
+import type { PlaceSearchResult } from "@/features/place-search/types";
 
 type Status = "IDLE" | "BUILDING_MATRIX" | "OPTIMIZING" | "FETCHING_FINAL_ROUTE" | "SUCCESS" | "ERROR";
 type PlaceInput = Omit<Place, "id" | "type">;
@@ -50,14 +52,9 @@ function readGuestWorkspace(): WorkspaceSnapshot | null {
   }
 }
 const normalizePlaceRoles = (items: Place[]) => {
-  const currentLocation = items.find((place) => place.isCurrentLocation);
-  const nonCurrentLocations = items.filter((place) => !place.isCurrentLocation);
-  const orderedPlaces = currentLocation
-    ? [{ ...currentLocation, isCurrentLocation: true, stayDurationMinutes: 0 }, ...nonCurrentLocations]
-    : nonCurrentLocations;
-
-  return orderedPlaces.map((place, index) => ({
+  return items.map((place, index) => ({
     ...place,
+    ...(place.isCurrentLocation ? { isCurrentLocation: true, stayDurationMinutes: 0 } : {}),
     type: index === 0 ? "START" as const : "WAYPOINT" as const,
   }));
 };
@@ -125,8 +122,12 @@ export default function Home() {
   const [member, setMember] = useState<MemberState>(EMPTY_MEMBER);
   const [memberStateReady, setMemberStateReady] = useState(false);
   const [workspaceRestored, setWorkspaceRestored] = useState(false);
-  const [currentLocationActive, setCurrentLocationActive] = useState(false);
   const [currentLocationLocating, setCurrentLocationLocating] = useState(false);
+  const [currentLocationRequestId, setCurrentLocationRequestId] = useState(0);
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [searchMapResults, setSearchMapResults] = useState<PlaceSearchResult[]>([]);
+  const [focusedSearchResult, setFocusedSearchResult] = useState<PlaceSearchResult | null>(null);
+  const [focusedSearchResultRequest, setFocusedSearchResultRequest] = useState(0);
   const workspaceRestoredRef = useRef(false);
   const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
   const routeInputVersionRef = useRef(0);
@@ -150,6 +151,9 @@ export default function Home() {
   } = useMobileSheetController();
 
   const start = places[0];
+  const currentLocation = places.find((place) => place.isCurrentLocation) ?? null;
+  const currentLocationActive = currentLocation !== null;
+  const showSearchResultMarkers = searchQuery !== null && mobileTab === "places" && !listManagerOpen;
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
   const savedListPlaces = selectedListId ? savedPlacesByListId[selectedListId] ?? [] : [];
   const mapListPlaces = useMemo(
@@ -189,7 +193,6 @@ export default function Home() {
       if (workspace) {
         const restoredPlaces = normalizePlaceRoles(workspace.places);
         setPlaces(restoredPlaces);
-        setCurrentLocationActive(restoredPlaces.some((place) => place.isCurrentLocation));
         setReturnToStart(workspace.returnToStart);
         setFixedVisitOrders(workspace.fixedVisitOrders);
       }
@@ -318,37 +321,34 @@ export default function Home() {
   }, [places, markRouteStale]);
   const updateCurrentLocation = useCallback((input: PlaceInput) => {
     const calculatedCurrentLocation = calculatedCurrentLocationRef.current;
-    if (
-      calculatedCurrentLocation
-      && distanceInMeters(calculatedCurrentLocation, input) >= CURRENT_LOCATION_RECALCULATE_DISTANCE_METERS
-    ) {
+    if (!calculatedCurrentLocation || distanceInMeters(calculatedCurrentLocation, input) >= CURRENT_LOCATION_RECALCULATE_DISTANCE_METERS) {
       markRouteStale();
     }
 
     setPlaces((current) => {
       const existing = current.find((place) => place.isCurrentLocation);
       const isAlreadyCurrent = existing
-        && current[0]?.id === existing.id
         && existing.name === input.name
         && existing.address === input.address
         && Math.abs(existing.latitude - input.latitude) < 0.000001
         && Math.abs(existing.longitude - input.longitude) < 0.000001
         && existing.stayDurationMinutes === 0;
 
-      // watchPosition은 같은 위치를 여러 번 전달할 수 있다. 변경이 없으면
-      // 기존 배열을 그대로 반환해 렌더링과 회원 동선 저장을 반복하지 않는다.
+      // 단발 위치 조회라도 역지오코딩 완료 전후로 같은 좌표가 전달될 수 있다.
+      // 변경이 없으면 기존 배열을 유지해 불필요한 렌더링과 저장을 막는다.
       if (isAlreadyCurrent) return current;
 
-      return normalizePlaceRoles([
-        {
-          ...input,
-          id: existing?.id ?? newId(),
-          type: "START",
-          stayDurationMinutes: 0,
-          isCurrentLocation: true,
-        },
-        ...current.filter((place) => !place.isCurrentLocation),
-      ]);
+      const nextCurrentLocation = {
+        ...input,
+        id: existing?.id ?? newId(),
+        type: "START" as const,
+        stayDurationMinutes: 0,
+        isCurrentLocation: true,
+      };
+
+      return normalizePlaceRoles(existing
+        ? current.map((place) => place.isCurrentLocation ? nextCurrentLocation : place)
+        : [nextCurrentLocation, ...current]);
     });
   }, [markRouteStale]);
 
@@ -356,33 +356,25 @@ export default function Home() {
     setCurrentLocationLocating((current) => current === locating ? current : locating);
   }, []);
 
-  const toggleCurrentLocation = useCallback(() => {
-    if (currentLocationActive) {
-      setCurrentLocationActive(false);
-      setCurrentLocationLocating(false);
-      setPlaces((current) => normalizePlaceRoles(current.filter((place) => !place.isCurrentLocation)));
-      markRouteStale();
-      return;
-    }
-
+  const toggleCurrentLocation = useCallback((): boolean => {
+    if (currentLocationLocating) return false;
     if (!navigator.geolocation) {
       notify.error("이 브라우저에서는 현재 위치를 지원하지 않습니다.");
-      return;
+      return false;
     }
 
     if (!places.some((place) => place.isCurrentLocation) && places.length >= 15) {
       notify.info("방문 장소는 최대 15개까지 추가할 수 있습니다.");
-      return;
+      return false;
     }
 
-    markRouteStale();
     setCurrentLocationLocating(true);
-    setCurrentLocationActive(true);
-  }, [currentLocationActive, places, markRouteStale]);
+    setCurrentLocationRequestId((current) => current + 1);
+    return true;
+  }, [currentLocationLocating, places]);
   function reorderPlace(id: string, destinationIndex: number) {
     setPlaces((current) => {
       const sourceIndex = current.findIndex((place) => place.id === id);
-      const hasCurrentLocation = current.some((place) => place.isCurrentLocation);
       const hasFixedDestination = !returnToStart;
       const destinationPlaceIndex = current.length - 1;
 
@@ -390,13 +382,12 @@ export default function Home() {
       // 두 역할은 수동 정렬로 변경되지 않도록 드래그 시작과 삽입 단계에서 모두 보호한다.
       if (
         sourceIndex < 0
-        || current[sourceIndex]?.isCurrentLocation
         || (hasFixedDestination && sourceIndex === destinationPlaceIndex)
       ) return current;
 
       const next = [...current];
       const [moved] = next.splice(sourceIndex, 1);
-      const minimumInsertionIndex = hasCurrentLocation ? 1 : 0;
+      const minimumInsertionIndex = 0;
       const maximumInsertionIndex = hasFixedDestination ? next.length - 1 : next.length;
       const insertionIndex = Math.max(minimumInsertionIndex, Math.min(destinationIndex, maximumInsertionIndex));
 
@@ -422,7 +413,7 @@ export default function Home() {
     if (!value) setPlaces((current) => current.map((place, index) => index === current.length - 1 ? { ...place, stayDurationMinutes: 0 } : place));
     markRouteStale();
   }
-  function removePlace(id: string) { if (places.some((place) => place.id === id && place.isCurrentLocation)) { setCurrentLocationActive(false); setCurrentLocationLocating(false); } setPlaces((current) => normalizePlaceRoles(current.filter((place) => place.id !== id))); markRouteStale(); }
+  function removePlace(id: string) { if (places.some((place) => place.id === id && place.isCurrentLocation)) setCurrentLocationLocating(false); setPlaces((current) => normalizePlaceRoles(current.filter((place) => place.id !== id))); markRouteStale(); }
   function setStayDuration(id: string, minutes: number) { setPlaces((current) => current.map((place) => place.id === id && !place.isCurrentLocation ? { ...place, stayDurationMinutes: minutes } : place)); markRouteStale(); }  async function optimize() {
     if (places.length < 2 || !start) return;
     const coordinateKeys = new Set<string>();
@@ -616,6 +607,50 @@ export default function Home() {
   }
   function closeListManager() { setListManagerOpen(false); setSelectedListId(null); setFocusedSavedPlace(null); }
 
+  function openListManager() {
+    closeSearchResults();
+    setListManagerOpen(true);
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      setMobileTab("places");
+    }
+  }
+
+  function handleSavedPlacesOpen() {
+    if (!member.authenticated) {
+      notify.info("회원 전용 기능입니다.");
+      return;
+    }
+    openListManager();
+  }
+
+  function openSearchResults(query: string) {
+    setSearchQuery(query);
+    setSearchMapResults([]);
+    setFocusedSearchResult(null);
+    closeListManager();
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      setMobileTab("places");
+      setMobileSheetState("expanded");
+    }
+  }
+
+  function closeSearchResults() {
+    setSearchQuery(null);
+    setSearchMapResults([]);
+    setFocusedSearchResult(null);
+    if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("peek");
+  }
+
+  function isSearchResultAdded(place: PlaceSearchResult) {
+    return places.some((candidate) => Math.abs(candidate.latitude - place.latitude) < 0.000001 && Math.abs(candidate.longitude - place.longitude) < 0.000001);
+  }
+
+  function focusSearchResult(place: PlaceSearchResult) {
+    setFocusedSearchResult(place);
+    setFocusedSearchResultRequest((current) => current + 1);
+    if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("peek");
+  }
+
   function focusSavedPlace(place: SavedPlace) {
     setFocusedSavedPlace(place);
     setFocusedSavedPlaceRequest((current) => current + 1);
@@ -629,9 +664,12 @@ export default function Home() {
   }
 
   function handleMobileTabSelect(nextTab: "places" | "lists" | "results") {
+    if (nextTab === "lists") {
+      openListManager();
+      return;
+    }
     selectMobileTab(nextTab);
-    setListManagerOpen(nextTab === "lists");
-    if (nextTab !== "lists") setFocusedSavedPlace(null);
+    closeListManager();
   }
 
   function clearRouteOptionHoldTimer() {
@@ -713,7 +751,6 @@ export default function Home() {
   }
 
   function resetPlanner() {
-    setCurrentLocationActive(false);
     setCurrentLocationLocating(false);
     setPlaces([]);
     setFixedVisitOrders([]);
@@ -789,8 +826,39 @@ export default function Home() {
           </div>
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
         </header>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} />
-        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
+        <div key={listManagerOpen ? "saved-places" : "visit-places"} className={`planner-content-page${listManagerOpen ? " planner-content-page-lists map-list-manager" : ""}`}>
+        {listManagerOpen ? (
+          isWorkspaceLoading ? (
+            <SavedPlacesPanel lists={[]} activeList={null} places={[]} routePlaces={places} onBack={closeListManager} onSelect={() => undefined} onCreate={() => undefined} onUpdate={() => undefined} onDeleteList={() => undefined} onDeletePlace={() => undefined} onAddToRoute={() => ({ added: false })} onRemoveFromRoute={() => undefined} onBrowsePlaces={browseSavedPlaces} isLoading />
+          ) : member.authenticated ? (
+            <SavedPlacesPanel
+              lists={member.placeLists}
+              activeList={activeList}
+              places={savedListPlaces}
+              routePlaces={places}
+              onBack={() => activeList ? setSelectedListId(null) : closeListManager()}
+              onSelect={(id) => { setFocusedSavedPlace(null); setSelectedListId(id); }}
+              onCreate={(name, color) => void createList(name, color)}
+              onUpdate={(id, name, color) => void updateList(id, name, color)}
+              onDeleteList={(id) => void deleteList(id)}
+              onDeletePlace={(id) => void deleteSavedPlace(id)}
+              onAddToRoute={addSavedPlaceToRoute}
+              onRemoveFromRoute={removeSavedPlaceFromRoute}
+              onBrowsePlaces={browseSavedPlaces}
+              isPlacesLoading={isPlaceListLoading}
+              onPlaceSelect={focusSavedPlace}
+            />
+          ) : (
+            <div className="mobile-list-auth-gate" role="status">
+              <img src="/icons/sorry.png" alt="" aria-hidden="true" />
+              <strong>장소 리스트는 회원 전용입니다.</strong>
+              <p>로그인한 뒤 다양한 장소를 관리해 보세요.</p>
+            </div>
+          )
+        ) : <>
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={closeSearchResults} showClearAction={searchQuery !== null} />
+        {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={currentLocation} isCurrentLocationLocating={currentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onResultFocus={focusSearchResult} onRequestCurrentLocation={toggleCurrentLocation} /> : <>
+        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
         <div className="planner-footer">
           <div className="route-primary-group">
             <div className="route-option-control">
@@ -822,6 +890,9 @@ export default function Home() {
             </div>
           </div>
         </div>
+        </>}
+        </>}
+        </div>
         </div>
       </aside>
       <section id="mobile-map-focus" className="map-panel" tabIndex={-1}>
@@ -837,89 +908,25 @@ export default function Home() {
           onSegmentSelect={handleMapSegmentSelect}
           onMapPlaceSelect={addPlace}
           currentLocationActive={currentLocationActive}
+          currentLocationRequestId={currentLocationRequestId}
           onCurrentLocationUpdate={updateCurrentLocation}
           onCurrentLocationTrackingChange={handleCurrentLocationTrackingChange}
           onMapError={notify.error}
           listPlaces={mapListPlaces}
           onListPlaceAdd={addPlace}
-          onListManagerToggle={member.authenticated ? () => listManagerOpen ? closeListManager() : setListManagerOpen(true) : undefined}
-          isListManagerOpen={listManagerOpen}
           focusedPlace={focusedSavedPlace}
           focusedPlaceRequestId={focusedSavedPlaceRequest}
+          searchResults={showSearchResultMarkers ? searchMapResults : undefined}
+          focusedSearchResult={focusedSearchResult}
+          focusedSearchResultRequestId={focusedSearchResultRequest}
         />
 
-        {listManagerOpen && (
-          <section
-            id="mobile-lists-panel"
-            className="map-list-manager"
-            aria-label="내 장소 관리"
-            {...sheetGestureHandlers}
-          >
-            <div className="mobile-sheet-chrome">
-              <MobileSheetHandle
-                expanded={mobileSheetState !== "collapsed"}
-                onPointerDown={handlePointerHandlers.onPointerDown}
-                onPointerMove={handlePointerHandlers.onPointerMove}
-                onPointerUp={handlePointerHandlers.onPointerUp}
-                onPointerCancel={handlePointerHandlers.onPointerCancel}
-                onStep={stepMobileSheet}
-              />
-            </div>
-            <div className="mobile-sheet-content">
-              {isWorkspaceLoading ? (
-                <SavedPlacesPanel
-                  lists={[]}
-                  activeList={null}
-                  places={[]}
-                  routePlaces={places}
-                  onBack={closeListManager}
-                  onSelect={() => undefined}
-                  onCreate={() => undefined}
-                  onUpdate={() => undefined}
-                  onDeleteList={() => undefined}
-                  onDeletePlace={() => undefined}
-                  onAddToRoute={() => ({ added: false })}
-                  onRemoveFromRoute={() => undefined}
-                  onBrowsePlaces={browseSavedPlaces}
-                  isLoading
-                />
-              ) : member.authenticated ? (
-              <SavedPlacesPanel
-              lists={member.placeLists}
-              activeList={activeList}
-              places={savedListPlaces}
-              routePlaces={places}
-              onBack={() => activeList ? setSelectedListId(null) : closeListManager()}
-              onSelect={(id) => {
-                setFocusedSavedPlace(null);
-                setSelectedListId(id);
-              }}
-              onCreate={(name, color) => void createList(name, color)}
-              onUpdate={(id, name, color) => void updateList(id, name, color)}
-              onDeleteList={(id) => void deleteList(id)}
-              onDeletePlace={(id) => void deleteSavedPlace(id)}
-              onAddToRoute={addSavedPlaceToRoute}
-              onRemoveFromRoute={removeSavedPlaceFromRoute}
-                onBrowsePlaces={browseSavedPlaces}
-                isPlacesLoading={isPlaceListLoading}
-                onPlaceSelect={focusSavedPlace}
-              />
-              ) : (
-                <div className="mobile-list-auth-gate" role="status">
-                  <img src="/icons/sorry.png" alt="" aria-hidden="true" />
-                  <strong>장소 리스트는 회원 전용입니다.</strong>
-                  <p>로그인한 뒤 저장한 장소를 관리해 보세요.</p>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
       </section>
       <nav className="mobile-bottom-nav" aria-label="모바일 주요 메뉴" role="tablist">
-        <button type="button" role="tab" aria-selected={mobileTab === "places"} aria-controls="mobile-places-panel" onClick={() => handleMobileTabSelect("places")}>
+        <button type="button" role="tab" aria-selected={mobileTab === "places" && !listManagerOpen} aria-controls="mobile-places-panel" onClick={() => handleMobileTabSelect("places")}>
           <MapPin size={20} aria-hidden="true" /><span>방문 장소</span>
         </button>
-        <button type="button" role="tab" aria-selected={mobileTab === "lists"} aria-controls="mobile-lists-panel" onClick={() => handleMobileTabSelect("lists")}>
+        <button type="button" role="tab" aria-selected={mobileTab === "places" && listManagerOpen} aria-controls="mobile-places-panel" onClick={() => handleMobileTabSelect("lists")}>
           <List size={20} aria-hidden="true" /><span>장소 리스트</span>
         </button>
         <button type="button" role="tab" aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onClick={() => handleMobileTabSelect("results")}>
