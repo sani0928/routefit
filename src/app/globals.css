@@ -3767,6 +3767,15 @@
 }
 /* Keep the sheet geometry stable while the mobile keyboard reduces only the visible viewport. */
 @media (max-width: 700px) {
+  /* iOS Safari zooms the visual viewport for focused controls below 16px.
+     Keep every editable control at that threshold so the expanded sheet does
+     not appear to move differently between the planner and list screens. */
+  .planner-panel.mobile-sheet-panel input:not([type="checkbox"]):not([type="radio"]),
+  .planner-panel.mobile-sheet-panel textarea,
+  .planner-panel.mobile-sheet-panel select {
+    font-size: 16px !important;
+  }
+
   .planner-panel.mobile-sheet-panel .naver-search-form .search-results {
     max-height: min(318px, max(116px, calc(var(--mobile-visual-viewport-height) - 188px)));
   }
