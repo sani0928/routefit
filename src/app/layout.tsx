@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { AppLaunchScreen } from "@/components/pwa/AppLaunchScreen";
 import { OnlineStatusBanner } from "@/components/pwa/OnlineStatusBanner";
 import { PwaLifecycle } from "@/components/pwa/PwaLifecycle";
 import { ToastProvider } from "@/components/ui/ToastProvider";
@@ -32,5 +33,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body>{children}<OnlineStatusBanner /><PwaLifecycle /><ToastProvider /></body></html>;
+  return <html lang="ko"><body><AppLaunchScreen />{children}<OnlineStatusBanner /><PwaLifecycle /><ToastProvider /></body></html>;
 }

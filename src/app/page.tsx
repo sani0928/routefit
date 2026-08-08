@@ -137,8 +137,6 @@ export default function Home() {
   const [focusedSavedPlaceRequest, setFocusedSavedPlaceRequest] = useState(0);
   const [savedPlacesByListId, setSavedPlacesByListId] = useState<Record<string, SavedPlace[]>>({});
   const [saveTarget, setSaveTarget] = useState<SavePlaceInput | null>(null);
-  const iosNavigationHapticSwitchRef = useRef<HTMLInputElement>(null);
-  const iosNavigationHapticLabelRef = useRef<HTMLLabelElement>(null);
   const {
     mobileTab,
     mobileSheetState,
@@ -174,22 +172,13 @@ export default function Home() {
     return member.placeLists.filter((list) => (savedPlacesByListId[list.id] ?? []).some((place) => place.name === saveTarget.name && Math.abs(place.latitude - saveTarget.latitude) < 0.000001 && Math.abs(place.longitude - saveTarget.longitude) < 0.000001)).map((list) => list.id);
   }, [member.placeLists, saveTarget, savedPlacesByListId]);
 
-  useEffect(() => {
-    // WebKit's non-standard switch haptic is only available through this
-    // attribute, which React's input typings do not currently expose.
-    iosNavigationHapticSwitchRef.current?.setAttribute("switch", "");
-  }, []);
-
-  const triggerMobileNavigationHaptic = useCallback(() => {
+  const triggerMobileNavigationHaptic = useCallback((event: ReactPointerEvent<HTMLInputElement>) => {
     if (!window.matchMedia("(max-width: 700px)").matches) return;
 
-    if (typeof navigator.vibrate === "function") {
-      navigator.vibrate(10);
-      return;
-    }
-
-    // iOS fallback: this must stay synchronous with the user's tab click.
-    iosNavigationHapticLabelRef.current?.click();
+    // Android: invoke the standard API during the physical pointer gesture.
+    // Mouse and trackpad interaction should not cause a device vibration.
+    if (event.pointerType === "mouse" || typeof navigator.vibrate !== "function") return;
+    navigator.vibrate(20);
   }, []);
 
   useEffect(() => () => {
@@ -947,18 +936,19 @@ export default function Home() {
 
       </section>
       <nav className="mobile-bottom-nav" aria-label="모바일 주요 메뉴" role="tablist">
-        <button type="button" role="tab" aria-selected={mobileTab === "places" && !listManagerOpen} aria-controls="mobile-places-panel" onClick={() => { triggerMobileNavigationHaptic(); handleMobileTabSelect("places"); }}>
+        <label className="mobile-navigation-tab" role="tab" tabIndex={0} aria-selected={mobileTab === "places" && !listManagerOpen} aria-controls="mobile-places-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("places"); } }}>
+          <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onPointerDown={triggerMobileNavigationHaptic} onChange={(event) => { event.currentTarget.checked = false; handleMobileTabSelect("places"); }} />
           <MapPin size={20} aria-hidden="true" /><span>방문 장소</span>
-        </button>
-        <button type="button" role="tab" aria-selected={mobileTab === "places" && listManagerOpen} aria-controls="mobile-places-panel" onClick={() => { triggerMobileNavigationHaptic(); handleMobileTabSelect("lists"); }}>
+        </label>
+        <label className="mobile-navigation-tab" role="tab" tabIndex={0} aria-selected={mobileTab === "places" && listManagerOpen} aria-controls="mobile-places-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("lists"); } }}>
+          <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onPointerDown={triggerMobileNavigationHaptic} onChange={(event) => { event.currentTarget.checked = false; handleMobileTabSelect("lists"); }} />
           <List size={20} aria-hidden="true" /><span>장소 리스트</span>
-        </button>
-        <button type="button" role="tab" aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onClick={() => { triggerMobileNavigationHaptic(); handleMobileTabSelect("results"); }}>
+        </label>
+        <label className="mobile-navigation-tab" role="tab" tabIndex={0} aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("results"); } }}>
+          <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onPointerDown={triggerMobileNavigationHaptic} onChange={(event) => { event.currentTarget.checked = false; handleMobileTabSelect("results"); }} />
           <Waypoints size={20} aria-hidden="true" /><span>계산 결과</span>
-        </button>
+        </label>
       </nav>
-      <input ref={iosNavigationHapticSwitchRef} id="ios-navigation-haptic-switch" className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" />
-      <label ref={iosNavigationHapticLabelRef} className="ios-navigation-haptic-label" htmlFor="ios-navigation-haptic-switch" aria-hidden="true" />
       <aside
         id="mobile-results-panel"
         className="result-panel mobile-sheet-panel"
