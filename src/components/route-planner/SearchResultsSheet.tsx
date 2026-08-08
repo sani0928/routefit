@@ -1,38 +1,45 @@
 "use client";
 
-import { Check, ListPlus, LoaderCircle, MapPin, Navigation, Search, SlidersHorizontal } from "lucide-react";
+import { Check, ListPlus, LoaderCircle, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PlaceSearchResponse, PlaceSearchResult } from "@/features/place-search/types";
 import { PlaceCategoryIcon } from "./PlaceCategoryIcon";
 import { formatSearchDistance } from "./place-search-format";
 
 type Coordinates = { latitude: number; longitude: number };
-type SearchSort = "accuracy" | "current-distance";
+type SearchSort = "accuracy" | "current-distance" | "map-center-distance";
 type AddPlaceResult = { added: boolean; message?: string };
 
 type Props = {
   query: string | null;
   currentLocation?: Coordinates | null;
+  mapCenter?: Coordinates | null;
+  mapCenterFilter?: Coordinates | null;
+  mapCenterRequestId?: number;
   isCurrentLocationLocating: boolean;
   isPlaceAdded: (place: PlaceSearchResult) => boolean;
   onAdd: (place: PlaceSearchResult) => AddPlaceResult;
   onSave?: (place: PlaceSearchResult) => void;
   onResultsChange?: (results: PlaceSearchResult[]) => void;
+  onLoadingChange?: (isLoading: boolean) => void;
   onResultFocus?: (place: PlaceSearchResult) => void;
+  onSearchContextChange?: () => void;
+  onSortChange?: (sort: SearchSort, center?: Coordinates | null) => void;
   onRequestCurrentLocation: () => boolean;
 };
 
 const PAGE_SIZE = 20;
 const SORT_OPTIONS: { value: SearchSort; label: string }[] = [
-  { value: "accuracy", label: "관련도순" },
-  { value: "current-distance", label: "현재 위치 가까운 순" },
+  { value: "accuracy", label: "관련도" },
+  { value: "current-distance", label: "현재 위치" },
+  { value: "map-center-distance", label: "지도 중심" },
 ];
 
 function resultKey(place: PlaceSearchResult) {
   return place.providerId ?? `${place.name}:${place.latitude.toFixed(6)}:${place.longitude.toFixed(6)}`;
 }
 
-export function SearchResultsSheet({ query, currentLocation, isCurrentLocationLocating, isPlaceAdded, onAdd, onSave, onResultsChange, onResultFocus, onRequestCurrentLocation }: Props) {
+export function SearchResultsSheet({ query, currentLocation, mapCenter, mapCenterFilter, mapCenterRequestId = 0, isCurrentLocationLocating, isPlaceAdded, onAdd, onSave, onResultsChange, onLoadingChange, onResultFocus, onSearchContextChange, onSortChange, onRequestCurrentLocation }: Props) {
   const [sort, setSort] = useState<SearchSort>("accuracy");
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [isInitialLoading, setInitialLoading] = useState(false);
@@ -46,9 +53,14 @@ export function SearchResultsSheet({ query, currentLocation, isCurrentLocationLo
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const locationRequestStartedRef = useRef(false);
+  const searchContextChangeRef = useRef(onSearchContextChange);
 
-  const basis = sort === "current-distance" ? currentLocation : null;
-  const requestKey = useMemo(() => query ? [query, sort, basis?.latitude.toFixed(6) ?? "", basis?.longitude.toFixed(6) ?? ""].join("|") : "", [basis?.latitude, basis?.longitude, query, sort]);
+  useEffect(() => {
+    searchContextChangeRef.current = onSearchContextChange;
+  }, [onSearchContextChange]);
+
+  const basis = sort === "current-distance" ? currentLocation : sort === "map-center-distance" ? mapCenterFilter : null;
+  const requestKey = useMemo(() => query ? [query, sort, basis?.latitude.toFixed(6) ?? "", basis?.longitude.toFixed(6) ?? "", sort === "map-center-distance" ? mapCenterRequestId : ""].join("|") : "", [basis?.latitude, basis?.longitude, mapCenterRequestId, query, sort]);
 
   const fetchPage = useCallback(async (page: number, reset: boolean) => {
     if (!query || (sort !== "accuracy" && !basis)) return;
@@ -100,6 +112,9 @@ export function SearchResultsSheet({ query, currentLocation, isCurrentLocationLo
     requestVersionRef.current += 1;
     abortRef.current?.abort();
     nextPageRef.current = 1;
+    // A new query, sort order, or distance basis represents a different result
+    // set. Clear the previous row focus before moving to the next first result.
+    searchContextChangeRef.current?.();
     setResults([]);
     setIsEnd(false);
     setError(null);
@@ -113,10 +128,15 @@ export function SearchResultsSheet({ query, currentLocation, isCurrentLocationLo
   }, [onResultsChange, results]);
 
   useEffect(() => {
+    onLoadingChange?.(isInitialLoading || isLoadingMore);
+  }, [isInitialLoading, isLoadingMore, onLoadingChange]);
+
+  useEffect(() => {
     if (!waitingForLocation) return;
     if (currentLocation) {
       locationRequestStartedRef.current = false;
       setWaitingForLocation(false);
+      onSortChange?.("current-distance");
       setSort("current-distance");
       return;
     }
@@ -125,7 +145,7 @@ export function SearchResultsSheet({ query, currentLocation, isCurrentLocationLo
       locationRequestStartedRef.current = false;
       setWaitingForLocation(false);
     }
-  }, [currentLocation, isCurrentLocationLocating, waitingForLocation]);
+  }, [currentLocation, isCurrentLocationLocating, waitingForLocation, onSortChange]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -145,7 +165,9 @@ export function SearchResultsSheet({ query, currentLocation, isCurrentLocationLo
       if (onRequestCurrentLocation()) setWaitingForLocation(true);
       return;
     }
+    if (nextSort === "map-center-distance" && !mapCenter) return;
     setWaitingForLocation(false);
+    onSortChange?.(nextSort, nextSort === "map-center-distance" ? mapCenter : undefined);
     setSort(nextSort);
   }
 
@@ -155,7 +177,6 @@ export function SearchResultsSheet({ query, currentLocation, isCurrentLocationLo
       <SlidersHorizontal size={16} aria-hidden="true" />
       {SORT_OPTIONS.map((option) => <button key={option.value} type="button" className={sort === option.value ? "selected" : ""} onClick={() => selectSort(option.value)}>{option.label}</button>)}
     </div>
-    {waitingForLocation && !currentLocation && <div className="search-location-notice"><Navigation size={17} /><span>현재 위치를 확인한 뒤 가까운 순으로 정렬합니다.</span><LoaderCircle size={17} className="spin" /></div>}
     <div className="search-results-sheet-list" ref={scrollRef}>
       {isInitialLoading && <div className="search-results-state"><LoaderCircle className="spin" size={24} /><p>검색 결과를 불러오는 중입니다.</p></div>}
       {!isInitialLoading && error && <div className="search-results-state error"><p>{error}</p><button type="button" onClick={() => void fetchPage(1, true)}>다시 시도</button></div>}

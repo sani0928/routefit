@@ -11,7 +11,7 @@ type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
 type MapFocusPlace = Pick<MapPlace, "latitude" | "longitude">;
 type MarkerPopupPlace = Pick<MapPlace, "name" | "latitude" | "longitude"> & { id?: string; providerId?: string };
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListPlaceRemove?: (place: MapPlace) => void; isListPlaceAdded?: (place: MapPlace) => boolean; }
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; temporaryCurrentLocation?: MapFocusPlace | null; searchResultsFocusRequestId?: number; searchViewportKey?: string; isSearchViewportAdjusting?: boolean; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapCenterChange?: (center: { latitude: number; longitude: number }) => void; onSearchResultsVisibilityChange?: (hasVisibleMarker: boolean) => void; onSearchViewportSettlingChange?: (isSettling: boolean) => void; showSearchMapRetry?: boolean; onSearchMapRetry?: () => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListPlaceRemove?: (place: MapPlace) => void; isListPlaceAdded?: (place: MapPlace) => boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 const MOBILE_SHEET_SETTLE_DURATION_MS = 380;
@@ -74,6 +74,17 @@ function getFocusMargin(margin: MapMargin): MapMargin {
   };
 }
 
+function isPlaceInsideVisibleMapArea(map: naver.maps.Map, place: MapFocusPlace, margin: MapMargin) {
+  const size = map.getSize();
+  const projection = map.getProjection();
+  const center = projection.fromCoordToPoint(map.getCenter());
+  const point = projection.fromCoordToPoint(new window.naver.maps.LatLng(place.latitude, place.longitude));
+  const factor = projection.factor(map.getZoom());
+  const x = (point.x - center.x) * factor + (size.width / 2);
+  const y = (point.y - center.y) * factor + (size.height / 2);
+  return x >= margin.left && x <= size.width - margin.right && y >= margin.top && y <= size.height - margin.bottom;
+}
+
 function getPathFocusTarget(map: naver.maps.Map, path: [number, number][], margin: MapMargin, fixedZoom?: number) {
   const size = map.getSize();
   const visibleWidth = Math.max(1, size.width - margin.left - margin.right);
@@ -108,6 +119,7 @@ function getPathFocusTarget(map: naver.maps.Map, path: [number, number][], margi
 
   return { center: projection.fromPointToCoord(centerPoint), zoom };
 }
+
 function createPlaceInfoContent(place: MapPlace, action?: { label: string; onClick: () => void; className?: string }) {
   const container = document.createElement("div");
   container.className = "nearby-place-popup map-place-popup";
@@ -144,12 +156,13 @@ function createCurrentLocationPopupContent(address?: string) {
   return container;
 }
 
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, listPlaces, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, temporaryCurrentLocation, searchResultsFocusRequestId, searchViewportKey, isSearchViewportAdjusting = false, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, showSearchMapRetry = false, onSearchMapRetry, onMapError, listPlaces, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
   const overlays = useRef<naver.maps.OverlayView[]>([]);
   const currentLocationMarkerRef = useRef<naver.maps.Marker | null>(null);
+  const temporaryLocationMarkerRef = useRef<naver.maps.Marker | null>(null);
   const currentLocationAddressRef = useRef<string | null>(null);
   const currentLocationCoordinatesRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const currentLocationAddressRequestIdRef = useRef(0);
@@ -162,12 +175,18 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   const segmentSelectRef = useRef(onSegmentSelect);
   const currentLocationUpdateRef = useRef(onCurrentLocationUpdate);
   const trackingChangeRef = useRef(onCurrentLocationTrackingChange);
+  const mapCenterChangeRef = useRef(onMapCenterChange);
+  const searchResultsVisibilityChangeRef = useRef(onSearchResultsVisibilityChange);
+  const searchViewportSettlingChangeRef = useRef(onSearchViewportSettlingChange);
+  const searchMarkerVisibilityRef = useRef<() => void>(() => {});
   const errorRef = useRef(onMapError);
   const listAddRef = useRef(onListPlaceAdd);
   const listRemoveRef = useRef(onListPlaceRemove);
   const isListPlaceAddedRef = useRef(isListPlaceAdded);
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [isSearchRetryRendered, setSearchRetryRendered] = useState(false);
+  const [isSearchRetryVisible, setSearchRetryVisible] = useState(false);
   const zoomBy = useCallback((amount: number) => {
     const map = mapRef.current;
     if (!map || !window.naver) return;
@@ -284,11 +303,26 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     segmentSelectRef.current = onSegmentSelect;
     currentLocationUpdateRef.current = onCurrentLocationUpdate;
     trackingChangeRef.current = onCurrentLocationTrackingChange;
+    mapCenterChangeRef.current = onMapCenterChange;
+    searchResultsVisibilityChangeRef.current = onSearchResultsVisibilityChange;
+    searchViewportSettlingChangeRef.current = onSearchViewportSettlingChange;
     errorRef.current = onMapError;
     listAddRef.current = onListPlaceAdd;
     listRemoveRef.current = onListPlaceRemove;
     isListPlaceAddedRef.current = isListPlaceAdded;
-  }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapError, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded]);
+  }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, onMapError, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapInitialized || !map || !window.naver) return;
+    const syncMapCenter = () => {
+      const center = map.getCenter() as naver.maps.LatLng;
+      mapCenterChangeRef.current?.({ latitude: center.lat(), longitude: center.lng() });
+    };
+    syncMapCenter();
+    const listener = window.naver.maps.Event.addListener(map, "idle", syncMapCenter);
+    return () => window.naver.maps.Event.removeListener(listener);
+  }, [mapInitialized]);
 
   useEffect(() => {
     if (!mapInitialized || currentLocationActive) return;
@@ -298,6 +332,78 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     currentLocationCoordinatesRef.current = null;
     popupRef.current?.close();
   }, [currentLocationActive, mapInitialized]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapInitialized || !map || !window.naver) return;
+    if (!temporaryCurrentLocation) {
+      temporaryLocationMarkerRef.current?.setMap(null);
+      temporaryLocationMarkerRef.current = null;
+      return;
+    }
+
+    const position = new window.naver.maps.LatLng(temporaryCurrentLocation.latitude, temporaryCurrentLocation.longitude);
+    if (temporaryLocationMarkerRef.current) {
+      temporaryLocationMarkerRef.current.setPosition(position);
+      return;
+    }
+
+    temporaryLocationMarkerRef.current = new window.naver.maps.Marker({
+      position,
+      map,
+      title: "검색 기준 현재 위치",
+      icon: { content: '<div class="current-location-marker temporary-current-location-marker"><span></span></div>', anchor: new window.naver.maps.Point(11, 11) },
+    });
+  }, [temporaryCurrentLocation?.latitude, temporaryCurrentLocation?.longitude, mapInitialized]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapInitialized || !map || !window.naver) return;
+    const updateSearchMarkerVisibility = () => {
+      if (searchResults === undefined) {
+        searchResultsVisibilityChangeRef.current?.(false);
+        return;
+      }
+      const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+      const margin = isMobileMap
+        ? getMobileMapInsets(nodeRef.current, "mobile-places-panel")
+        : { top: 0, right: 0, bottom: 0, left: 0 };
+      searchResultsVisibilityChangeRef.current?.(searchResults.some((place) => isPlaceInsideVisibleMapArea(map, place, margin)));
+    };
+    searchMarkerVisibilityRef.current = updateSearchMarkerVisibility;
+    updateSearchMarkerVisibility();
+    const listener = window.naver.maps.Event.addListener(map, "idle", updateSearchMarkerVisibility);
+    return () => {
+      window.naver.maps.Event.removeListener(listener);
+      searchMarkerVisibilityRef.current = () => {};
+    };
+  }, [searchResults, mapInitialized]);
+
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 700px)").matches) {
+      searchViewportSettlingChangeRef.current?.(false);
+      return;
+    }
+    searchViewportSettlingChangeRef.current?.(true);
+    if (isSearchViewportAdjusting) return;
+    const settleTimer = window.setTimeout(() => {
+      searchViewportSettlingChangeRef.current?.(false);
+      searchMarkerVisibilityRef.current();
+    }, MOBILE_SHEET_SETTLE_DURATION_MS + 40);
+    return () => window.clearTimeout(settleTimer);
+  }, [searchViewportKey, isSearchViewportAdjusting, mapInitialized]);
+
+  useEffect(() => {
+    if (showSearchMapRetry) {
+      setSearchRetryRendered(true);
+      const frame = window.requestAnimationFrame(() => setSearchRetryVisible(true));
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    setSearchRetryVisible(false);
+    const removeTimer = window.setTimeout(() => setSearchRetryRendered(false), 200);
+    return () => window.clearTimeout(removeTimer);
+  }, [showSearchMapRetry]);
 
   useEffect(() => {
     if (!mapInitialized || !currentLocationRequestId) return;
@@ -347,6 +453,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     let resizeObserver: ResizeObserver | null = null;
     let resizeFrame: number | null = null;
     let syncMapSize: (() => void) | null = null;
+    let removePopupOutsideDismissal: (() => void) | null = null;
     const init = () => {
       if (!nodeRef.current || !window.naver) return;
       const map = new window.naver.maps.Map(nodeRef.current, { center: new window.naver.maps.LatLng(CENTER.latitude, CENTER.longitude), zoom: window.matchMedia("(max-width: 700px)").matches ? 13 : 12, zoomControl: false });
@@ -435,11 +542,21 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
           popupMarkerKeyRef.current = null;
         }
       });
+      const dismissPopupOnOutsidePointerDown = (event: PointerEvent) => {
+        if (!popupOpenRef.current) return;
+        if (event.target instanceof Element && event.target.closest(".nearby-place-popup")) return;
+        requestIdRef.current += 1;
+        popupRef.current?.close();
+        popupOpenRef.current = false;
+        popupMarkerKeyRef.current = null;
+      };
+      document.addEventListener("pointerdown", dismissPopupOnOutsidePointerDown, true);
+      removePopupOutsideDismissal = () => document.removeEventListener("pointerdown", dismissPopupOnOutsidePointerDown, true);
     };
     const script = document.createElement("script");
     script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`;
     script.async = true; script.onload = init; document.head.appendChild(script);
-    return () => { resizeObserver?.disconnect(); if (syncMapSize) window.removeEventListener("resize", syncMapSize); if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame); script.remove(); popupRef.current?.close(); currentLocationMarkerRef.current?.setMap(null); currentLocationMarkerRef.current = null; popupRef.current = null; popupOpenRef.current = false; popupMarkerKeyRef.current = null; setMapInitialized(false); mapRef.current = null; };
+    return () => { removePopupOutsideDismissal?.(); resizeObserver?.disconnect(); if (syncMapSize) window.removeEventListener("resize", syncMapSize); if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame); script.remove(); popupRef.current?.close(); currentLocationMarkerRef.current?.setMap(null); currentLocationMarkerRef.current = null; temporaryLocationMarkerRef.current?.setMap(null); temporaryLocationMarkerRef.current = null; popupRef.current = null; popupOpenRef.current = false; popupMarkerKeyRef.current = null; setMapInitialized(false); mapRef.current = null; };
   }, [clientId]);
 
   useEffect(() => {
@@ -632,6 +749,42 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || !window.naver || !searchResults || searchResults.length === 0 || focusedSearchResult) return;
+
+    const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+    const first = searchResults[0];
+    const firstKey = `${first.providerId ?? first.name}:${first.latitude}:${first.longitude}`;
+    const fitKey = `search-first:${searchResultsFocusRequestId ?? 0}:${firstKey}:${isMobileMap ? "mobile-peek" : "desktop"}`;
+    if (fittedPlacesKeyRef.current === fitKey) return;
+
+    const focusFirstSearchResult = () => {
+      const margin = isMobileMap
+        ? getFocusMargin(getMobilePeekMapInsets(nodeRef.current))
+        : { top: 48, right: 48, bottom: 48, left: 48 };
+      const target = getPathFocusTarget(
+        map,
+        [[first.longitude, first.latitude]],
+        margin,
+        Math.max(map.getZoom(), isMobileMap ? 15 : 16),
+      );
+      const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+
+      if (map.getZoom() === target.zoom) map.panTo(target.center, transition);
+      else map.morph(target.center, target.zoom, transition);
+      fittedPlacesKeyRef.current = fitKey;
+    };
+
+    if (!isMobileMap) {
+      const frame = window.requestAnimationFrame(focusFirstSearchResult);
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const settleTimer = window.setTimeout(focusFirstSearchResult, MOBILE_SHEET_SETTLE_DURATION_MS);
+    return () => window.clearTimeout(settleTimer);
+  }, [searchResults, searchResultsFocusRequestId, focusedSearchResult, mapInitialized]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !window.naver || focusedSegmentIndex === null || focusedSegmentIndex === undefined) return;
     const segment = segments[focusedSegmentIndex];
     if (!segment || segment.path.length < 2) return;
@@ -716,6 +869,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   return (
     <div ref={viewRef} className="map-view">
       <div ref={nodeRef} className="map-canvas" aria-label={"NAVER 지도"} />
+      {isSearchRetryRendered && <button type="button" className={`map-search-retry${isSearchRetryVisible ? " visible" : ""}`} onClick={onSearchMapRetry}>이 지도에서 다시 검색</button>}
       <div className="map-zoom-control" aria-label={"지도 확대 및 축소"}>
         <button type="button" aria-label={"지도 확대"} onClick={() => zoomBy(1)}>
           +

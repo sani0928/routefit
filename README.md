@@ -1,97 +1,144 @@
 # RouteFit
 
-**여러 방문 장소를 가장 효율적인 순서로 연결하는 동선 최적화 서비스**입니다. 장소를 검색하거나 지도에서 선택해 방문 장소를 만들고, 실시간 교통정보를 반영한 차량 이동 경로를 한눈에 확인할 수 있습니다.
+> 여러 방문 장소를 실시간 교통 정보에 맞춰 효율적인 차량 동선으로 연결하는 웹 앱
 
-> [www.routefit.co.kr](https://www.routefit.co.kr)
+[RouteFit 바로가기](https://www.routefit.co.kr)
 
-## RouteFit으로 할 수 있는 일
+RouteFit은 장소·주소를 검색하거나 지도에서 직접 선택해 방문 목록을 만들고, NAVER Directions API의 교통 정보를 바탕으로 방문 순서를 계산합니다. 데스크톱에서는 좌·우 패널과 지도를 함께 사용하고, 모바일에서는 지도 위 하단 시트로 같은 기능을 사용할 수 있습니다.
 
-- **장소·주소 검색**: 일부 이름만 입력해도 연관도가 높은 장소를 찾아 추가합니다. 검색 결과에는 음식점, 카페, 병원 등 장소 카테고리에 맞는 아이콘도 표시됩니다.
-- **지도에서 바로 추가**: 지도에서 원하는 위치를 선택한 뒤, 가까운 장소 또는 해당 위치의 주소를 골라 방문 장소에 넣을 수 있습니다.
-- **동선 최적화**: 현재 교통상황을 반영해 방문 순서를 계산하고, 구간별 경로·거리·예상 이동 시간을 보여 줍니다.
-- **나만의 조건 반영**: 출발지 복귀, 특정 방문 순서 고정, 장소별 머무는 시간을 설정할 수 있습니다.
-- **보기 쉬운 지도**: 최적화 뒤에는 구간마다 다른 색상과 순서 마커로 경로를 구분합니다.
-- **내 장소 관리**: 로그인하면 자주 가는 장소를 색상별 리스트로 저장하고, 필요할 때 현재 방문 장소에 추가할 수 있습니다.
+## 주요 기능
 
-방문 장소는 한 동선에 최대 **15곳**까지 추가할 수 있습니다.
+- **장소 추가** — Kakao Local API로 장소를 검색하고, 검색이 실패하거나 결과가 없을 때는 NAVER 지오코딩 결과를 사용합니다. 지도에서 길게 눌러 주변 장소나 주소를 추가할 수도 있습니다.
+- **방문 순서 설정** — 최대 15곳의 방문 장소를 드래그해 정렬하고, 반드시 지켜야 하는 경유지 순서는 고정할 수 있습니다. 각 장소의 머무는 시간도 반영합니다.
+- **경로 최적화** — 빠른 길·균형·편한 길 중 주행 기준을 선택해 최적화합니다. 전체 거리, 예상 소요 시간, 통행료, 구간별 경로와 교통 상태를 제공합니다.
+- **복귀 및 도착지** — 출발지로 복귀하거나, 마지막 방문 장소를 도착지로 지정할 수 있습니다.
+- **현재 위치** — 버튼을 누를 때 한 번만 현재 위치를 가져와 방문 장소에 추가하거나 갱신합니다. 지속 위치 추적은 사용하지 않습니다.
+- **장소 리스트** — Google 로그인 후 장소를 색상별 리스트로 저장하고, 저장 장소를 방문 동선에 추가·제거할 수 있습니다. 한 장소는 여러 리스트에 저장할 수 있습니다.
+- **PWA** — 프로덕션 배포에서 설치 가능한 웹 앱으로 동작합니다. 네트워크가 끊기면 안내 화면과 재시도 기능을 제공합니다.
+
+경로 계산은 방문 장소가 2곳 이상일 때 가능하며, 한 동선에는 최대 **15곳**을 추가할 수 있습니다.
 
 ## 사용 방법
 
-1. 좌측 검색창에서 장소나 주소를 찾거나 지도에서 위치를 선택합니다.
-2. 방문 장소의 순서를 드래그해서 조정합니다. 반드시 지켜야 할 순서는 자물쇠 아이콘으로 고정할 수 있습니다.
-3. 필요하면 복귀를 켜고, 중간 경유지에는 머무는 시간을 설정합니다.
-4. **동선 최적화**을 누르면 최신 교통정보 기준의 추천 순서와 구간별 경로가 표시됩니다.
-5. 구간 상세를 선택하면 해당 구간의 출발·도착 장소와 예상 시간을 확인할 수 있습니다.
+1. 검색창에서 장소·주소를 찾거나 지도에서 위치를 선택해 방문 장소를 추가합니다.
+2. 필요하면 카드를 드래그해 순서를 바꾸고, 자물쇠 메뉴에서 고정할 방문 순서를 지정합니다.
+3. 복귀 여부, 각 장소의 머무는 시간, 주행 기준을 설정합니다.
+4. **동선 최적화**를 누릅니다.
+5. 계산 결과에서 방문 순서와 구간을 선택해 지도 경로, 거리, 예상 시간, 통행료를 확인합니다.
+
+동선 변경 뒤 기존 결과는 바로 지워지지 않고 **오래된 결과**로 남습니다. 새 조건을 반영하려면 다시 계산하세요.
 
 ## 회원 기능
 
-RouteFit의 기본 검색·지도·동선 최적화 기능은 로그인 없이 사용할 수 있습니다. Google 로그인 회원은 다음 기능을 추가로 이용할 수 있습니다.
+기본적인 검색, 지도, 방문 장소 편집, 경로 계산은 로그인 없이 사용할 수 있습니다. 비회원의 작업 공간은 현재 브라우저 세션에 보관됩니다.
 
-- 브라우저를 다시 열거나 새로고침해도 방문 장소 배치, 머무는 시간, 순서 고정 설정 유지
-- 기본 **즐겨찾기**를 포함한 장소 리스트 관리
-- 리스트별 전용 색상 지정 및 지도 마커 색상 동기화
-- 저장한 장소를 현재 방문 장소에 한 번에 추가
+Google 로그인 회원은 다음 기능을 추가로 이용합니다.
 
-회원은 장소 리스트를 최대 **50개**, 각 리스트에는 장소를 최대 **100곳**까지 저장할 수 있습니다. 비회원의 방문 장소는 현재 브라우저 세션에서만 유지됩니다.
+- 방문 장소, 복귀 설정, 고정 방문 순서를 서버에 자동 저장하고 다음 접속 때 복원
+- 장소 리스트 생성·수정·삭제 및 저장 장소 관리
+- 검색 결과나 방문 장소를 하나 이상의 장소 리스트에 저장
 
-## 동선 계산 기준
+회원당 장소 리스트는 최대 **50개**, 리스트 하나에는 장소를 최대 **100곳**까지 저장할 수 있습니다.
 
-RouteFit은 도로 거리만 단순 비교하지 않고 NAVER 지도 경로 API가 제공하는 **현재 교통상황 기반 이동 시간**을 활용합니다. 따라서 교통 흐름, 도로망, 통행료가 반영된 실제 차량 경로를 기준으로 방문 순서를 계산합니다.
+## 기술 구성
 
-머무는 시간을 설정한 경우 이동 시간에 합산해 전체 예상 소요 시간을 표시합니다. 계산 결과는 저장하지 않으며, 다시 계산할 때마다 최신 교통정보로 갱신됩니다.
+| 영역 | 사용 기술 |
+| --- | --- |
+| 프런트엔드 | Next.js App Router, React, TypeScript |
+| 지도·경로 | NAVER Maps JavaScript API, NAVER Directions 5 API |
+| 장소 검색 | Kakao Local API, NAVER Geocoding API(대체 결과) |
+| 인증·데이터 | Better Auth, Google OAuth, Drizzle ORM, PostgreSQL |
+| UI·검증 | Lucide React, React Toastify, Zod |
+| 테스트·PWA | Vitest, next-pwa |
 
-## 모바일에서도 사용하세요
+## 로컬 실행
 
-모바일 화면에서는 지도와 패널이 화면 크기에 맞춰 재배치됩니다. 지도 확대·축소, 현재 위치 확인, 장소 검색, 방문 장소 관리와 동선 계산을 모두 사용할 수 있습니다.
+### 요구 사항
 
----
+- Node.js 및 npm
+- PostgreSQL 데이터베이스(로그인·장소 리스트 기능 사용 시)
+- NAVER Maps, Kakao Local, Google OAuth API 자격 증명
 
-## 개발 안내
+### 설치 및 시작
 
-### 시작하기
-
-```bash
-copy .env.example .env.local
+```powershell
+Copy-Item .env.example .env.local
 npm install
 npm run dev
 ```
 
-Windows 명령 프롬프트나 Git Bash에서는 필요에 따라 `npm.cmd`를 사용하세요.
+개발 서버는 기본적으로 [http://localhost:3000](http://localhost:3000)에서 실행됩니다. `npm run dev`는 Turbopack 개발 서버이며, PWA 서비스 워커는 개발 환경에서 비활성화됩니다.
 
 ### 환경 변수
 
-`.env.example`을 복사한 뒤 아래 값을 채웁니다. 민감한 값이 담긴 `.env.local`은 Git에 올리지 않습니다.
+`.env.example`을 `.env.local`로 복사한 뒤 값을 채웁니다. `.env.local`에는 민감한 값이 있으므로 Git에 커밋하지 않습니다.
 
-| 변수 | 용도 |
+| 변수 | 설명 |
 | --- | --- |
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | NAVER Maps JavaScript API 클라이언트 ID |
-| `NAVER_MAP_API_KEY_ID` / `NAVER_MAP_API_KEY_SECRET` | NAVER 지도 서버 API 인증 |
-| `KAKAO_REST_API_KEY` | 장소·키워드 검색 |
+| `NAVER_MAP_API_KEY_ID` | NAVER Maps 서버 API 키 ID |
+| `NAVER_MAP_API_KEY_SECRET` | NAVER Maps 서버 API 키 Secret |
+| `KAKAO_REST_API_KEY` | Kakao Local API REST API 키 |
+| `ROUTE_CACHE_TTL_SECONDS` | 경로 비용 캐시 유지 시간(초, 기본 예시: `300`) |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 |
-| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` | Better Auth 세션 설정 |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 로그인 OAuth 설정 |
+| `BETTER_AUTH_SECRET` | Better Auth 서명용 비밀 값 |
+| `BETTER_AUTH_URL` | 현재 앱의 기본 URL |
+| `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 클라이언트 Secret |
 
-Google OAuth 승인 리디렉션 URI는 개발 환경에서 `http://localhost:3000/api/auth/callback/google`, 운영 환경에서 `https://www.routefit.co.kr/api/auth/callback/google`을 등록합니다.
+Google OAuth 승인 리디렉션 URI는 아래를 등록합니다.
 
-### 주요 기술
+- 개발: `http://localhost:3000/api/auth/callback/google`
+- 운영: `https://www.routefit.co.kr/api/auth/callback/google`
 
-- Next.js App Router · React · TypeScript
-- NAVER Maps JavaScript API 및 Directions API
-- Kakao Local API 장소 검색
-- Better Auth + Google OAuth
-- Drizzle ORM + PostgreSQL
-- Lucide React 아이콘
+## 데이터베이스와 검증
 
-### 데이터베이스와 검증
+스키마를 변경한 뒤에는 마이그레이션을 생성하고 적용합니다.
 
-```bash
-# 스키마 변경 뒤 마이그레이션 파일 생성 및 적용
+```powershell
 npm run db:generate
 npm run db:migrate
-
-# 테스트와 프로덕션 빌드
-npm test
-npm run build
 ```
 
-운영 환경에서는 웹 앱과 PostgreSQL의 환경 변수 값을 각각 설정해야 합니다. Railway PostgreSQL을 사용할 경우 TLS 연결 문자열을 `DATABASE_URL`로 등록하고, `BETTER_AUTH_URL`은 실제 서비스 주소와 일치시켜 주세요.
+테스트, 타입 검사, 프로덕션 빌드는 다음과 같이 실행합니다.
+
+```powershell
+npm test
+npx tsc --noEmit --incremental false
+npm run build
+npm run start
+```
+
+`npm run build`와 `npm run start`로 실행한 프로덕션 환경에서 PWA가 활성화됩니다. 설치·업데이트·오프라인 동작을 확인할 때는 이 조합을 사용하세요.
+
+## 프로젝트 구조
+
+```text
+src/
+├─ app/                         # 페이지와 API Route Handlers
+│  ├─ api/                      # 검색, 지도, 인증, 장소 리스트, 경로 API
+│  ├─ offline/                  # 오프라인 안내 페이지
+│  └─ page.tsx                  # 화면 상태와 기능 조율
+├─ components/
+│  ├─ map/                      # NAVER 지도, 마커, 경로, 팝업
+│  ├─ member/                   # 로그인과 장소 리스트 UI
+│  ├─ pwa/                      # 설치, 업데이트, 오프라인 상태 UI
+│  └─ route-planner/            # 검색, 방문 장소, 설정, 계산 결과 UI
+├─ features/
+│  ├─ place-search/             # 장소 검색 타입
+│  ├─ member/                   # 회원·장소 리스트 타입
+│  └─ route-optimization/       # 최적화 알고리즘, 비용 행렬, 경로 타입
+├─ hooks/                       # 모바일 하단 시트 제어
+└─ lib/                         # API 클라이언트, DB, 캐시, 유효성 검사
+
+drizzle/                        # PostgreSQL 마이그레이션
+public/icons/                   # PWA 아이콘
+docs/                           # 개발 인수인계와 설계 메모
+```
+
+## 운영 시 참고
+
+- 최적화는 방향성이 있는 이동 시간 행렬을 만들기 때문에 장소가 늘수록 NAVER Directions API 요청 수가 빠르게 증가합니다. 예를 들어 7곳이면 약 42회의 행렬 요청이 필요합니다.
+- 경로 결과는 계산 당시의 교통 정보에 의존하며, 저장하지 않습니다. 최신 교통 정보를 반영하려면 다시 계산해야 합니다.
+- `NEXT_PUBLIC_*` 환경 변수는 브라우저에 노출됩니다. 서버 API 키와 OAuth Secret은 절대 `NEXT_PUBLIC_` 접두사로 만들지 마세요.
+- PWA 아이콘은 `public/icons`를 기준으로 하며, 아이콘 바이트를 교체할 때는 `public/site.webmanifest`와 `src/app/layout.tsx`의 캐시 버전도 함께 점검하세요.

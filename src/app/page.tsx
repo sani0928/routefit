@@ -33,6 +33,7 @@ type RouteResultSnapshot = {
   returnToStart: boolean;
   fixedVisitOrders: FixedVisitOrder[];
 };
+type SearchResultSort = "accuracy" | "current-distance" | "map-center-distance";
 
 type WorkspaceSnapshot = {
   returnToStart: boolean;
@@ -126,8 +127,19 @@ export default function Home() {
   const [currentLocationRequestId, setCurrentLocationRequestId] = useState(0);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [searchMapResults, setSearchMapResults] = useState<PlaceSearchResult[]>([]);
+  const [searchResultSort, setSearchResultSort] = useState<SearchResultSort>("accuracy");
+  const [searchCurrentLocation, setSearchCurrentLocation] = useState<LocationCoordinates | null>(null);
+  const [searchCurrentLocationLocating, setSearchCurrentLocationLocating] = useState(false);
+  const [mapCenter, setMapCenter] = useState<LocationCoordinates | null>(null);
+  const [searchMapCenter, setSearchMapCenter] = useState<LocationCoordinates | null>(null);
+  const [searchMapCenterRequest, setSearchMapCenterRequest] = useState(0);
+  const [hasVisibleSearchResult, setHasVisibleSearchResult] = useState(true);
+  const [isSearchResultsLoading, setSearchResultsLoading] = useState(false);
+  const [isSearchViewportSettling, setSearchViewportSettling] = useState(false);
+  const [searchResultsFocusRequest, setSearchResultsFocusRequest] = useState(0);
   const [focusedSearchResult, setFocusedSearchResult] = useState<PlaceSearchResult | null>(null);
   const [focusedSearchResultRequest, setFocusedSearchResultRequest] = useState(0);
+  const searchCurrentLocationRequestRef = useRef(0);
   const workspaceRestoredRef = useRef(false);
   const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
   const routeInputVersionRef = useRef(0);
@@ -376,6 +388,53 @@ export default function Home() {
     setCurrentLocationRequestId((current) => current + 1);
     return true;
   }, [currentLocationLocating, places]);
+  const requestSearchCurrentLocation = useCallback((): boolean => {
+    if (searchCurrentLocationLocating) return false;
+    if (!navigator.geolocation) {
+      notify.error("이 브라우저에서는 현재 위치를 지원하지 않습니다.");
+      return false;
+    }
+
+    const requestId = ++searchCurrentLocationRequestRef.current;
+    setSearchCurrentLocationLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (requestId !== searchCurrentLocationRequestRef.current) return;
+        setSearchCurrentLocation({ latitude: coords.latitude, longitude: coords.longitude });
+        setSearchCurrentLocationLocating(false);
+      },
+      () => {
+        if (requestId !== searchCurrentLocationRequestRef.current) return;
+        notify.error("현재 위치를 가져오지 못했습니다. 위치 권한을 확인해 주세요.");
+        setSearchCurrentLocationLocating(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
+    );
+    return true;
+  }, [searchCurrentLocationLocating]);
+  const handleSearchSortChange = useCallback((sort: SearchResultSort, center?: LocationCoordinates | null) => {
+    setSearchResultSort(sort);
+    setSearchResultsLoading(true);
+    if (sort === "accuracy") {
+      searchCurrentLocationRequestRef.current += 1;
+      setSearchCurrentLocation(null);
+    }
+    if (sort === "map-center-distance") setSearchMapCenter(center ?? mapCenter);
+  }, [mapCenter]);
+  const handleMapCenterChange = useCallback((nextCenter: LocationCoordinates) => {
+    setMapCenter((current) => current
+      && Math.abs(current.latitude - nextCenter.latitude) < 0.000001
+      && Math.abs(current.longitude - nextCenter.longitude) < 0.000001
+      ? current
+      : nextCenter);
+  }, []);
+  const retrySearchNearMapCenter = useCallback(() => {
+    if (!mapCenter) return;
+    setSearchMapCenter(mapCenter);
+    setSearchMapCenterRequest((current) => current + 1);
+    setHasVisibleSearchResult(true);
+    setSearchResultsLoading(true);
+  }, [mapCenter]);
   function reorderPlace(id: string, destinationIndex: number) {
     setPlaces((current) => {
       const sourceIndex = current.findIndex((place) => place.id === id);
@@ -627,17 +686,30 @@ export default function Home() {
   function openSearchResults(query: string) {
     setSearchQuery(query);
     setSearchMapResults([]);
+    setSearchResultSort("accuracy");
+    searchCurrentLocationRequestRef.current += 1;
+    setSearchCurrentLocation(null);
+    setSearchCurrentLocationLocating(false);
+    setSearchMapCenter(null);
+    setHasVisibleSearchResult(true);
+    setSearchResultsLoading(true);
     setFocusedSearchResult(null);
     closeListManager();
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("places");
-      setMobileSheetState("expanded");
+      setMobileSheetState("peek");
     }
   }
 
   function closeSearchResults({ preserveMobileSheetHeight = false }: { preserveMobileSheetHeight?: boolean } = {}) {
     setSearchQuery(null);
     setSearchMapResults([]);
+    searchCurrentLocationRequestRef.current += 1;
+    setSearchCurrentLocation(null);
+    setSearchCurrentLocationLocating(false);
+    setSearchMapCenter(null);
+    setHasVisibleSearchResult(true);
+    setSearchResultsLoading(false);
     setFocusedSearchResult(null);
     if (!preserveMobileSheetHeight && window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("peek");
   }
@@ -873,7 +945,7 @@ export default function Home() {
           )
         ) : <>
         <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} />
-        {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={currentLocation} isCurrentLocationLocating={currentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onResultFocus={focusSearchResult} onRequestCurrentLocation={toggleCurrentLocation} /> : <>
+        {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSearchFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
         <div className="planner-footer">
           <div className="route-primary-group">
@@ -935,6 +1007,15 @@ export default function Home() {
           focusedPlace={focusedSavedPlace}
           focusedPlaceRequestId={focusedSavedPlaceRequest}
           searchResults={showSearchResultMarkers ? searchMapResults : undefined}
+          temporaryCurrentLocation={showSearchResultMarkers && searchResultSort === "current-distance" ? searchCurrentLocation : null}
+          searchResultsFocusRequestId={searchResultsFocusRequest}
+          onMapCenterChange={handleMapCenterChange}
+          onSearchResultsVisibilityChange={setHasVisibleSearchResult}
+          onSearchViewportSettlingChange={setSearchViewportSettling}
+          searchViewportKey={mobileSheetState}
+          isSearchViewportAdjusting={mobileSheetDragging}
+          showSearchMapRetry={showSearchResultMarkers && searchResultSort === "map-center-distance" && !isSearchResultsLoading && !isSearchViewportSettling && !hasVisibleSearchResult}
+          onSearchMapRetry={retrySearchNearMapCenter}
           focusedSearchResult={focusedSearchResult}
           focusedSearchResultRequestId={focusedSearchResultRequest}
         />
