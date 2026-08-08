@@ -1736,8 +1736,16 @@
 @media (max-width: 700px) {
   .planner-panel.mobile-sheet-panel > .mobile-sheet-content {
     display: flex;
+    min-height: 0;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-content > .planner-content-page:not(.map-list-manager) {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
   }
 
   .planner-panel.mobile-sheet-panel .naver-search-form {
@@ -4762,6 +4770,39 @@
 
   .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-overview .list-close-button {
     display:grid;
+  }
+}
+
+/* Every mobile list view owns a bounded scroll body.  Without this explicit
+   flex chain, the saved-list workspace expands to its content and the sheet's
+   hidden overflow clips it instead of allowing the intended inner list/form
+   to scroll. */
+@media (max-width:700px) {
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-content > .planner-content-page.map-list-manager {
+    display:flex !important;
+    min-height:0;
+    height:100%;
+    flex:1 1 auto;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager > .saved-places-panel,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-overview,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-detail,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-editor-screen {
+    min-height:0;
+    height:100%;
+    flex:1 1 auto;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-overview .place-list-cards,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-detail .saved-place-list,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .list-editor-screen-form {
+    min-height:0;
+    flex:1 1 auto;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
   }
 }
 

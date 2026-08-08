@@ -61,6 +61,10 @@ function isInteractiveTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("button, input, textarea, select, a, [role=button], [contenteditable=true]"));
 }
 
+function isTextInputTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest("input, textarea, select, [contenteditable=true]"));
+}
+
 function findScrollableAncestors(target: EventTarget | null, sheet: HTMLElement) {
   const scrollContainers: HTMLElement[] = [];
   let element = target instanceof HTMLElement ? target : null;
@@ -391,6 +395,9 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const onSheetTouchStart = useCallback((event: ReactTouchEvent<HTMLElement>) => {
     if (event.touches.length !== 1) return;
     if (event.target instanceof Element && event.target.closest(".drag-handle:not(.placeholder):not(.disabled)")) return;
+    // iOS only treats an input focus as keyboard-eligible while it remains a
+    // native touch action. Do not register that touch as a sheet drag.
+    if (isTextInputTarget(event.target)) return;
     const touch = event.touches[0];
     const fromHandle = event.target instanceof Element && Boolean(event.target.closest(".mobile-sheet-handle"));
     beginDrag({

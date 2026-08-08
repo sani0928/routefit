@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronLeft, ChevronRight, MapPinned, MapPinPlus, MapPinX, Plus, Search, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { LIST_COLORS, type MemberPlaceList, type SavedPlace } from "@/features/member/types";
 import { notify } from "@/lib/notify";
 import { ContentLoading } from "@/components/ui/ContentLoading";
@@ -77,13 +77,8 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
     setEditorMode("edit");
   }
 
-  function focusAfterSheetExpansion(event: ReactPointerEvent<HTMLInputElement>) {
+  function prepareSheetForInputFocus() {
     onInputFocus?.();
-    if (!window.matchMedia("(max-width: 700px)").matches) return;
-
-    event.preventDefault();
-    const input = event.currentTarget;
-    window.requestAnimationFrame(() => input.focus({ preventScroll: true }));
   }
 
   function submit(event: FormEvent) {
@@ -121,7 +116,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
       <form id="place-list-editor-form" className="list-editor-screen-form" onSubmit={submit}>
         <label className="list-editor-name-field">
           <span>리스트 이름</span>
-          <div><input autoFocus value={name} maxLength={40} onPointerDown={focusAfterSheetExpansion} onFocus={() => onInputFocus?.()} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
+          <div><input autoFocus value={name} maxLength={40} onPointerDown={prepareSheetForInputFocus} onFocus={() => onInputFocus?.()} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
         </label>
         <fieldset className="list-editor-colors">
           <legend>대표 색상</legend>
@@ -147,7 +142,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
         <button className="list-detail-edit-action" type="button" onClick={openEdit}>리스트 수정</button>
       </header>
       <div className="list-detail-context" aria-label={`${activeList.placeCount}곳 저장됨`}><span><b>{activeList.placeCount}</b>곳 저장됨</span><span>지도에 표시 중</span></div>
-      {!isPlacesLoading && places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onPointerDown={focusAfterSheetExpansion} onFocus={() => onInputFocus?.()} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
+      {!isPlacesLoading && places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onPointerDown={prepareSheetForInputFocus} onFocus={() => onInputFocus?.()} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
       {isPlacesLoading && <ContentLoading variant="saved-places" />}
       {!isPlacesLoading && pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => {
         const isOnRoute = isPlaceOnRoute(place);
