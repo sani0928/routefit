@@ -1148,7 +1148,7 @@
   }
 
   body { overflow:hidden; }
-  .app-shell { display:block; min-height:100dvh; }
+  .app-shell { position:relative; display:block; min-height:100dvh; }
   .map-panel {
     position:fixed;
     z-index:0;
@@ -1164,7 +1164,7 @@
   .map-panel .map-zoom-control { z-index:3; }
 
   .mobile-bottom-nav {
-    position:fixed;
+    position:absolute;
     z-index:40;
     right:0;
     bottom:0;
