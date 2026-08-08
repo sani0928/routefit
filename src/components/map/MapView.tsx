@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Place, RouteSegment } from "@/features/route-optimization/types/route.types";
 import type { SavedPlace } from "@/features/member/types";
 import type { PlaceSearchResult } from "@/features/place-search/types";
+import { getMobileSheetStageHeights } from "@/lib/mobile-sheet";
 import { routeColor } from "@/lib/route-colors";
 
 type MapPlace = Omit<Place, "id" | "type">;
@@ -37,6 +38,24 @@ function getMobileMapInsets(mapNode: HTMLElement | null, preferredSheetId?: stri
     top: 34,
     right: 30,
     bottom: Math.max(32, Math.round(coveredHeight) + 28),
+    left: 30,
+    coveredHeight,
+  };
+}
+
+function getMobilePeekMapInsets(mapNode: HTMLElement | null) {
+  const mapRect = mapNode?.getBoundingClientRect();
+  if (!mapRect) return { top: 34, right: 30, bottom: 32, left: 30, coveredHeight: 0 };
+
+  const layoutViewportHeight = Number.parseFloat(document.documentElement.style.getPropertyValue("--mobile-layout-viewport-height")) || window.innerHeight;
+  const navigationHeight = document.querySelector<HTMLElement>(".mobile-bottom-nav")?.getBoundingClientRect().height ?? 64;
+  const { peek } = getMobileSheetStageHeights(layoutViewportHeight, navigationHeight);
+  const coveredHeight = Math.min(mapRect.height, Math.round(peek + navigationHeight));
+
+  return {
+    top: 34,
+    right: 30,
+    bottom: Math.max(32, coveredHeight + 28),
     left: 30,
     coveredHeight,
   };
@@ -508,17 +527,17 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
 
     const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
     const placesKey = listPlaces.map((place) => `${place.id}:${place.latitude}:${place.longitude}`).join("|");
-    const fitKey = `list:${placesKey}:${isMobileMap ? "mobile" : "desktop"}`;
+    const fitKey = `list:${placesKey}:${isMobileMap ? "mobile-peek" : "desktop"}`;
     if (fittedPlacesKeyRef.current === fitKey) return;
 
     const fitListBounds = () => {
-      const mobileInsets = getMobileMapInsets(nodeRef.current, "mobile-lists-panel");
+      const mobilePeekInsets = getMobilePeekMapInsets(nodeRef.current);
       if (listPlaces.length === 1) {
         const targetZoom = Math.max(map.getZoom(), 15);
         const target = getPathFocusTarget(
           map,
           [[first.longitude, first.latitude]],
-          isMobileMap ? getFocusMargin(mobileInsets) : { top: 48, right: 48, bottom: 48, left: 48 },
+          isMobileMap ? getFocusMargin(mobilePeekInsets) : { top: 48, right: 48, bottom: 48, left: 48 },
           targetZoom,
         );
         const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
@@ -530,7 +549,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         const target = getPathFocusTarget(
           map,
           listPlaces.map((place) => [place.longitude, place.latitude]),
-          getFocusMargin(mobileInsets),
+          getFocusMargin(mobilePeekInsets),
         );
         const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
         if (map.getZoom() === target.zoom) map.panTo(target.center, transition);

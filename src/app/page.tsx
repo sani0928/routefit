@@ -665,6 +665,10 @@ export default function Home() {
 
   function handleMobileTabSelect(nextTab: "places" | "lists" | "results") {
     if (nextTab === "lists") {
+      if (listManagerOpen && mobileTab === "places") {
+        setMobileSheetState((current) => current === "peek" ? "expanded" : "peek");
+        return;
+      }
       openListManager();
       return;
     }
@@ -913,8 +917,8 @@ export default function Home() {
           onCurrentLocationTrackingChange={handleCurrentLocationTrackingChange}
           onMapError={notify.error}
           listPlaces={mapListPlaces}
-          onListPlaceAdd={addPlace}
-          focusedPlace={focusedSavedPlace}
+            onListPlaceAdd={addPlace}
+            focusedPlace={focusedSavedPlace}
           focusedPlaceRequestId={focusedSavedPlaceRequest}
           searchResults={showSearchResultMarkers ? searchMapResults : undefined}
           focusedSearchResult={focusedSearchResult}
