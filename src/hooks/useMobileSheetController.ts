@@ -28,6 +28,16 @@ const MOBILE_QUERY = "(max-width: 700px)";
 const DRAG_CLAIM_DISTANCE = 10;
 const DRAG_COMMIT_DISTANCE = 42;
 const HANDLE_TAP_DISTANCE = 18;
+
+function getIosStandaloneScreenHeight() {
+  const iosNavigator = navigator as Navigator & { standalone?: boolean };
+  if (iosNavigator.standalone !== true) return 0;
+
+  // A translucent iOS standalone status bar can make every viewport API omit
+  // a portion of the physical display. screen.height is reliable in this mode.
+  return Math.round(Math.max(window.screen.height, window.screen.availHeight));
+}
+
 function getSheetStageHeights() {
   const root = document.documentElement;
   const layoutViewportHeight = Number.parseFloat(root.style.getPropertyValue("--mobile-layout-viewport-height")) || window.innerHeight;
@@ -197,6 +207,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
         visibleHeight,
         window.innerHeight,
         document.documentElement.clientHeight,
+        getIosStandaloneScreenHeight(),
       ));
       const viewportChanged = stableViewportRef.current.width !== width;
 

@@ -929,7 +929,8 @@
 }
 @media (max-width:700px) {
   .planner-panel .planner-footer { bottom:12px; }
-  .map-panel .map-view { --map-control-top:calc(16px + env(safe-area-inset-top)); }
+  /* Keep map zoom aligned with the account entry on the transparent iOS status bar. */
+  .map-panel .map-view { --map-control-top:max(12px, env(safe-area-inset-top)); }
 }
 /* The stay value can be typed directly; the adjacent buttons move it in five-minute steps. */
 .planner-panel .place-stay-control .stay-duration-input {

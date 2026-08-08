@@ -33,6 +33,6 @@
   ],
   "theme_color": "#f6f8fc",
   "background_color": "#f6f8fc",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "any"
 }

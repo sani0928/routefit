@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "RouteFit",
   description: "실시간 교통정보를 반영해 차량 방문 동선을 최적화하는 RouteFit",
   applicationName: "RouteFit",
-  manifest: "/site.webmanifest?v=4",
+  manifest: "/site.webmanifest?v=5",
   icons: {
     icon: [
       { url: "/icons/icon_192.png?v=4", sizes: "192x192", type: "image/png" },
