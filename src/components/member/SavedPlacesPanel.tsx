@@ -21,6 +21,7 @@ interface Props {
   onRemoveFromRoute: (place: SavedPlace) => void;
   onBrowsePlaces: () => void;
   onPlaceSelect?: (place: SavedPlace) => void;
+  onInputFocus?: () => void;
   isLoading?: boolean;
   isPlacesLoading?: boolean;
 }
@@ -29,7 +30,7 @@ type EditorMode = "create" | "edit" | null;
 const ITEMS_PER_PAGE = 10;
 const formatUpdatedDate = (value: string) => `${value.slice(0, 10).replaceAll("-", ".")} \uC5C5\uB370\uC774\uD2B8`;
 
-export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute, onRemoveFromRoute, onBrowsePlaces, onPlaceSelect, isLoading = false, isPlacesLoading = false }: Props) {
+export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBack, onSelect, onCreate, onUpdate, onDeleteList, onDeletePlace, onAddToRoute, onRemoveFromRoute, onBrowsePlaces, onPlaceSelect, onInputFocus, isLoading = false, isPlacesLoading = false }: Props) {
   const [editorMode, setEditorMode] = useState<EditorMode>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(LIST_COLORS[0]);
@@ -38,6 +39,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
   const [placeQuery, setPlaceQuery] = useState("");
   const isPlaceOnRoute = (place: SavedPlace) => routePlaces.some((routePlace) => Math.abs(routePlace.latitude - place.latitude) < 0.000001 && Math.abs(routePlace.longitude - place.longitude) < 0.000001);
   const deleteConfirmationExpiresAtRef = useRef(0);
+  const editorInputRef = useRef<HTMLInputElement>(null);
   const totalListPages = Math.max(1, Math.ceil(lists.length / ITEMS_PER_PAGE));
   const normalizedPlaceQuery = placeQuery.trim().toLocaleLowerCase();
   const filteredPlaces = useMemo(() => places.filter((place) => {
@@ -61,7 +63,14 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
     setPlaceQuery("");
   }, [activeList?.id]);
 
+  useEffect(() => {
+    if (!editorMode) return;
+    const frame = window.requestAnimationFrame(() => editorInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [editorMode]);
+
   function openCreate() {
+    onInputFocus?.();
     setName("");
     setColor(LIST_COLORS[0]);
     setEditorMode("create");
@@ -69,6 +78,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
 
   function openEdit() {
     if (!activeList) return;
+    onInputFocus?.();
     setName(activeList.name);
     setColor(activeList.color);
     setEditorMode("edit");
@@ -109,7 +119,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
       <form id="place-list-editor-form" className="list-editor-screen-form" onSubmit={submit}>
         <label className="list-editor-name-field">
           <span>리스트 이름</span>
-          <div><input autoFocus value={name} maxLength={40} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
+          <div><input ref={editorInputRef} value={name} maxLength={40} onPointerDown={() => onInputFocus?.()} onFocus={() => onInputFocus?.()} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
         </label>
         <fieldset className="list-editor-colors">
           <legend>대표 색상</legend>
@@ -135,7 +145,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
         <button className="list-detail-edit-action" type="button" onClick={openEdit}>리스트 수정</button>
       </header>
       <div className="list-detail-context" aria-label={`${activeList.placeCount}곳 저장됨`}><span><b>{activeList.placeCount}</b>곳 저장됨</span><span>지도에 표시 중</span></div>
-      {!isPlacesLoading && places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
+      {!isPlacesLoading && places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onPointerDown={() => onInputFocus?.()} onFocus={() => onInputFocus?.()} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
       {isPlacesLoading && <ContentLoading variant="saved-places" />}
       {!isPlacesLoading && pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => {
         const isOnRoute = isPlaceOnRoute(place);

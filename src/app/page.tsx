@@ -837,7 +837,7 @@ export default function Home() {
         <div key={listManagerOpen ? "saved-places" : "visit-places"} className={`planner-content-page${listManagerOpen ? " planner-content-page-lists map-list-manager" : ""}`}>
         {listManagerOpen ? (
           isWorkspaceLoading ? (
-            <SavedPlacesPanel lists={[]} activeList={null} places={[]} routePlaces={places} onBack={closeListManager} onSelect={() => undefined} onCreate={() => undefined} onUpdate={() => undefined} onDeleteList={() => undefined} onDeletePlace={() => undefined} onAddToRoute={() => ({ added: false })} onRemoveFromRoute={() => undefined} onBrowsePlaces={browseSavedPlaces} isLoading />
+            <SavedPlacesPanel lists={[]} activeList={null} places={[]} routePlaces={places} onBack={closeListManager} onSelect={() => undefined} onCreate={() => undefined} onUpdate={() => undefined} onDeleteList={() => undefined} onDeletePlace={() => undefined} onAddToRoute={() => ({ added: false })} onRemoveFromRoute={() => undefined} onBrowsePlaces={browseSavedPlaces} onInputFocus={prepareSearchFocus} isLoading />
           ) : member.authenticated ? (
             <SavedPlacesPanel
               lists={member.placeLists}
@@ -853,6 +853,7 @@ export default function Home() {
               onAddToRoute={addSavedPlaceToRoute}
               onRemoveFromRoute={removeSavedPlaceFromRoute}
               onBrowsePlaces={browseSavedPlaces}
+              onInputFocus={prepareSearchFocus}
               isPlacesLoading={isPlaceListLoading}
               onPlaceSelect={focusSavedPlace}
             />
@@ -866,7 +867,7 @@ export default function Home() {
         ) : <>
         <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} />
         {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={currentLocation} isCurrentLocationLocating={currentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onResultFocus={focusSearchResult} onRequestCurrentLocation={toggleCurrentLocation} /> : <>
-        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
+        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSearchFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
         <div className="planner-footer">
           <div className="route-primary-group">
             <div className="route-option-control">

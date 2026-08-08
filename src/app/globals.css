@@ -1638,13 +1638,6 @@
     height: calc(var(--mobile-layout-viewport-height) - var(--mobile-nav-height) - var(--mobile-sheet-expanded-map-peek));
   }
 
-  html[data-mobile-keyboard-open] .app-shell.mobile-sheet-expanded .planner-panel.mobile-sheet-panel[data-mobile-keyboard-sheet-offset],
-  html[data-mobile-keyboard-open] .app-shell.mobile-sheet-expanded .result-panel.mobile-sheet-panel[data-mobile-keyboard-sheet-offset],
-  html[data-mobile-keyboard-open] .app-shell.mobile-sheet-expanded .map-list-manager[data-mobile-keyboard-sheet-offset] {
-    transform: translateY(var(--mobile-keyboard-sheet-offset));
-    transition: none;
-  }
-
   .planner-panel.mobile-sheet-panel .place-list-scroll {
     max-height: calc(var(--mobile-layout-viewport-height) - 300px);
   }

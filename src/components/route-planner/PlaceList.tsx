@@ -24,6 +24,7 @@ interface Props {
   currentLocationLocating: boolean;
   onCurrentLocationToggle: () => void;
   onSavedPlacesOpen?: () => void;
+  onMobileInputFocus?: () => void;
   mobileSheetExpanded: boolean;
   isLoading?: boolean;
 }
@@ -53,6 +54,7 @@ type SortablePlaceItemProps = {
   onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
   onRemove: (id: string) => void;
   onStayDurationChange: (id: string, delta: number) => void;
+  onMobileInputFocus?: () => void;
 };
 
 function SortablePlaceItem({
@@ -71,6 +73,7 @@ function SortablePlaceItem({
   onSavePlace,
   onRemove,
   onStayDurationChange,
+  onMobileInputFocus,
 }: SortablePlaceItemProps) {
   const mobileReorderDisabled = isMobileViewportActive && !mobileSheetExpanded;
   const dragDisabled = isDestination || mobileReorderDisabled;
@@ -311,7 +314,8 @@ function SortablePlaceItem({
                 inputMode="numeric"
                 aria-label="머무는 시간(분)"
                 value={stayInput}
-                onPointerDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => { event.stopPropagation(); onMobileInputFocus?.(); }}
+                onFocus={() => onMobileInputFocus?.()}
                 onChange={(event) => setStayInput(event.target.value)}
                 onBlur={commitStayDuration}
                 onKeyDown={(event) => {
@@ -365,7 +369,7 @@ function SortablePlaceItem({
       {canSetStayDuration && (
         <div className="mobile-swipe-stay-tray" inert={mobileSwipe !== "stay"}>
           <button type="button" aria-label="머무는 시간 5분 줄이기" onPointerDown={(event) => startStayStepHold(event, -5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(-5); }}>−</button>
-          <input type="number" min="0" max="1440" step="1" inputMode="numeric" aria-label="머무는 시간(분)" value={stayInput} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => setStayInput(event.target.value)} onBlur={commitStayDuration} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
+          <input type="number" min="0" max="1440" step="1" inputMode="numeric" aria-label="머무는 시간(분)" value={stayInput} onPointerDown={(event) => { event.stopPropagation(); onMobileInputFocus?.(); }} onFocus={() => onMobileInputFocus?.()} onChange={(event) => setStayInput(event.target.value)} onBlur={commitStayDuration} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
           <span aria-hidden="true">분</span>
           <button type="button" aria-label="머무는 시간 5분 늘리기" onPointerDown={(event) => startStayStepHold(event, 5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(5); }}>+</button>
         </div>
@@ -451,6 +455,7 @@ export function PlaceList({
   currentLocationLocating,
   onCurrentLocationToggle,
   onSavedPlacesOpen,
+  onMobileInputFocus,
   mobileSheetExpanded,
   isLoading = false,
 }: Props) {
@@ -601,6 +606,7 @@ export function PlaceList({
                 onSavePlace={onSavePlace}
                 onRemove={onRemove}
                 onStayDurationChange={adjustStayDuration}
+                onMobileInputFocus={onMobileInputFocus}
               />
             );
           })}

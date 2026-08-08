@@ -36,6 +36,22 @@ export function PwaLifecycle() {
   const reloadAfterUpdateRef = useRef(false);
 
   useEffect(() => {
+    // A production PWA service worker can continue controlling localhost after
+    // switching back to `next dev`. Turbopack development chunk names are not
+    // immutable, so an old cached chunk can reference an icon module that no
+    // longer exists. Keep development entirely service-worker free.
+    if (process.env.NODE_ENV === "production" || !("serviceWorker" in navigator)) return;
+
+    void navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .then(() => caches.keys())
+      .then((keys) => Promise.all(keys
+        .filter((key) => key.startsWith("routefit-") || key.startsWith("workbox-"))
+        .map((key) => caches.delete(key))))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator) || !window.isSecureContext) return;
 
     let active = true;
