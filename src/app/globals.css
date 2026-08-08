@@ -1643,35 +1643,6 @@
     max-height: calc(var(--mobile-layout-viewport-height) - 300px);
   }
 
-  /* Keep focused form controls inside the visual viewport while the virtual
-     keyboard is open. The normal full-screen layout remains untouched. */
-  :root[data-mobile-keyboard-open] .app-shell,
-  :root[data-mobile-keyboard-open] .map-panel {
-    min-height:var(--mobile-visual-viewport-height);
-    height:var(--mobile-visual-viewport-height);
-  }
-
-  :root[data-mobile-keyboard-open] .mobile-bottom-nav {
-    bottom:var(--mobile-keyboard-height);
-  }
-
-  :root[data-mobile-keyboard-open] .planner-panel.mobile-sheet-panel,
-  :root[data-mobile-keyboard-open] .result-panel.mobile-sheet-panel,
-  :root[data-mobile-keyboard-open] .map-list-manager {
-    bottom:calc(var(--mobile-nav-height) + var(--mobile-keyboard-height));
-    max-height:calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height));
-    transition:none;
-  }
-
-  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-expanded .planner-panel.mobile-sheet-panel,
-  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-expanded .result-panel.mobile-sheet-panel,
-  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-expanded .map-list-manager {
-    height:calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height));
-  }
-
-  :root[data-mobile-keyboard-open] .planner-panel.mobile-sheet-panel .place-list-scroll {
-    max-height:calc(var(--mobile-visual-viewport-height) - 300px);
-  }
 
   .mobile-sheet-chrome {
     height: var(--mobile-sheet-visible-handle);

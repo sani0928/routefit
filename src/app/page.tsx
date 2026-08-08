@@ -173,12 +173,7 @@ export default function Home() {
   }, [member.placeLists, saveTarget, savedPlacesByListId]);
 
   const triggerMobileNavigationHaptic = useCallback(() => {
-    if (!window.matchMedia("(max-width: 700px)").matches) return;
-
-    // Android: `change` is dispatched from the switch's real user activation,
-    // which is more reliably accepted than an earlier pointer event.
-    if (typeof navigator.vibrate !== "function") return;
-    navigator.vibrate([35]);
+    navigator.vibrate?.(100);
   }, []);
 
   useEffect(() => () => {

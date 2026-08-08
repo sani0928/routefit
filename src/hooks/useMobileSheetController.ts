@@ -41,10 +41,7 @@ function getIosStandaloneScreenHeight() {
 
 function getSheetStageHeights() {
   const root = document.documentElement;
-  const viewportVariable = root.hasAttribute("data-mobile-keyboard-open")
-    ? "--mobile-visual-viewport-height"
-    : "--mobile-layout-viewport-height";
-  const layoutViewportHeight = Number.parseFloat(root.style.getPropertyValue(viewportVariable)) || window.innerHeight;
+  const layoutViewportHeight = Number.parseFloat(root.style.getPropertyValue("--mobile-layout-viewport-height")) || window.innerHeight;
   const navHeight = document.querySelector<HTMLElement>(".mobile-bottom-nav")?.getBoundingClientRect().height ?? 64;
   return getMobileSheetStageHeights(layoutViewportHeight, navHeight);
 }
@@ -222,10 +219,14 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
 
       const layoutHeight = stableViewportRef.current.height || layoutViewportHeight;
       const keyboardHeight = Math.max(0, layoutHeight - visibleHeight);
+      const keyboardOpen = keyboardHeight >= KEYBOARD_OPEN_THRESHOLD;
       root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
-      root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
+      // iOS already moves fixed elements above its keyboard. Repositioning them
+      // by the keyboard height causes a second, incorrect offset. Only switch
+      // the layout sizing basis to the visible viewport while typing.
+      root.style.setProperty("--mobile-layout-viewport-height", `${keyboardOpen ? visibleHeight : layoutHeight}px`);
       root.style.setProperty("--mobile-keyboard-height", `${keyboardHeight}px`);
-      root.toggleAttribute("data-mobile-keyboard-open", keyboardHeight >= KEYBOARD_OPEN_THRESHOLD);
+      root.toggleAttribute("data-mobile-keyboard-open", keyboardOpen);
     };
 
     syncVisibleViewport();
