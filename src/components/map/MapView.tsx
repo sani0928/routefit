@@ -254,7 +254,24 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     updateCurrentLocationPlace(latitude, longitude);
     if (coordinatesChanged || !currentLocationAddressRef.current) void resolveCurrentLocationAddress(latitude, longitude);
 
-    activeMap.morph(position, Math.max(activeMap.getZoom(), 15), { duration: 260, easing: "easeOutCubic" } as naver.maps.TransitionOptions);
+    const targetZoom = Math.max(activeMap.getZoom(), 15);
+    const transition = { duration: 260, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      // Match saved-list single-place focus: calculate against the fixed peek
+      // coverage before moving, so the marker lands in the visible map centre.
+      const target = getPathFocusTarget(
+        activeMap,
+        [[longitude, latitude]],
+        getFocusMargin(getMobilePeekMapInsets(nodeRef.current)),
+        targetZoom,
+      );
+      if (activeMap.getZoom() === target.zoom) activeMap.panTo(target.center, transition);
+      else activeMap.morph(target.center, target.zoom, transition);
+      return;
+    }
+
+    activeMap.morph(position, targetZoom, transition);
   }, [resolveCurrentLocationAddress, updateCurrentLocationPlace]);
   useEffect(() => {
     selectRef.current = onMapPlaceSelect;

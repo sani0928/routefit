@@ -137,6 +137,8 @@ export default function Home() {
   const [focusedSavedPlaceRequest, setFocusedSavedPlaceRequest] = useState(0);
   const [savedPlacesByListId, setSavedPlacesByListId] = useState<Record<string, SavedPlace[]>>({});
   const [saveTarget, setSaveTarget] = useState<SavePlaceInput | null>(null);
+  const iosNavigationHapticSwitchRef = useRef<HTMLInputElement>(null);
+  const iosNavigationHapticLabelRef = useRef<HTMLLabelElement>(null);
   const {
     mobileTab,
     mobileSheetState,
@@ -171,6 +173,24 @@ export default function Home() {
     if (!saveTarget) return [];
     return member.placeLists.filter((list) => (savedPlacesByListId[list.id] ?? []).some((place) => place.name === saveTarget.name && Math.abs(place.latitude - saveTarget.latitude) < 0.000001 && Math.abs(place.longitude - saveTarget.longitude) < 0.000001)).map((list) => list.id);
   }, [member.placeLists, saveTarget, savedPlacesByListId]);
+
+  useEffect(() => {
+    // WebKit's non-standard switch haptic is only available through this
+    // attribute, which React's input typings do not currently expose.
+    iosNavigationHapticSwitchRef.current?.setAttribute("switch", "");
+  }, []);
+
+  const triggerMobileNavigationHaptic = useCallback(() => {
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+
+    if (typeof navigator.vibrate === "function") {
+      navigator.vibrate(10);
+      return;
+    }
+
+    // iOS fallback: this must stay synchronous with the user's tab click.
+    iosNavigationHapticLabelRef.current?.click();
+  }, []);
 
   useEffect(() => () => {
     if (routeOptionHoldTimerRef.current !== null) window.clearTimeout(routeOptionHoldTimerRef.current);
@@ -634,11 +654,11 @@ export default function Home() {
     }
   }
 
-  function closeSearchResults() {
+  function closeSearchResults({ preserveMobileSheetHeight = false }: { preserveMobileSheetHeight?: boolean } = {}) {
     setSearchQuery(null);
     setSearchMapResults([]);
     setFocusedSearchResult(null);
-    if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("peek");
+    if (!preserveMobileSheetHeight && window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("peek");
   }
 
   function isSearchResultAdded(place: PlaceSearchResult) {
@@ -860,7 +880,7 @@ export default function Home() {
             </div>
           )
         ) : <>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={closeSearchResults} showClearAction={searchQuery !== null} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} />
         {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={currentLocation} isCurrentLocationLocating={currentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onResultFocus={focusSearchResult} onRequestCurrentLocation={toggleCurrentLocation} /> : <>
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
         <div className="planner-footer">
@@ -927,16 +947,18 @@ export default function Home() {
 
       </section>
       <nav className="mobile-bottom-nav" aria-label="모바일 주요 메뉴" role="tablist">
-        <button type="button" role="tab" aria-selected={mobileTab === "places" && !listManagerOpen} aria-controls="mobile-places-panel" onClick={() => handleMobileTabSelect("places")}>
+        <button type="button" role="tab" aria-selected={mobileTab === "places" && !listManagerOpen} aria-controls="mobile-places-panel" onClick={() => { triggerMobileNavigationHaptic(); handleMobileTabSelect("places"); }}>
           <MapPin size={20} aria-hidden="true" /><span>방문 장소</span>
         </button>
-        <button type="button" role="tab" aria-selected={mobileTab === "places" && listManagerOpen} aria-controls="mobile-places-panel" onClick={() => handleMobileTabSelect("lists")}>
+        <button type="button" role="tab" aria-selected={mobileTab === "places" && listManagerOpen} aria-controls="mobile-places-panel" onClick={() => { triggerMobileNavigationHaptic(); handleMobileTabSelect("lists"); }}>
           <List size={20} aria-hidden="true" /><span>장소 리스트</span>
         </button>
-        <button type="button" role="tab" aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onClick={() => handleMobileTabSelect("results")}>
+        <button type="button" role="tab" aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onClick={() => { triggerMobileNavigationHaptic(); handleMobileTabSelect("results"); }}>
           <Waypoints size={20} aria-hidden="true" /><span>계산 결과</span>
         </button>
       </nav>
+      <input ref={iosNavigationHapticSwitchRef} id="ios-navigation-haptic-switch" className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" />
+      <label ref={iosNavigationHapticLabelRef} className="ios-navigation-haptic-label" htmlFor="ios-navigation-haptic-switch" aria-hidden="true" />
       <aside
         id="mobile-results-panel"
         className="result-panel mobile-sheet-panel"

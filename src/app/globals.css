@@ -1440,6 +1440,18 @@
 /* Mobile account entry stays available while map and sheets are explored. */
 .mobile-member-overlay { display: none; }
 
+/* Rendered but unreachable switch used only for the best-effort iOS tab haptic. */
+.ios-navigation-haptic-switch,
+.ios-navigation-haptic-label {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 @media (max-width: 700px) {
   .mobile-member-overlay {
     position: fixed;
