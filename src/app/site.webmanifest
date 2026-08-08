@@ -1,21 +1,25 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "RouteFit",
+  "short_name": "RouteFit",
+  "description": "실시간 교통정보를 반영해 차량 방문 동선을 최적화하는 RouteFit",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
       "src": "/web-app-manifest-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  "theme_color": "#f6f8fc",
+  "background_color": "#f6f8fc",
+  "display": "standalone",
+  "orientation": "any"
 }
