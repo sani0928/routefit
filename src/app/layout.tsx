@@ -5,10 +5,36 @@ import { OnlineStatusBanner } from "@/components/pwa/OnlineStatusBanner";
 import { PwaLifecycle } from "@/components/pwa/PwaLifecycle";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 
+const siteUrl = new URL("https://www.routefit.co.kr");
+const siteTitle = "루트핏 (RouteFit)";
+const siteDescription = "루트핏(RouteFit) : 실시간 교통정보를 반영해 여러 방문 장소의 이동 경로를 쉽고 빠르게 최적화하는 서비스";
+
 export const metadata: Metadata = {
-  title: "RouteFit",
-  description: "실시간 교통정보를 반영해 차량 방문 동선을 최적화하는 RouteFit",
-  applicationName: "RouteFit",
+  metadataBase: siteUrl,
+  title: { default: siteTitle, template: "%s | 루트핏 RouteFit" },
+  description: siteDescription,
+  applicationName: "루트핏 RouteFit",
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "/",
+    siteName: "루트핏 RouteFit",
+    title: siteTitle,
+    description: siteDescription,
+    images: [{ url: "/images/og_image.png", width: 1300, height: 630, alt: "루트핏 RouteFit 방문 경로 최적화" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+    images: ["/images/og_image.png"],
+  },
   manifest: "/site.webmanifest?v=1",
   icons: {
     icon: [

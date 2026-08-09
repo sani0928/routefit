@@ -28,6 +28,20 @@ const CURRENT_LOCATION_RECALCULATE_DISTANCE_METERS = 150;
 const EMPTY_MEMBER: MemberState = { authenticated: false, authConfigured: false, placeLists: [] };
 const newId = () => crypto.randomUUID();
 const GUEST_WORKSPACE_KEY = "routefit-guest-workspace";
+const WEB_APPLICATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "RouteFit",
+  alternateName: "루트핏",
+  url: "https://www.routefit.co.kr/",
+  description: "실시간 교통정보를 반영해 여러 방문 장소의 이동 경로를 쉽고 빠르게 최적화하는 웹 서비스",
+  applicationCategory: "UtilitiesApplication",
+  operatingSystem: "Web browser",
+  inLanguage: "ko-KR",
+  image: "https://www.routefit.co.kr/images/og_image.png",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
+  featureList: ["여러 방문 장소 추가", "방문 순서 최적화", "실시간 교통정보 기반 경로 계산"],
+};
 type RouteResultSnapshot = {
   returnToStart: boolean;
   fixedVisitOrders: FixedVisitOrder[];
@@ -393,7 +407,7 @@ export default function Home() {
       },
       () => {
         if (requestId !== searchCurrentLocationRequestRef.current) return;
-        notify.error("현재 위치를 가져오지 못했습니다. 위치 권한을 확인해 주세요.");
+        notify.error("위치 권한을 확인해 주세요.");
         setSearchCurrentLocationLocating(false);
       },
       { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
@@ -825,6 +839,8 @@ export default function Home() {
   }
 
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(WEB_APPLICATION_JSON_LD).replace(/</g, "\\u003c") }} />
     <main className={`app-shell mobile-tab-${mobileTab} mobile-sheet-${mobileSheetState}${mobileSheetDragging ? " mobile-sheet-dragging" : ""}`}>
       <aside
         id="mobile-places-panel"
@@ -844,7 +860,7 @@ export default function Home() {
         <div className="mobile-sheet-content">
           <header className="planner-header">
           <div className="planner-title-row">
-            <div><img className="routefit-logo" src="/icons/logo.png" alt="RouteFit" /></div>
+            <div><img className="routefit-logo" src="/icons/logo.png" alt="루트핏 RouteFit" /></div>
             <MemberHeader authConfigured={member.authConfigured} onBeforeLogin={() => undefined} onSessionChange={loadMember} />
           </div>
           <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
@@ -968,5 +984,6 @@ export default function Home() {
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
     </main>
+    </>
   );
 }

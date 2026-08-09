@@ -420,7 +420,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         trackingChangeRef.current?.(false);
       },
       () => {
-        errorRef.current("현재 위치를 가져오지 못했습니다. 위치 권한을 확인해 주세요.");
+        errorRef.current("위치 권한을 확인해 주세요.");
         trackingChangeRef.current?.(false);
       },
       { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
@@ -596,7 +596,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
         const action = listPlaces
           ? isAddedToRoute
             ? {
-              label: "방문 장소에서 제거",
+              label: "방문 장소 제거",
               className: "map-place-popup-remove",
               onClick: () => {
                 listRemoveRef.current?.(popupPlace);
@@ -606,7 +606,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
               },
             }
             : {
-              label: "방문 장소에 추가",
+              label: "방문 장소 추가",
               onClick: () => {
                 listAddRef.current?.(popupPlace);
                 popupRef.current?.close();
