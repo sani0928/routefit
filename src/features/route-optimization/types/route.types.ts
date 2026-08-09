@@ -1,5 +1,3 @@
-import type { RouteOption } from "../route-options";
-
 export type PlaceType = "START" | "WAYPOINT" | "DESTINATION";
 
 export interface Place {
@@ -31,17 +29,12 @@ export interface RouteOptimizationInput {
   waypoints: Place[];
   destination?: Place | null;
   returnToStart: boolean;
-  costs: RouteCost[];
   fixedVisitOrders?: FixedVisitOrder[];
 }
 
 export interface RouteOptimizationResult {
   orderedPlaceIds: string[];
   totalDurationMilliseconds: number;
-}
-
-export interface RouteOptimizer {
-  optimize(input: RouteOptimizationInput): RouteOptimizationResult;
 }
 
 export type TrafficCongestion = 0 | 1 | 2 | 3;
@@ -69,7 +62,7 @@ export interface OptimizationResponse {
     totalStayDurationMinutes: number;
     calculatedAt: string;
     calculationDurationMilliseconds: number;
-    routeOption: RouteOption;
+    optimizationMethod: "HAVERSINE_SINGLE";
   };
   path: [number, number][];
 }

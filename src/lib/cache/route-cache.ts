@@ -1,21 +1,72 @@
 import type { RouteSegment } from "@/features/route-optimization/types/route.types";
-import type { RouteOption } from "@/features/route-optimization/route-options";
+import Redis from "ioredis";
 
-type Entry = { expiresAt: number; value: RouteSegment };
-const cache = new Map<string, Entry>();
-const ttlMs = Math.max(300, Number(process.env.ROUTE_CACHE_TTL_SECONDS ?? 600)) * 1000;
+const configuredTtlSeconds = Number(process.env.ROUTE_CACHE_TTL_SECONDS ?? 180);
+const ttlSeconds = Number.isFinite(configuredTtlSeconds) ? Math.max(30, configuredTtlSeconds) : 180;
+const redisUrl = process.env.REDIS_URL;
+let redisUnavailableLogged = false;
 
-export function routeCacheKey(from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }, routeOption: RouteOption = "traoptimal"): string {
+declare global {
+  var routeFitRedis: Redis | undefined;
+}
+
+function getRedisClient(): Redis | null {
+  if (!redisUrl) {
+    if (!redisUnavailableLogged) {
+      console.warn("[RouteFit] REDIS_URL is not configured; route caching is disabled.");
+      redisUnavailableLogged = true;
+    }
+    return null;
+  }
+
+  if (!globalThis.routeFitRedis) {
+    globalThis.routeFitRedis = new Redis(redisUrl, {
+      connectTimeout: 1_000,
+      enableOfflineQueue: false,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null,
+    });
+    globalThis.routeFitRedis.on("error", () => {
+      if (!redisUnavailableLogged) {
+        console.warn("[RouteFit] Redis is unavailable; route caching is temporarily bypassed.");
+        redisUnavailableLogged = true;
+      }
+    });
+  }
+  return globalThis.routeFitRedis;
+}
+
+async function withRedis<T>(operation: (client: Redis) => Promise<T>): Promise<T | undefined> {
+  const client = getRedisClient();
+  if (!client) return undefined;
+  try {
+    if (client.status === "wait") await client.connect();
+    return await operation(client);
+  } catch {
+    if (!redisUnavailableLogged) {
+      console.warn("[RouteFit] Redis request failed; route caching is temporarily bypassed.");
+      redisUnavailableLogged = true;
+    }
+    return undefined;
+  }
+}
+
+export function routeCacheKey(from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }): string {
   const point = (p: { latitude: number; longitude: number }) => `${p.latitude.toFixed(6)},${p.longitude.toFixed(6)}`;
-  return `route:${point(from)}:${point(to)}:${routeOption}`;
+  return `routefit:directions:v1:traoptimal:${point(from)}:${point(to)}`;
 }
 
-export function getCachedRoute(key: string): RouteSegment | undefined {
-  const hit = cache.get(key);
-  if (!hit || hit.expiresAt <= Date.now()) { cache.delete(key); return undefined; }
-  return hit.value;
+export async function getCachedRoute(key: string): Promise<RouteSegment | undefined> {
+  const raw = await withRedis((client) => client.get(key));
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as RouteSegment;
+  } catch {
+    return undefined;
+  }
 }
 
-export function setCachedRoute(key: string, value: RouteSegment): void {
-  cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+export async function setCachedRoute(key: string, value: RouteSegment): Promise<void> {
+  await withRedis((client) => client.set(key, JSON.stringify(value), "EX", ttlSeconds));
 }

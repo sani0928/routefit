@@ -10,7 +10,7 @@ RouteFit은 장소·주소를 검색하거나 지도에서 직접 선택해 방�
 
 - **장소 추가** — Kakao Local API로 장소를 검색하고, 검색이 실패하거나 결과가 없을 때는 NAVER 지오코딩 결과를 사용합니다. 지도에서 길게 눌러 주변 장소나 주소를 추가할 수도 있습니다.
 - **방문 순서 설정** — 최대 15곳의 방문 장소를 드래그해 정렬하고, 반드시 지켜야 하는 경유지 순서는 고정할 수 있습니다. 각 장소의 머무는 시간도 반영합니다.
-- **경로 최적화** — 빠른 길·균형·편한 길 중 주행 기준을 선택해 최적화합니다. 전체 거리, 예상 소요 시간, 통행료, 구간별 경로와 교통 상태를 제공합니다.
+- **경로 최적화** — 직선거리로 방문 순서를 빠르게 구성한 뒤, 실제 주행 구간만 교통 정보로 확인합니다. 전체 거리, 예상 소요 시간, 통행료, 구간별 경로와 교통 상태를 제공합니다.
 - **복귀 및 도착지** — 출발지로 복귀하거나, 마지막 방문 장소를 도착지로 지정할 수 있습니다.
 - **현재 위치** — 버튼을 누를 때 한 번만 현재 위치를 가져와 방문 장소에 추가하거나 갱신합니다. 지속 위치 추적은 사용하지 않습니다.
 - **장소 리스트** — Google 로그인 후 장소를 색상별 리스트로 저장하고, 저장 장소를 방문 동선에 추가·제거할 수 있습니다. 한 장소는 여러 리스트에 저장할 수 있습니다.
@@ -79,7 +79,8 @@ npm run dev
 | `NAVER_MAP_API_KEY_ID` | NAVER Maps 서버 API 키 ID |
 | `NAVER_MAP_API_KEY_SECRET` | NAVER Maps 서버 API 키 Secret |
 | `KAKAO_REST_API_KEY` | Kakao Local API REST API 키 |
-| `ROUTE_CACHE_TTL_SECONDS` | 경로 비용 캐시 유지 시간(초, 기본 예시: `300`) |
+| `REDIS_URL` | 여러 서버 인스턴스가 함께 쓰는 Redis 연결 URL |
+| `ROUTE_CACHE_TTL_SECONDS` | Redis 경로 캐시 유지 시간(초, 기본 예시: `180`) |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 |
 | `BETTER_AUTH_SECRET` | Better Auth 서명용 비밀 값 |
 | `BETTER_AUTH_URL` | 현재 앱의 기본 URL |
@@ -127,7 +128,7 @@ src/
 ├─ features/
 │  ├─ place-search/             # 장소 검색 타입
 │  ├─ member/                   # 회원·장소 리스트 타입
-│  └─ route-optimization/       # 최적화 알고리즘, 비용 행렬, 경로 타입
+│  └─ route-optimization/       # Haversine 최적화 알고리즘과 경로 타입
 ├─ hooks/                       # 모바일 하단 시트 제어
 └─ lib/                         # API 클라이언트, DB, 캐시, 유효성 검사
 
@@ -138,7 +139,7 @@ docs/                           # 개발 인수인계와 설계 메모
 
 ## 운영 시 참고
 
-- 최적화는 방향성이 있는 이동 시간 행렬을 만들기 때문에 장소가 늘수록 NAVER Directions API 요청 수가 빠르게 증가합니다. 예를 들어 7곳이면 약 42회의 행렬 요청이 필요합니다.
+- 최적화는 Haversine 직선거리로 방문 순서를 정한 뒤, 확정된 이동 구간만 NAVER Directions API로 조회합니다. 왕복 7곳은 최대 7회 수준입니다. 운영 환경에서는 `REDIS_URL`을 설정해 서버 인스턴스 간에도 같은 구간 조회를 재사용하세요.
 - 경로 결과는 계산 당시의 교통 정보에 의존하며, 저장하지 않습니다. 최신 교통 정보를 반영하려면 다시 계산해야 합니다.
 - `NEXT_PUBLIC_*` 환경 변수는 브라우저에 노출됩니다. 서버 API 키와 OAuth Secret은 절대 `NEXT_PUBLIC_` 접두사로 만들지 마세요.
 - PWA 아이콘은 `public/icons`를 기준으로 하며, 아이콘 바이트를 교체할 때는 `public/site.webmanifest`와 `src/app/layout.tsx`의 캐시 버전도 함께 점검하세요.

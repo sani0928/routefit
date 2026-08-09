@@ -19,7 +19,7 @@
 .result-time { color:#8190a4; font-size:.75rem; font-weight:700; }
 .route-summary-panel h2 { margin:0; font-size:1.38rem; letter-spacing:-.045em; }
 .result-intro { margin:8px 0 20px; color:#718096; font-size:.82rem; line-height:1.55; }
-.route-hero { position:relative; overflow:hidden; padding:20px; border-radius:18px; color:#fff; background:linear-gradient(140deg,#173b73,#2563eb 62%,#5595ff); box-shadow:0 12px 28px #2563eb2b; }.route-option-badge { position:absolute; top:16px; right:16px; padding:5px 8px; border:1px solid rgb(255 255 255 / .28); border-radius:999px; color:#fff; background:rgb(15 23 42 / .16); font-size:.64rem; font-weight:750; line-height:1; }
+.route-hero { position:relative; overflow:hidden; padding:20px; border-radius:18px; color:#fff; background:linear-gradient(140deg,#173b73,#2563eb 62%,#5595ff); box-shadow:0 12px 28px #2563eb2b; }.route-hero-logo { position:absolute; top:16px; right:16px; display:block; width:92px; height:auto; object-fit:contain; }
 .route-hero > p { margin:0 0 7px; color:#c9ddff; font-size:.74rem; font-weight:700; }
 .route-hero > strong { display:block; font-size:2rem; letter-spacing:-.065em; line-height:1; }
 .route-hero-details { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:22px; padding-top:14px; border-top:1px solid #ffffff35; }
@@ -2285,16 +2285,9 @@
 /* Keep the saved-place search hint aligned with the compact card interface. */
 .saved-places-panel .saved-place-search input { color:#415671; font-size:.78rem; font-weight:700; letter-spacing:-.02em; }
 .saved-places-panel .saved-place-search input::placeholder { color:#9aabbe; font-size:.74rem; font-weight:650; letter-spacing:-.025em; opacity:1; }
-/* Keep RouteFit visible beside the compact mobile search field, then yield space while searching. */
 @media (max-width:700px) {
   .planner-panel.mobile-sheet-panel .naver-search-form { position:relative; min-height:52px; }
-  .planner-panel.mobile-sheet-panel .naver-search-form .search-brand { position:absolute; top:50%; right:3px; display:flex; width:44%; height:52px; align-items:center; justify-content:flex-end; padding:0 8px 0 16px; pointer-events:none; opacity:1; transform:translateY(-50%) translateX(0); transition:opacity .2s ease,transform .24s cubic-bezier(.22,.85,.3,1); }
-  .planner-panel.mobile-sheet-panel .naver-search-form .search-brand img { display:block; width:min(100%,104px); height:auto; object-fit:contain; opacity:.92; }
-  .planner-panel.mobile-sheet-panel .naver-search-form.search-expanded .search-brand { opacity:0; transform:translateY(-50%) translateX(10px); }
 }
-/* The search brand is intentionally a mobile-only identity cue. */
-.search-brand { display:none; }
-@media (max-width:700px) { .planner-panel.mobile-sheet-panel .naver-search-form .search-brand { display:flex; } }
 /* Keep stay duration and guaranteed-order state visible at every viewport size. */
 .planner-panel .place-mobile-status {
   display: flex;
@@ -2915,11 +2908,6 @@
   color: #c9ddff;
   font-size: .74rem;
   font-weight: 700;
-}
-
-.route-hero-heading .route-option-badge {
-  position: static;
-  flex: 0 0 auto;
 }
 
 .route-hero-overview {
@@ -5005,4 +4993,54 @@
 
 @media (prefers-reduced-motion:reduce) {
   .planner-panel .search-list-toggle { transition:none; }
+}
+
+/* A single calculation action must use the full footer width after route preferences were removed. */
+.planner-panel .planner-footer .route-primary-group {
+  display: block;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.planner-panel .planner-footer .route-primary-group .route-calculate-control,
+.planner-panel .planner-footer .route-primary-group .route-calculate-action {
+  width: 100%;
+}
+
+.planner-panel .planner-footer .route-primary-group .route-calculate-action {
+  border-radius: 14px;
+}
+
+/* On mobile, the route action takes the search brand's place and yields that space while searching. */
+.mobile-search-calculate { display:none; }
+
+@media (max-width:700px) {
+  .planner-panel.mobile-sheet-panel .naver-search-form .mobile-search-calculate {
+    position:absolute;
+    top:50%;
+    right:3px;
+    display:inline-flex;
+    width:42%;
+    min-height:44px;
+    align-items:center;
+    justify-content:center;
+    padding:0 10px;
+    border-radius:12px;
+    color:#fff;
+    background:linear-gradient(135deg,#2563eb,#3b82f6);
+    box-shadow:0 4px 10px #2563eb2b;
+    font-size:.72rem;
+    font-weight:800;
+    white-space:nowrap;
+    transform:translateY(-50%);
+    transition:opacity .2s ease,transform .24s cubic-bezier(.22,.85,.3,1);
+  }
+
+  .planner-panel.mobile-sheet-panel .naver-search-form.search-expanded .mobile-search-calculate {
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(-50%) translateX(10px);
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-footer { display:none; }
 }

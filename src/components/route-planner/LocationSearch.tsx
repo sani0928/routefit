@@ -1,7 +1,7 @@
 "use client";
 
 import { List, ListPlus, Search, X } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
 import { notify } from "@/lib/notify";
 import type { PlaceSearchResponse, PlaceSearchResult } from "@/features/place-search/types";
 import { PlaceCategoryIcon } from "./PlaceCategoryIcon";
@@ -18,9 +18,10 @@ type Props = {
   onSavedPlacesOpen?: () => void;
   onSearchClear?: () => void;
   showClearAction?: boolean;
+  mobileAction?: ReactNode;
 };
 
-export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, onSearchPointerDown, onSavedPlacesOpen, onSearchClear, showClearAction = false }: Props) {
+export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, onSearchPointerDown, onSavedPlacesOpen, onSearchClear, showClearAction = false, mobileAction }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,6 +136,6 @@ export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, o
       </ul>}
     </div>
     {onSavedPlacesOpen && <button type="button" className="search-list-toggle" onClick={onSavedPlacesOpen} aria-label="장소 리스트 열기"><List size={18} aria-hidden="true" /><span>장소 리스트</span></button>}
-    {isMobile && <div className="search-brand" aria-hidden="true"><img src="/icons/logo.png" alt="" /></div>}
+    {isMobile && mobileAction}
   </form>;
 }

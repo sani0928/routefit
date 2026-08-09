@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { List, MapPin, MoveLeft, MoveRight , Waypoints } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { List, MapPin, Waypoints } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { SavePlaceDialog } from "@/components/member/SavePlaceDialog";
@@ -12,7 +12,6 @@ import { PlaceList } from "@/components/route-planner/PlaceList";
 import { RouteSummary } from "@/components/route-planner/RouteSummary";
 import type { MemberPlaceList, MemberState, SavedPlace } from "@/features/member/types";
 import type { FixedVisitOrder, OptimizationResponse, Place } from "@/features/route-optimization/types/route.types";
-import { ROUTE_OPTIONS, ROUTE_OPTION_META, type RouteOption } from "@/features/route-optimization/route-options";
 import { notify } from "@/lib/notify";
 import { useMobileSheetController } from "@/hooks/useMobileSheetController";
 import type { PlaceSearchResult } from "@/features/place-search/types";
@@ -112,12 +111,6 @@ export default function Home() {
   const [resultSnapshot, setResultSnapshot] = useState<RouteResultSnapshot | null>(null);
   const [routeNeedsRecalculation, setRouteNeedsRecalculation] = useState(false);
   const [status, setStatus] = useState<Status>("IDLE");
-  const [routeOption, setRouteOption] = useState<RouteOption>("traoptimal");
-  const [routeOptionHint, setRouteOptionHint] = useState<RouteOption | null>(null);
-  const [routeOptionDragging, setRouteOptionDragging] = useState(false);
-  const routeOptionHoldTimerRef = useRef<number | null>(null);
-  const routeOptionHintDismissTimerRef = useRef<number | null>(null);
-  const routeOptionLongPressRef = useRef(false);
   const [hoveredSegmentIndex, setHoveredSegmentIndex] = useState<number | null>(null);
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
   const [member, setMember] = useState<MemberState>(EMPTY_MEMBER);
@@ -176,7 +169,6 @@ export default function Home() {
   );
   const isWorkspaceLoading = !memberStateReady || (member.authenticated && !workspaceRestored);
   const isPlaceListLoading = Boolean(selectedListId && !Object.prototype.hasOwnProperty.call(savedPlacesByListId, selectedListId));
-  const selectedRouteOption = ROUTE_OPTION_META[routeOption];
   const resultReturnToStart = resultSnapshot?.returnToStart ?? returnToStart;
   const resultFixedVisitOrders = resultSnapshot?.fixedVisitOrders ?? fixedVisitOrders;
   const savedListIdsForSaveTarget = useMemo(() => {
@@ -188,10 +180,6 @@ export default function Home() {
     navigator.vibrate?.(65);
   }, []);
 
-  useEffect(() => () => {
-    if (routeOptionHoldTimerRef.current !== null) window.clearTimeout(routeOptionHoldTimerRef.current);
-    if (routeOptionHintDismissTimerRef.current !== null) window.clearTimeout(routeOptionHintDismissTimerRef.current);
-  }, []);
   const loadMember = useCallback(async () => {
     try {
       const response = await fetch("/api/member/state", { cache: "no-store" });
@@ -499,7 +487,7 @@ export default function Home() {
     }
     setStatus("BUILDING_MATRIX");
     try {
-      const response = await fetch("/api/routes/optimize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ start, waypoints, destination, returnToStart, fixedVisitOrders, optimizationCriterion: "DURATION", routeOption }) });
+      const response = await fetch("/api/routes/optimize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ start, waypoints, destination, returnToStart, fixedVisitOrders }) });
       setStatus("OPTIMIZING");
       const body = await response.json() as OptimizationResponse & { error?: { message?: string } };
       if (!response.ok) throw new Error(body.error?.message || "동선 계산에 실패했습니다.");
@@ -749,90 +737,11 @@ export default function Home() {
     closeListManager();
   }
 
-  function clearRouteOptionHoldTimer() {
-    if (routeOptionHoldTimerRef.current !== null) {
-      window.clearTimeout(routeOptionHoldTimerRef.current);
-      routeOptionHoldTimerRef.current = null;
-    }
-  }
-
-  function startRouteOptionHint(option: RouteOption) {
-    clearRouteOptionHoldTimer();
-    if (routeOptionHintDismissTimerRef.current !== null) window.clearTimeout(routeOptionHintDismissTimerRef.current);
-    routeOptionLongPressRef.current = false;
-    routeOptionHoldTimerRef.current = window.setTimeout(() => {
-      routeOptionLongPressRef.current = true;
-      setRouteOptionHint(option);
-      routeOptionHoldTimerRef.current = null;
-    }, 500);
-  }
-
-  function finishRouteOptionHint() {
-    clearRouteOptionHoldTimer();
-    if (!routeOptionLongPressRef.current) return;
-    if (routeOptionHintDismissTimerRef.current !== null) window.clearTimeout(routeOptionHintDismissTimerRef.current);
-    routeOptionHintDismissTimerRef.current = window.setTimeout(() => {
-      setRouteOptionHint(null);
-      routeOptionLongPressRef.current = false;
-      routeOptionHintDismissTimerRef.current = null;
-    }, 2400);
-  }
-
-  function selectRouteOption(option: RouteOption) {
-    setRouteOption(option);
-    setRouteOptionHint(null);
-    markRouteStale();
-  }
-
-  function selectRouteOptionFromPointer(event: ReactPointerEvent<HTMLDivElement>) {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
-    const nextOption = ROUTE_OPTIONS[Math.round(ratio * (ROUTE_OPTIONS.length - 1))];
-    selectRouteOption(nextOption);
-    return nextOption;
-  }
-
-  function handleRouteOptionPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setRouteOptionDragging(true);
-    startRouteOptionHint(selectRouteOptionFromPointer(event));
-  }
-
-  function handleRouteOptionPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    clearRouteOptionHoldTimer();
-    setRouteOptionHint(null);
-    selectRouteOptionFromPointer(event);
-  }
-
-  function handleRouteOptionPointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    setRouteOptionDragging(false);
-    finishRouteOptionHint();
-  }
-
-  function handleRouteOptionKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    const currentIndex = ROUTE_OPTIONS.indexOf(routeOption);
-    const nextIndex = event.key === "ArrowLeft" || event.key === "ArrowDown"
-      ? Math.max(0, currentIndex - 1)
-      : event.key === "MoveRight " || event.key === "ArrowUp"
-        ? Math.min(ROUTE_OPTIONS.length - 1, currentIndex + 1)
-        : event.key === "Home"
-          ? 0
-          : event.key === "End"
-            ? ROUTE_OPTIONS.length - 1
-            : null;
-    if (nextIndex === null) return;
-    event.preventDefault();
-    selectRouteOption(ROUTE_OPTIONS[nextIndex]);
-  }
-
   function resetPlanner() {
     setCurrentLocationLocating(false);
     setPlaces([]);
     setFixedVisitOrders([]);
     setResult(null);
-    setRouteOptionHint(null);
   }
 
   function clearRouteResult() {
@@ -944,40 +853,16 @@ export default function Home() {
             </div>
           )
         ) : <>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
         {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSearchFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
-        <div className="planner-footer">
-          <div className="route-primary-group">
-            <div className="route-option-control">
-              <div
-                className={`route-option-toggle route-option-${selectedRouteOption.tone} route-option-index-${ROUTE_OPTIONS.indexOf(routeOption)}${routeOptionDragging ? " is-dragging" : ""}`}
-                role="slider"
-                tabIndex={0}
-                aria-label="경로 성향"
-                aria-valuemin={0}
-                aria-valuemax={ROUTE_OPTIONS.length - 1}
-                aria-valuenow={ROUTE_OPTIONS.indexOf(routeOption)}
-                aria-valuetext={selectedRouteOption.label}
-                onPointerDown={handleRouteOptionPointerDown}
-                onPointerMove={handleRouteOptionPointerMove}
-                onPointerUp={handleRouteOptionPointerEnd}
-                onPointerCancel={handleRouteOptionPointerEnd}
-                onKeyDown={handleRouteOptionKeyDown}
-              >
-                <span className="route-option-toggle-track" aria-hidden="true">
-                  {routeOption !== "trafast" && <MoveLeft />}
-                  {routeOption !== "tracomfort" && <MoveRight  />}
-                </span>
-                <span className="route-option-toggle-handle">{selectedRouteOption.label}</span>
+          <div className="planner-footer">
+            <div className="route-primary-group">
+              <div className="route-calculate-control optimize-action">
+                <button className="primary route-calculate-action" onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"} aria-label="경로 최적화 계산" title="경로 최적화 계산">경로 최적화 계산</button>
               </div>
-              {routeOptionHint && <p className={`route-option-hint route-option-${ROUTE_OPTION_META[routeOptionHint].tone} route-option-index-${ROUTE_OPTIONS.indexOf(routeOptionHint)}`} role="status">{ROUTE_OPTION_META[routeOptionHint].description}</p>}
-            </div>
-            <div className="route-calculate-control optimize-action">
-              <button className={`primary route-calculate-action route-option-${selectedRouteOption.tone}`} onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"} aria-label="경로 계산" title="경로 계산">계산</button>
             </div>
           </div>
-        </div>
         </>}
         </>}
         </div>
@@ -1051,7 +936,7 @@ export default function Home() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} routeOption={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status) ? routeOption : result?.summary.routeOption ?? routeOption} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} />
+            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
