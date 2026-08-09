@@ -1,12 +1,21 @@
 "use client";
 
 import { toast, type ToastOptions } from "react-toastify";
+import { Check, CircleX, Info } from "lucide-react";
+import { createElement } from "react";
 
 type ToastKind = "info" | "success" | "error";
+
+const toastIcons = {
+  info: () => createElement(Info, { "aria-hidden": true }),
+  success: () => createElement(Check, { "aria-hidden": true }),
+  error: () => createElement(CircleX, { "aria-hidden": true }),
+};
 
 const optionsFor = (kind: ToastKind): ToastOptions => ({
   autoClose: kind === "error" ? 5000 : 3000,
   hideProgressBar: true,
+  icon: toastIcons[kind],
 });
 
 function show(kind: ToastKind, message: string) {

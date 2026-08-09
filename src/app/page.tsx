@@ -483,7 +483,7 @@ export default function Home() {
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("results");
       setMobileSheetState((current) => current === "collapsed" ? "peek" : current);
-      setListManagerOpen(false);
+      hideListManager();
     }
     setStatus("BUILDING_MATRIX");
     try {
@@ -653,7 +653,8 @@ export default function Home() {
   function removeSavedPlaceFromRoute(place: SavedPlace) {
     removeListPlaceFromRoute(place);
   }
-  function closeListManager() { setListManagerOpen(false); setSelectedListId(null); setFocusedSavedPlace(null); }
+  function hideListManager() { setListManagerOpen(false); setFocusedSavedPlace(null); }
+  function closeListManager() { hideListManager(); setSelectedListId(null); }
 
   function openListManager() {
     closeSearchResults();
@@ -682,7 +683,7 @@ export default function Home() {
     setHasVisibleSearchResult(true);
     setSearchResultsLoading(true);
     setFocusedSearchResult(null);
-    closeListManager();
+    hideListManager();
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("places");
       setMobileSheetState("peek");
@@ -724,6 +725,28 @@ export default function Home() {
     window.setTimeout(() => document.getElementById("mobile-map-focus")?.focus(), 0);
   }
 
+  function scrollMobileSheetToTop(tab: "places" | "results") {
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+
+    const panel = document.getElementById(tab === "results" ? "mobile-results-panel" : "mobile-places-panel");
+    if (!panel) return;
+
+    const scrollToTop = () => {
+      const scrollTargets = new Set<HTMLElement>([
+        panel,
+        ...panel.querySelectorAll<HTMLElement>(
+          ".mobile-sheet-content, .place-list-scroll, .saved-place-list, .place-list-cards, .list-editor-screen-form, .search-results-sheet-list",
+        ),
+      ]);
+
+      scrollTargets.forEach((target) => target.scrollTo({ top: 0, behavior: "smooth" }));
+    };
+
+    // Run after the tab change so a previously hidden sheet can reveal its
+    // top section even when peek mode has disabled touch scrolling.
+    window.requestAnimationFrame(scrollToTop);
+  }
+
   function handleMobileTabSelect(nextTab: "places" | "lists" | "results") {
     if (nextTab === "lists") {
       if (listManagerOpen && mobileTab === "places") {
@@ -731,10 +754,14 @@ export default function Home() {
         return;
       }
       openListManager();
+      scrollMobileSheetToTop("places");
       return;
     }
+
+    const isChangingSheet = nextTab !== mobileTab || (nextTab === "places" && listManagerOpen);
     selectMobileTab(nextTab);
-    closeListManager();
+    hideListManager();
+    if (isChangingSheet) scrollMobileSheetToTop(nextTab);
   }
 
   function resetPlanner() {
@@ -761,7 +788,7 @@ export default function Home() {
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("results");
       setMobileSheetState("peek");
-      setListManagerOpen(false);
+      hideListManager();
     }
 
     window.requestAnimationFrame(() => {
@@ -778,7 +805,7 @@ export default function Home() {
     if (index !== null && source === "segment" && window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("results");
       setMobileSheetState("peek");
-      setListManagerOpen(false);
+      hideListManager();
       window.requestAnimationFrame(() => {
         const resultPanel = document.getElementById("mobile-results-panel");
         resultPanel?.scrollTo({ top: 0, behavior: "smooth" });
@@ -790,7 +817,7 @@ export default function Home() {
     if (window.matchMedia("(max-width: 700px)").matches) {
       setMobileTab("places");
       setMobileSheetState("peek");
-      setListManagerOpen(false);
+      hideListManager();
     } else {
       closeListManager();
     }
@@ -915,7 +942,7 @@ export default function Home() {
           <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onChange={(event) => { triggerMobileNavigationHaptic(); event.currentTarget.checked = false; handleMobileTabSelect("lists"); }} />
           <List size={20} aria-hidden="true" /><span>장소 리스트</span>
         </label>
-        <label className="mobile-navigation-tab" role="tab" tabIndex={0} aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("results"); } }}>
+        <label className={`mobile-navigation-tab${result ? " has-route-result" : ""}`} role="tab" tabIndex={0} aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("results"); } }}>
           <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onChange={(event) => { triggerMobileNavigationHaptic(); event.currentTarget.checked = false; handleMobileTabSelect("results"); }} />
           <Waypoints size={20} aria-hidden="true" /><span>계산 결과</span>
         </label>

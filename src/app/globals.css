@@ -1209,6 +1209,21 @@
   }
   .mobile-navigation-tab[aria-selected=true] { color:#2563eb; background:#f4f8ff; }
   .mobile-navigation-tab svg { stroke-width:2.2; }
+  .mobile-navigation-tab.has-route-result {
+    color:#1877c9;
+    background:linear-gradient(112deg,#e7fbfa 0%,#e5f6ff 28%,#edf0ff 50%,#e2fbf2 73%,#e7fbfa 100%);
+    background-size:240% 100%;
+    box-shadow:inset 0 0 0 1px rgb(45 186 215 / .22);
+    animation:routefit-result-tab-wave 3.6s ease-in-out infinite;
+  }
+  .mobile-navigation-tab.has-route-result[aria-selected=true] {
+    color:#1d5fd4;
+    box-shadow:inset 0 0 0 1px rgb(37 99 235 / .24),0 3px 10px rgb(37 99 235 / .08);
+  }
+  @keyframes routefit-result-tab-wave {
+    0%,100% { background-position:0% 50%; }
+    50% { background-position:100% 50%; }
+  }
 
   .mobile-sheet-controls {
     position:fixed;
@@ -1382,7 +1397,11 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 0 14px 14px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
+
+  .mobile-sheet-content::-webkit-scrollbar { display: none; }
 
   .map-list-manager > .mobile-sheet-content {
     display: flex;
@@ -1442,36 +1461,43 @@
 .planner-panel .place-item:has(.place-order-lock.locked):not(.editing-stay):has(:focus-visible) .place-main {
   padding-right: 96px;
 }
-/* Global bottom toast feedback */
-.Toastify__toast-container {
+/* RouteFit toast feedback */
+.routefit-toast-container.Toastify__toast-container {
   z-index: 10000;
   width: min(420px, calc(100vw - 40px));
   padding-inline: 0;
 }
 
-.Toastify__toast {
-  min-height: 52px;
+.routefit-toast.Toastify__toast {
+  position: relative;
+  min-height: 58px;
   margin-bottom: 10px;
-  padding: 12px 14px;
-  border: 1px solid #dbe6f2;
-  border-radius: 24px;
+  padding: 12px 42px 12px 14px;
+  overflow: hidden;
+  border: 1px solid #d7e4f3;
+  border-radius: 16px;
   color: #334155;
-  background: rgb(255 255 255 / .98);
-  box-shadow: 0 12px 30px rgb(15 23 42 / .16);
+  background: rgb(255 255 255 / .96);
+  box-shadow: 0 12px 28px rgb(15 23 42 / .14);
   font-family: inherit;
-  font-size: .8rem;
+  font-size: .78rem;
   font-weight: 700;
   line-height: 1.45;
+  backdrop-filter: blur(10px);
 }
 
-.Toastify__toast--info { border-color: #bfdbfe; color: #1d4ed8; background: #f4f8ff; }
-.Toastify__toast--success { border-color: #bbf7d0; color: #166534; background: #f0fdf4; }
-.Toastify__toast--error { border-color: #fecaca; color: #b91c1c; background: #fff7f7; }
-.Toastify__toast-icon { width: 20px; margin-inline-end: 10px; }
-.Toastify__close-button { align-self: center; color: currentColor; opacity: .72; }
-.Toastify__close-button:hover { opacity: 1; }
+.routefit-toast.Toastify__toast--info { border-color: #bfdbfe; color: #1e4d99; background: rgb(246 250 255 / .98); }
+.routefit-toast.Toastify__toast--success { border-color: #b8e9cb; color: #167048; background: rgb(245 253 249 / .98); }
+.routefit-toast.Toastify__toast--error { border-color: #fecaca; color: #b42318; background: rgb(255 248 248 / .98); }
+.routefit-toast .Toastify__toast-body { display: flex; align-items: center; margin: 0; padding: 0; }
+.routefit-toast .Toastify__toast-icon { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; margin-inline-end: 10px; color: #2563eb; }
+.routefit-toast.Toastify__toast--success .Toastify__toast-icon { color: #16854e; }
+.routefit-toast.Toastify__toast--error .Toastify__toast-icon { color: #d92d20; }
+.routefit-toast .Toastify__toast-icon svg { width: 17px; height: 17px; }
+.routefit-toast .Toastify__close-button { position: absolute; top: 50%; right: 10px; display: grid; width: 24px; height: 24px; place-items: center; padding: 0; border-radius:8px; color: currentColor; opacity: .58; transform: translateY(-50%); transition: opacity .18s ease, background .18s ease; }
+.routefit-toast .Toastify__close-button:hover { opacity: 1; background: rgb(15 23 42 / .06); }
 
-.Toastify__toast-container--bottom-center {
+.routefit-toast-container.Toastify__toast-container--bottom-center {
   right: auto;
   bottom: 20px !important;
   left: 50% !important;
@@ -1481,7 +1507,7 @@
 }
 
 @media (max-width: 700px) {
-  .Toastify__toast-container--bottom-center {
+  .routefit-toast-container.Toastify__toast-container--bottom-center {
     bottom: calc(var(--mobile-nav-height, 72px) + env(safe-area-inset-bottom) + 12px) !important;
     left: 20px !important;
     width: calc(100vw - 40px) !important;
@@ -1734,6 +1760,8 @@
   .planner-panel .naver-search-form .search-control {
     transition-duration: 1ms !important;
   }
+
+  .mobile-navigation-tab.has-route-result { animation:none; }
 }
 /* Keep mobile planner actions discoverable above the scrollable stop list. */
 @media (max-width: 700px) {
