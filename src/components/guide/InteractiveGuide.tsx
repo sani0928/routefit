@@ -225,7 +225,6 @@ export function InteractiveGuide() {
                     <button type="button" className="guide-place-grip" onPointerDown={(event) => startTouchDrag(event, place.id)} onPointerMove={moveTouchDrag} onPointerUp={endTouchDrag} onPointerCancel={endTouchDrag} aria-label={index === 0 ? "출발 위치" : `${place.name} 순서 변경`} disabled={index === 0}><GripVertical aria-hidden="true" /></button>
                     <b>{index + 1}</b><span><strong>{place.name}</strong><small>{index === 0 ? "출발 기준 위치" : place.stayMinutes > 0 ? `머무는 시간 ${place.stayMinutes}분` : "방문할 장소"}</small></span>
                     {index > 0 && <div className="guide-place-hover-actions"><div><button type="button" onClick={() => updatePlace(place.id, (current) => ({ ...current, stayMinutes: Math.max(0, current.stayMinutes - 5) }))} aria-label="머무는 시간 5분 줄이기"><Minus /></button><span><Clock3 />{place.stayMinutes}분</span><button type="button" onClick={() => updatePlace(place.id, (current) => ({ ...current, stayMinutes: current.stayMinutes + 5 }))} aria-label="머무는 시간 5분 늘리기"><Plus /></button></div><button type="button" onClick={() => removePlace(place.id)} aria-label={`${place.name} 삭제`}><Trash2 /></button></div>}
-                    {index > 0 && <button type="button" className="guide-place-remove" onClick={() => removePlace(place.id)} aria-label="장소 제거"><Trash2 /></button>}
                   </div>
                 </li>;
               })}

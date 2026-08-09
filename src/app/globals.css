@@ -5158,23 +5158,9 @@
   }
 }
 
-/* The guide only needs one clear removal action; keep it in the card instead of a separate swipe tray. */
+/* The guide keeps its place cards focused on ordering and calculation. */
 .guide-place-action-tray { display:none !important; }
 .guide-place-hover-actions > button { display:none; }
-.guide-place-remove {
-  display:grid;
-  width:30px;
-  height:30px;
-  flex:0 0 30px;
-  place-items:center;
-  padding:0;
-  border:1px solid #f3d8dd;
-  border-radius:8px;
-  color:#c2414d;
-  background:#fff8f8;
-}
-
-.guide-place-remove svg { width:16px; height:16px; }
 
 .guide-panel-copy {
   word-break:keep-all;
@@ -5250,9 +5236,10 @@
 }
 
 .map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action {
-  min-width:112px;
-  padding-inline:8px;
-  font-size:.56rem;
+  width:30px;
+  min-width:30px;
+  justify-content:center;
+  padding:0;
 }
 
 .guide-use-cases {
@@ -5291,23 +5278,13 @@
   .result-panel.mobile-sheet-panel .result-header.result-status-header .result-eyebrow { grid-column:2; }
 
   .map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action {
-    min-width:92px;
-    gap:2px;
-    padding-inline:6px;
-    font-size:.54rem;
+    width:30px;
+    min-width:30px;
+    justify-content:center;
+    padding:0;
   }
 
   .guide-panel-copy-break { display:none; }
-
-  .guide-place-remove {
-    width:32px;
-    height:32px;
-    border:0;
-    border-radius:9px;
-    background:#fff1f2;
-  }
-
-  .guide-place-remove svg { width:18px; height:18px; }
 
   .guide-use-cases {
     display:block;

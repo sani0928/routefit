@@ -107,7 +107,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
     return <section className="saved-places-panel place-list-editor-screen" style={{ "--list-color": color } as CSSProperties}>
       <header className="list-editor-screen-header">
         <button className="list-icon-button list-editor-back" type="button" onClick={() => setEditorMode(null)} aria-label={isCreate ? "장소 리스트로 돌아가기" : "리스트 상세로 돌아가기"}><ChevronLeft size={20} /></button>
-        <div><h2>{isCreate ? "새 장소 리스트" : "리스트 정보 수정"}</h2></div>
+        <div><h2>{isCreate ? "새 장소 리스트" : "리스트 수정"}</h2></div>
         <div className="list-editor-header-actions">
           {!isCreate && activeList && <button className="list-editor-delete-action" type="button" onClick={requestListDeletion}>삭제</button>}
           <button className="list-editor-header-submit" type="submit" form="place-list-editor-form" disabled={!name.trim()}>{isCreate ? "만들기" : "저장"}</button>
@@ -138,7 +138,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
     return <section className="saved-places-panel place-list-detail" style={{ "--list-color": activeList.color } as CSSProperties}>
       <header className="list-detail-header">
         <button className="list-icon-button" type="button" onClick={onBack} aria-label="장소 리스트로 돌아가기"><ChevronLeft size={18} /></button>
-        <button className="list-detail-title" type="button" onClick={openEdit} title="리스트 정보 수정"><span className="list-detail-emblem"><MapPinned size={16} aria-hidden="true" /></span><strong>{activeList.name}</strong></button>
+        <button className="list-detail-title" type="button" onClick={openEdit} title="리스트 수정"><span className="list-detail-emblem"><MapPinned size={16} aria-hidden="true" /></span><strong>{activeList.name}</strong></button>
         <button className="list-detail-edit-action" type="button" onClick={openEdit}>리스트 수정</button>
       </header>
       <div className="list-detail-context" aria-label={`${activeList.placeCount}곳 저장됨`}><span><b>{activeList.placeCount}</b>곳 저장됨</span><span>지도에 표시 중</span></div>
@@ -146,7 +146,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
       {isPlacesLoading && <ContentLoading variant="saved-places" />}
       {!isPlacesLoading && pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => {
         const isOnRoute = isPlaceOnRoute(place);
-        return <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><button type="button" className="saved-place-focus" onClick={() => onPlaceSelect?.(place)} aria-label={place.name}><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></button><div className="saved-place-actions"><button className={`saved-place-add-action${isOnRoute ? " is-on-route" : ""}`} type="button" onClick={(event) => { event.stopPropagation(); if (isOnRoute) onRemoveFromRoute(place); else onAddToRoute(place); }} title={isOnRoute ? "방문 장소 제거" : "방문 장소 추가"} aria-label={`${place.name} ${isOnRoute ? "방문 장소 제거" : "방문 장소 추가"}`}>{isOnRoute ? <><MapPinX size={16} /><span>방문 장소 제거</span></> : <><MapPinPlus size={16} /><span>방문 장소 추가</span></>}</button><button type="button" onClick={(event) => { event.stopPropagation(); onDeletePlace(place.id); }} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>;
+        return <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><button type="button" className="saved-place-focus" onClick={() => onPlaceSelect?.(place)} aria-label={place.name}><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></button><div className="saved-place-actions"><button className={`saved-place-add-action${isOnRoute ? " is-on-route" : ""}`} type="button" onClick={(event) => { event.stopPropagation(); if (isOnRoute) onRemoveFromRoute(place); else onAddToRoute(place); }} title={isOnRoute ? "방문 장소 제거" : "방문 장소 추가"} aria-label={`${place.name} ${isOnRoute ? "방문 장소 제거" : "방문 장소 추가"}`}>{isOnRoute ? <MapPinX size={16} /> : <MapPinPlus size={16} />}</button><button type="button" onClick={(event) => { event.stopPropagation(); onDeletePlace(place.id); }} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>;
       })}</ol>}
       {!isPlacesLoading && places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장한 장소가 없습니다.</p>}
       {!isPlacesLoading && places.length === 0 && <div className="list-empty-state list-empty-action-area"><p>아직 저장한 장소가 없습니다.</p><span>검색 결과의 저장 버튼으로 이 리스트에 장소를 모아보세요.</span><button type="button" onClick={onBrowsePlaces}><Search size={15} />장소 검색하기</button></div>}
