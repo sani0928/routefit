@@ -9,6 +9,13 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET ?? "routefit-local-development-secret-change-before-production",
+  // Railway's public proxy provides the originating client address in X-Real-IP.
+  // Use that trusted, single-value header for per-client authentication rate limits.
+  advanced: {
+    ipAddress: {
+      ipAddressHeaders: ["x-real-ip"],
+    },
+  },
   database: drizzleAdapter(db, {
     provider: "pg",
     // Better Auth resolves these four keys by their singular model names.
