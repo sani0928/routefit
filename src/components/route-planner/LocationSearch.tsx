@@ -114,6 +114,9 @@ export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, o
     const term = query.trim();
     if (term.length < 2) return;
     setExpanded(false);
+    // A mobile results view uses the compact sheet, so keep the software keyboard
+    // from covering it after the search form submits.
+    if (isMobile) searchRootRef.current?.querySelector<HTMLInputElement>("#search")?.blur();
     onSearchSubmit(term);
   }
 

@@ -51,67 +51,6 @@ Google 로그인 회원은 다음 기능을 추가로 이용합니다.
 | UI·검증 | Lucide React, React Toastify, Zod |
 | 테스트·PWA | Vitest, next-pwa |
 
-## 로컬 실행
-
-### 요구 사항
-
-- Node.js 및 npm
-- PostgreSQL 데이터베이스(로그인·장소 리스트 기능 사용 시)
-- NAVER Maps, Kakao Local, Google OAuth API 자격 증명
-
-### 설치 및 시작
-
-```powershell
-Copy-Item .env.example .env.local
-npm install
-npm run dev
-```
-
-개발 서버는 기본적으로 [http://localhost:3000](http://localhost:3000)에서 실행됩니다. `npm run dev`는 Turbopack 개발 서버이며, PWA 서비스 워커는 개발 환경에서 비활성화됩니다.
-
-### 환경 변수
-
-`.env.example`을 `.env.local`로 복사한 뒤 값을 채웁니다. `.env.local`에는 민감한 값이 있으므로 Git에 커밋하지 않습니다.
-
-| 변수 | 설명 |
-| --- | --- |
-| `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | NAVER Maps JavaScript API 클라이언트 ID |
-| `NAVER_MAP_API_KEY_ID` | NAVER Maps 서버 API 키 ID |
-| `NAVER_MAP_API_KEY_SECRET` | NAVER Maps 서버 API 키 Secret |
-| `KAKAO_REST_API_KEY` | Kakao Local API REST API 키 |
-| `REDIS_URL` | 여러 서버 인스턴스가 함께 쓰는 Redis 연결 URL |
-| `ROUTE_CACHE_TTL_SECONDS` | Redis 경로 캐시 유지 시간(초, 기본 예시: `180`) |
-| `DATABASE_URL` | PostgreSQL 연결 문자열 |
-| `BETTER_AUTH_SECRET` | Better Auth 서명용 비밀 값 |
-| `BETTER_AUTH_URL` | 현재 앱의 기본 URL |
-| `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth 클라이언트 Secret |
-
-Google OAuth 승인 리디렉션 URI는 아래를 등록합니다.
-
-- 개발: `http://localhost:3000/api/auth/callback/google`
-- 운영: `https://www.routefit.co.kr/api/auth/callback/google`
-
-## 데이터베이스와 검증
-
-스키마를 변경한 뒤에는 마이그레이션을 생성하고 적용합니다.
-
-```powershell
-npm run db:generate
-npm run db:migrate
-```
-
-테스트, 타입 검사, 프로덕션 빌드는 다음과 같이 실행합니다.
-
-```powershell
-npm test
-npx tsc --noEmit --incremental false
-npm run build
-npm run start
-```
-
-`npm run build`와 `npm run start`로 실행한 프로덕션 환경에서 PWA가 활성화됩니다. 설치·업데이트·오프라인 동작을 확인할 때는 이 조합을 사용하세요.
-
 ## 프로젝트 구조
 
 ```text
@@ -136,10 +75,3 @@ drizzle/                        # PostgreSQL 마이그레이션
 public/icons/                   # PWA 아이콘
 docs/                           # 개발 인수인계와 설계 메모
 ```
-
-## 운영 시 참고
-
-- 최적화는 Haversine 직선거리로 방문 순서를 정한 뒤, 확정된 이동 구간만 NAVER Directions API로 조회합니다. 왕복 7곳은 최대 7회 수준입니다. 운영 환경에서는 `REDIS_URL`을 설정해 서버 인스턴스 간에도 같은 구간 조회를 재사용하세요.
-- 경로 결과는 계산 당시의 교통 정보에 의존하며, 저장하지 않습니다. 최신 교통 정보를 반영하려면 다시 계산해야 합니다.
-- `NEXT_PUBLIC_*` 환경 변수는 브라우저에 노출됩니다. 서버 API 키와 OAuth Secret은 절대 `NEXT_PUBLIC_` 접두사로 만들지 마세요.
-- PWA 아이콘은 `public/icons`를 기준으로 하며, 아이콘 바이트를 교체할 때는 `public/site.webmanifest`와 `src/app/layout.tsx`의 캐시 버전도 함께 점검하세요.

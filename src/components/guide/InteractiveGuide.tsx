@@ -64,6 +64,10 @@ export function InteractiveGuide() {
   const resultPlaces = stage === "result" ? [places[0], ...optimizedVisits] : places;
   const routePath = resultPlaces.map((place, index) => `${index === 0 ? "M" : "L"}${place.position.x} ${place.position.y}`).join(" ");
 
+  function getGestureRevealWidth() {
+    return window.matchMedia("(max-width: 700px)").matches ? 76 : 112;
+  }
+
   function addSuggestedPlace(place: (typeof suggestedPlaces)[number]) {
     if (places.some((current) => current.id === place.id)) return;
     setPlaces((current) => [...current, { ...place, stayMinutes: 0 }]);
@@ -163,14 +167,14 @@ export function InteractiveGuide() {
   function handleGestureMove(event: PointerEvent<HTMLDivElement>) {
     const start = gesturePointerRef.current;
     if (!start || start.pointerId !== event.pointerId) return;
-    setSwipeOffset(Math.max(-112, Math.min(0, event.clientX - start.x)));
+    setSwipeOffset(Math.max(-getGestureRevealWidth(), Math.min(0, event.clientX - start.x)));
   }
 
   function handleGestureEnd(event: PointerEvent<HTMLDivElement>) {
     const start = gesturePointerRef.current;
     gesturePointerRef.current = null;
     if (!start || start.pointerId !== event.pointerId) return;
-    setSwipeOffset(event.clientX - start.x < -44 ? -112 : 0);
+    setSwipeOffset(event.clientX - start.x < -44 ? -getGestureRevealWidth() : 0);
   }
 
   return (
@@ -182,7 +186,7 @@ export function InteractiveGuide() {
 
       <section className="guide-hero" aria-labelledby="guide-title">
         <span className="guide-kicker">1분 체험 가이드</span>
-        <h1 id="guide-title">오늘 갈 곳을 추가하고,<br />가장 편한 순서를 찾아보세요.</h1>
+        <h1 id="guide-title">오늘 갈 곳을 추가하고, 가장 편한 순서를 찾아보세요.</h1>
         <p>루트핏(RouteFit)은 여러 방문 장소를 한곳에 모아, 실시간 교통정보를 반영한 이동 경로를 보여줍니다. 아래 화면을 직접 눌러 실제 사용 흐름을 미리 경험해 보세요.</p>
         <div className="guide-flow" aria-label="RouteFit 사용 순서">
           <span className={stage === "places" ? "active" : "complete"}><b>1</b>장소 추가</span><ChevronRight aria-hidden="true" />
@@ -241,7 +245,7 @@ export function InteractiveGuide() {
       </section>
 
       <section className="guide-gesture" aria-labelledby="gesture-title">
-        <div className="guide-gesture-copy"><span className="guide-kicker">간단한 조작 팁</span><h2 id="gesture-title">카드를 가로로 밀어보세요.</h2><p>모바일에서 카드를 왼쪽으로 밀면 삭제, 오른쪽으로 밀면 머무는 시간을 조절할 수 있습니다.</p><button type="button" onClick={() => setSwipeOffset((current) => current === 0 ? -112 : 0)}>{swipeOffset === 0 ? "동작 보기" : "카드 닫기"}<ChevronRight aria-hidden="true" /></button></div>
+        <div className="guide-gesture-copy"><span className="guide-kicker">간단한 조작 팁</span><h2 id="gesture-title">카드를 가로로 밀어보세요.</h2><p>모바일에서 카드를 왼쪽으로 밀면 삭제, 오른쪽으로 밀면 머무는 시간을 조절할 수 있습니다.</p><button type="button" onClick={() => setSwipeOffset((current) => current === 0 ? -getGestureRevealWidth() : 0)}>{swipeOffset === 0 ? "동작 보기" : "카드 닫기"}<ChevronRight aria-hidden="true" /></button></div>
         <div className="guide-swipe-demo"><div className="guide-swipe-actions" aria-hidden="true"><span><Trash2 /></span><span><Clock3 /></span></div><div className="guide-swipe-card" style={{ transform: `translateX(${swipeOffset}px)` }} onPointerDown={handleGestureStart} onPointerMove={handleGestureMove} onPointerUp={handleGestureEnd} onPointerCancel={() => setSwipeOffset(0)}><span className="guide-swipe-grip"><GripVertical aria-hidden="true" /></span><b>2</b><span><strong>방문 장소</strong><small>가로로 밀어 빠른 기능 열기</small></span><span className="guide-swipe-hand"><Hand aria-hidden="true" /></span></div><small className="guide-swipe-hint"><Info aria-hidden="true" /> 가로로 밀면 머무는 시간 설정 및 빠른 기능이 열립니다.</small></div>
       </section>
 
@@ -255,7 +259,7 @@ export function InteractiveGuide() {
         </ul>
       </section>
 
-      <section className="guide-final-cta"><div><h2>이제 내 일정으로 시작해 보세요.</h2><p>장소를 추가하면 RouteFit이 다음 이동 순서를 함께 고민합니다.</p></div><a href="/">경로 계산 시작하기</a></section>
+      <section className="guide-final-cta"><div><h2>이제 내 일정으로 시작해 보세요.</h2><p>장소를 추가하면 RouteFit이 다음 이동 순서를 함께 고민합니다.</p></div><a href="/">RouteFit 시작하기</a></section>
     </main>
   );
 }

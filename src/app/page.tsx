@@ -653,6 +653,12 @@ export default function Home() {
     return addResult;
   }
 
+  function addSearchResultToRoute(place: PlaceSearchResult): AddPlaceResult {
+    const addResult = addPlace(place);
+    if (addResult.added) notify.success("\uBC29\uBB38 \uC7A5\uC18C\uC5D0 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+    return addResult;
+  }
+
   function isListPlaceAddedToRoute(place: PlaceInput) {
     return places.some((candidate) => !candidate.isCurrentLocation && Math.abs(candidate.latitude - place.latitude) < 0.000001 && Math.abs(candidate.longitude - place.longitude) < 0.000001);
   }
@@ -666,6 +672,16 @@ export default function Home() {
 
   function removeSavedPlaceFromRoute(place: SavedPlace) {
     removeListPlaceFromRoute(place);
+  }
+
+  function removeSearchResultFromRoute(place: PlaceSearchResult) {
+    const routePlace = places.find((candidate) => place.providerId
+      ? candidate.providerId === place.providerId
+      : Math.abs(candidate.latitude - place.latitude) < 0.000001 && Math.abs(candidate.longitude - place.longitude) < 0.000001,
+    );
+    if (!routePlace) return;
+    removePlace(routePlace.id);
+    notify.info("\uBC29\uBB38 \uC7A5\uC18C\uC5D0\uC11C \uC81C\uAC70\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
   }
   function hideListManager() { setListManagerOpen(false); setFocusedSavedPlace(null); }
   function closeListManager() { hideListManager(); setSelectedListId(null); }
@@ -897,7 +913,7 @@ export default function Home() {
           )
         ) : <>
         <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
-        {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
+        {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addSearchResultToRoute} onRemove={removeSearchResultFromRoute} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSearchFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
           <div className="planner-footer">
             <div className="route-primary-group">
@@ -979,7 +995,7 @@ export default function Home() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} />
+            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />

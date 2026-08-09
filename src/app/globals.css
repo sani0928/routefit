@@ -1470,9 +1470,12 @@
 
 .routefit-toast.Toastify__toast {
   position: relative;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   min-height: 58px;
   margin-bottom: 10px;
-  padding: 12px 42px 12px 14px;
+  padding: 12px 42px;
   overflow: hidden;
   border: 1px solid #d7e4f3;
   border-radius: 16px;
@@ -1483,14 +1486,15 @@
   font-size: .78rem;
   font-weight: 700;
   line-height: 1.45;
+  text-align: center;
   backdrop-filter: blur(10px);
 }
 
 .routefit-toast.Toastify__toast--info { border-color: #bfdbfe; color: #1e4d99; background: rgb(246 250 255 / .98); }
 .routefit-toast.Toastify__toast--success { border-color: #b8e9cb; color: #167048; background: rgb(245 253 249 / .98); }
 .routefit-toast.Toastify__toast--error { border-color: #fecaca; color: #b42318; background: rgb(255 248 248 / .98); }
-.routefit-toast .Toastify__toast-body { display: flex; align-items: center; margin: 0; padding: 0; }
-.routefit-toast .Toastify__toast-icon { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; margin-inline-end: 10px; color: #2563eb; }
+.routefit-toast .Toastify__toast-body { display: block; width: 100%; margin: 0; padding: 0; text-align: center; }
+.routefit-toast .Toastify__toast-icon { position: absolute; top: 50%; left: 14px; display: grid; width: 28px; height: 28px; place-items: center; margin: 0; color: #2563eb; transform: translateY(-50%); }
 .routefit-toast.Toastify__toast--success .Toastify__toast-icon { color: #16854e; }
 .routefit-toast.Toastify__toast--error .Toastify__toast-icon { color: #d92d20; }
 .routefit-toast .Toastify__toast-icon svg { width: 17px; height: 17px; }
@@ -5323,4 +5327,234 @@
 
   .guide-use-cases ul { grid-template-columns:1fr; gap:9px; margin-top:21px; }
   .guide-use-cases li { min-height:0; padding:14px; }
+}
+
+/* Guide responsive polish: keep the desktop demo stable and make the standalone page safe in iOS fullscreen mode. */
+@media (min-width:701px) {
+  .guide-workspace {
+    height:680px;
+    min-height:680px;
+    align-items:stretch;
+  }
+
+  .guide-panel {
+    height:680px;
+    min-height:0;
+    overflow-y:hidden;
+  }
+
+  /* Leave a full reveal-width gutter before the card to prevent clipping on desktop swipes. */
+  .guide-swipe-demo { padding-left:112px; }
+}
+
+.guide-swipe-hint {
+  align-items:center;
+}
+
+.guide-swipe-hint svg {
+  margin-top:0;
+}
+
+@media (max-width:700px) {
+  /* Keep Korean words intact first, then let modern browsers balance full sentences. */
+  .guide-page :is(h1, h2, p, strong, small, span, a, button) {
+    word-break:keep-all;
+    overflow-wrap:break-word;
+    line-break:strict;
+  }
+
+  .guide-page {
+    min-height:100svh;
+    padding-bottom:max(24px, env(safe-area-inset-bottom));
+    overflow-x:clip;
+  }
+
+  .guide-nav {
+    width:calc(100% - 32px);
+    min-height:62px;
+    height:auto;
+    padding-top:env(safe-area-inset-top);
+    box-sizing:content-box;
+  }
+
+  .guide-hero {
+    width:calc(100% - 36px);
+    margin:clamp(32px, 7vh, 52px) auto 28px;
+  }
+
+  .guide-hero h1 {
+    max-width:12ch;
+    margin:12px 0 0;
+    font-size:clamp(2rem, 9.2vw, 2.48rem);
+    line-height:1.2;
+    letter-spacing:-.065em;
+    word-break:keep-all;
+    overflow-wrap:normal;
+    text-wrap:balance;
+  }
+
+  .guide-gesture-copy h2,
+  .guide-use-cases h2,
+  .guide-final-cta h2 {
+    text-wrap:balance;
+  }
+
+  .guide-panel-copy,
+  .guide-gesture-copy p,
+  .guide-use-cases p,
+  .guide-use-cases li span,
+  .guide-final-cta p {
+    text-wrap:pretty;
+  }
+
+  .guide-kicker { font-size:.76rem; }
+
+  .guide-flow {
+    gap:8px;
+    margin-top:24px;
+    padding:6px 2px;
+    scrollbar-width:none;
+  }
+
+  .guide-flow::-webkit-scrollbar { display:none; }
+  .guide-flow > span { gap:5px; font-size:.72rem; }
+
+  .guide-workspace { width:calc(100% - 28px); }
+
+  .guide-map-preview {
+    height:clamp(178px, 52vw, 220px);
+    min-height:clamp(178px, 52vw, 220px);
+  }
+
+  .guide-panel { padding:20px clamp(17px, 5vw, 24px) 22px; }
+  .guide-panel-chrome { margin-bottom:17px; }
+  .guide-panel-heading h2 { font-size:clamp(1.38rem, 6vw, 1.7rem); }
+  .guide-panel-copy { margin:10px 0 17px; font-size:.79rem; line-height:1.6; }
+  .guide-search { min-height:54px; }
+  .guide-suggestions { margin:11px 0 13px; }
+
+  .guide-gesture {
+    width:calc(100% - 44px);
+    gap:30px;
+    margin:76px auto;
+  }
+
+  .guide-gesture-copy h2 {
+    font-size:clamp(1.85rem, 8.5vw, 2.25rem);
+    line-height:1.22;
+  }
+
+  .guide-gesture-copy p { font-size:.88rem; line-height:1.65; }
+  /* Reserve the same left gutter as the reveal distance so the card never clips on swipe. */
+  .guide-swipe-demo { padding:28px 0 18px 76px; }
+  .guide-swipe-actions { width:76px; }
+  .guide-swipe-card {
+    min-height:84px;
+    grid-template-columns:18px 26px minmax(0,1fr) 24px;
+    gap:8px;
+    padding:12px;
+  }
+  .guide-swipe-hint { margin-top:11px; font-size:.64rem; }
+
+  .guide-use-cases { width:calc(100% - 36px); padding:24px 20px; }
+  .guide-use-cases h2 { font-size:clamp(1.55rem, 7vw, 1.95rem); }
+  .guide-use-cases p { font-size:.82rem; line-height:1.65; }
+  .guide-use-cases li { padding:14px; }
+
+  .guide-final-cta { width:calc(100% - 36px); padding:20px; }
+}
+
+@media (max-width:374px) {
+  .guide-nav-start { font-size:.68rem; }
+  .guide-hero { width:calc(100% - 32px); }
+  .guide-hero h1 { font-size:1.92rem; }
+  .guide-workspace { width:calc(100% - 20px); }
+  .guide-panel { padding-inline:15px; }
+  .guide-flow > span { font-size:.68rem; }
+  .guide-flow b { width:20px; height:20px; }
+}
+
+/* A restrained RouteFit blue-to-mint finish gives the final next step visual energy. */
+.guide-final-cta {
+  position:relative;
+  overflow:hidden;
+  border-color:rgb(36 123 232 / .46);
+  background:linear-gradient(112deg,rgb(37 99 235 / .16) 0%,rgb(35 138 228 / .2) 38%,rgb(32 196 181 / .18) 72%,rgb(37 99 235 / .14) 100%);
+  background-size:240% 100%;
+  box-shadow:0 18px 38px rgb(25 105 222 / .16);
+  backdrop-filter:blur(14px) saturate(135%);
+  animation:guide-routefit-surface 9s ease-in-out infinite;
+}
+
+.guide-final-cta > * { position:relative; z-index:1; }
+
+.guide-final-cta h2 { color:#1a456f; }
+.guide-final-cta p { color:#5f7895; }
+
+.guide-final-cta a {
+  color:#fff;
+  background:linear-gradient(108deg,#2563eb 0%,#148cdd 52%,#1abcae 100%);
+  background-size:180% 100%;
+  box-shadow:0 9px 20px rgb(28 113 224 / .24);
+  animation:guide-routefit-gradient 4.8s ease-in-out infinite;
+}
+
+.guide-nav-start {
+  min-height:40px;
+  padding:0 14px;
+  border-radius:10px;
+  color:#fff;
+  background:linear-gradient(108deg,#2563eb 0%,#148cdd 52%,#1abcae 100%);
+  background-size:180% 100%;
+  box-shadow:0 7px 16px rgb(28 113 224 / .2);
+  animation:guide-routefit-gradient 4.8s ease-in-out infinite;
+}
+
+@media (max-width:700px) {
+  .guide-nav-start { min-height:36px; padding:0 11px; }
+}
+
+@keyframes guide-routefit-surface {
+  0%,100% { background-position:0% 50%; }
+  50% { background-position:100% 50%; }
+}
+
+@keyframes guide-routefit-gradient {
+  0%,100% { background-position:0% 50%; }
+  50% { background-position:100% 50%; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .guide-final-cta,
+  .guide-final-cta a,
+  .guide-nav-start { animation:none; }
+}
+
+/* Keep result metrics opaque and highly readable while using RouteFit's brand gradient. */
+.route-summary-panel .route-hero {
+  background:linear-gradient(128deg,#163b7d 0%,#2563eb 42%,#1596dd 71%,#1fbba9 100%);
+  box-shadow:0 14px 30px rgb(26 104 222 / .28);
+}
+
+.route-summary-panel .route-hero-logo {
+  filter:brightness(0) invert(1);
+  opacity:.94;
+}
+
+/* Search rows use the same icon-only add/remove control as saved-place details. */
+.search-results-sheet-actions > .search-results-route-action {
+  width:30px;
+  min-width:30px;
+  height:30px;
+  min-height:30px;
+  padding:0;
+  border-color:#a7d7bd;
+  color:#078443;
+  background:#f3fcf6;
+}
+
+.search-results-sheet-actions > .search-results-route-action.is-on-route {
+  border-color:#fecaca;
+  color:#dc2626;
+  background:#fff7f7;
 }
