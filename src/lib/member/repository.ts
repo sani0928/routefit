@@ -42,7 +42,7 @@ export async function getSavedPlaces(userId: string, listId: string): Promise<Sa
   const owned = await db.select({ id: placeLists.id }).from(placeLists).where(and(eq(placeLists.id, listId), eq(placeLists.userId, userId))).limit(1);
   if (!owned[0]) return null;
   const rows = await db.select().from(savedPlaces).where(eq(savedPlaces.placeListId, listId)).orderBy(desc(savedPlaces.updatedAt));
-  return rows.map((row) => ({ id: row.id, placeListId: row.placeListId, name: row.name, address: row.address ?? undefined, latitude: asNumber(row.latitude), longitude: asNumber(row.longitude), createdAt: row.createdAt.toISOString() }));
+  return rows.map((row) => ({ id: row.id, placeListId: row.placeListId, name: row.name, address: row.address ?? undefined, latitude: asNumber(row.latitude), longitude: asNumber(row.longitude), providerId: row.providerId, createdAt: row.createdAt.toISOString() }));
 }
 
 export async function createRoutePlan(userId: string, name: string, copyFrom?: MemberRoutePlan): Promise<MemberRoutePlan> {
@@ -112,15 +112,15 @@ export async function deletePlaceList(userId: string, listId: string) {
   return Boolean(deleted[0]);
 }
 
-export async function addSavedPlace(userId: string, listId: string, place: Omit<Place, "id" | "type">) {
+export async function addSavedPlace(userId: string, listId: string, place: Omit<Place, "id" | "type"> & { providerId: string }) {
   const owned = await db.select({ id: placeLists.id }).from(placeLists).where(and(eq(placeLists.id, listId), eq(placeLists.userId, userId))).limit(1);
   if (!owned[0]) return null;
   const count = await db.select({ count: sql<number>`count(*)::int` }).from(savedPlaces).where(eq(savedPlaces.placeListId, listId));
   if ((count[0]?.count ?? 0) >= 100) throw new Error("리스트별 장소는 최대 100개까지 저장할 수 있습니다.");
-  const existing = await db.select({ id: savedPlaces.id }).from(savedPlaces).where(and(eq(savedPlaces.placeListId, listId), eq(savedPlaces.name, place.name), eq(savedPlaces.latitude, String(place.latitude)), eq(savedPlaces.longitude, String(place.longitude)))).limit(1);
+  const existing = await db.select({ id: savedPlaces.id }).from(savedPlaces).where(and(eq(savedPlaces.placeListId, listId), eq(savedPlaces.providerId, place.providerId))).limit(1);
   if (existing[0]) return { id: existing[0].id, created: false };
   const placeId = id();
-  await db.transaction(async (tx) => { await tx.insert(savedPlaces).values({ id: placeId, placeListId: listId, name: place.name, address: place.address, latitude: String(place.latitude), longitude: String(place.longitude) }); await tx.update(placeLists).set({ updatedAt: new Date() }).where(eq(placeLists.id, listId)); });
+  await db.transaction(async (tx) => { await tx.insert(savedPlaces).values({ id: placeId, placeListId: listId, name: place.name, address: place.address, latitude: String(place.latitude), longitude: String(place.longitude), providerId: place.providerId }); await tx.update(placeLists).set({ updatedAt: new Date() }).where(eq(placeLists.id, listId)); });
   return { id: placeId, created: true };
 }
 

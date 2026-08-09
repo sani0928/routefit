@@ -7,7 +7,7 @@ import type { Place } from "@/features/route-optimization/types/route.types";
 import { getPlaceCategoryColor, PlaceCategoryIcon } from "@/components/route-planner/PlaceCategoryIcon";
 
 type SavePlaceDialogProps = {
-  place: (Omit<Place, "id" | "type"> & { categoryGroupCode?: string }) | null;
+  place: (Omit<Place, "id" | "type"> & { providerId: string; categoryGroupCode?: string }) | null;
   lists: MemberPlaceList[];
   initialSelectedListIds: string[];
   onSave: (selectedListIds: string[], initialSelectedListIds: string[]) => void;

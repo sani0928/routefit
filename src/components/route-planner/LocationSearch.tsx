@@ -8,10 +8,11 @@ import { PlaceCategoryIcon } from "./PlaceCategoryIcon";
 
 type Feedback = "idle" | "not-found" | "error";
 type AddPlaceResult = { added: boolean; message?: string };
+type SaveableSearchResult = PlaceSearchResult & { providerId: string };
 
 type Props = {
   onAdd: (place: PlaceSearchResult) => AddPlaceResult;
-  onSave?: (place: PlaceSearchResult) => void;
+  onSave?: (place: SaveableSearchResult) => void;
   onSearchSubmit: (query: string) => void;
   onSearchFocus?: () => void;
   onSearchPointerDown?: () => void;
@@ -131,7 +132,7 @@ export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, o
       {isExpanded && results.length > 0 && <ul id="place-search-results" className="search-results" role="listbox">
         {results.map((place, index) => <li key={place.providerId ?? `${place.name}-${place.latitude}-${place.longitude}`} role="option" aria-selected={index === 0}>
           <button type="button" className="search-result-add" onClick={() => choose(place)}><PlaceCategoryIcon code={place.categoryGroupCode} className="search-result-category-icon" /><span><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></span></button>
-          {onSave && <button className="search-result-save" type="button" onClick={() => onSave(place)} aria-label={`${place.name} 장소 리스트에 저장`}><ListPlus size={16} /></button>}
+          {onSave && place.providerId && <button className="search-result-save" type="button" onClick={() => onSave({ ...place, providerId: place.providerId! })} aria-label={`${place.name} 장소 리스트에 저장`}><ListPlus size={16} /></button>}
         </li>)}
       </ul>}
     </div>

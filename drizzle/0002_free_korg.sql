@@ -1,0 +1,2 @@
+ALTER TABLE "saved_place" ADD COLUMN "provider_id" text NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "saved_place_list_provider_idx" ON "saved_place" USING btree ("place_list_id","provider_id");

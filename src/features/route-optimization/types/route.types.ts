@@ -6,6 +6,8 @@ export interface Place {
   address?: string;
   latitude: number;
   longitude: number;
+  /** 검색 제공자가 부여한 장소 식별자. 카카오 장소 검색 결과에서만 제공된다. */
+  providerId?: string;
   type: PlaceType;
   stayDurationMinutes?: number;
   isCurrentLocation?: boolean;

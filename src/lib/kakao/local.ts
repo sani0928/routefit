@@ -35,7 +35,7 @@ export interface KakaoPlaceSearchPage {
   isEnd: boolean;
   pageableCount: number;
 }
-export interface NearbyPlaceMatch { name: string; address?: string; latitude: number; longitude: number; distanceMeters: number; }
+export interface NearbyPlaceMatch { providerId: string; name: string; address?: string; latitude: number; longitude: number; distanceMeters: number; }
 
 const LANDMARK_CATEGORIES = ["PO3", "CT1", "AT4", "SC4", "SW8", "MT1", "HP8", "CE7", "FD6", "AD5", "PK6"];
 
@@ -115,8 +115,8 @@ export async function findNearbyKakaoLandmarks(latitude: number, longitude: numb
   const candidates = responses.flatMap((documents) => documents.flatMap((item) => {
     const candidateLatitude = Number(item.y); const candidateLongitude = Number(item.x); const distance = Number(item.distance);
     if (!Number.isFinite(candidateLatitude) || !Number.isFinite(candidateLongitude) || !Number.isFinite(distance) || distance > 100) return [];
-    return [{ name: item.place_name, address: item.road_address_name || item.address_name || undefined, latitude: candidateLatitude, longitude: candidateLongitude, distance }];
+    return [{ providerId: item.id, name: item.place_name, address: item.road_address_name || item.address_name || undefined, latitude: candidateLatitude, longitude: candidateLongitude, distance }];
   }));
   candidates.sort((a, b) => a.distance - b.distance);
-  return candidates.slice(0, 5).map((candidate) => ({ name: candidate.name, address: candidate.address, latitude: candidate.latitude, longitude: candidate.longitude, distanceMeters: candidate.distance }));
+  return candidates.slice(0, 5).map((candidate) => ({ providerId: candidate.providerId, name: candidate.name, address: candidate.address, latitude: candidate.latitude, longitude: candidate.longitude, distanceMeters: candidate.distance }));
 }

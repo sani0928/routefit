@@ -9,6 +9,7 @@ import { formatSearchDistance } from "./place-search-format";
 type Coordinates = { latitude: number; longitude: number };
 type SearchSort = "accuracy" | "current-distance" | "map-center-distance";
 type AddPlaceResult = { added: boolean; message?: string };
+type SaveableSearchResult = PlaceSearchResult & { providerId: string };
 
 type Props = {
   query: string | null;
@@ -19,7 +20,7 @@ type Props = {
   isCurrentLocationLocating: boolean;
   isPlaceAdded: (place: PlaceSearchResult) => boolean;
   onAdd: (place: PlaceSearchResult) => AddPlaceResult;
-  onSave?: (place: PlaceSearchResult) => void;
+  onSave?: (place: SaveableSearchResult) => void;
   onResultsChange?: (results: PlaceSearchResult[]) => void;
   onLoadingChange?: (isLoading: boolean) => void;
   onResultFocus?: (place: PlaceSearchResult) => void;
@@ -194,7 +195,7 @@ export function SearchResultsSheet({ query, currentLocation, mapCenter, mapCente
           <div className="search-results-sheet-copy"><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>{distance && <span><MapPin size={13} /> {distance}</span>}</div>
           <div className="search-results-sheet-actions">
             <button type="button" className={added ? "added" : ""} onClick={(event) => { event.stopPropagation(); if (!added) onAdd(place); }} disabled={added}>{added ? <><Check size={15} /> 추가됨</> : <><MapPin size={15} /> 추가</>}</button>
-            {onSave && <button type="button" className="save" onClick={(event) => { event.stopPropagation(); onSave(place); }} aria-label={`${place.name} 장소 리스트에 저장`}><ListPlus size={17} /></button>}
+            {onSave && place.providerId && <button type="button" className="save" onClick={(event) => { event.stopPropagation(); onSave({ ...place, providerId: place.providerId! }); }} aria-label={`${place.name} 장소 리스트에 저장`}><ListPlus size={17} /></button>}
           </div>
         </article>;
       })}

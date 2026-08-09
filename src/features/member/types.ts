@@ -30,6 +30,7 @@ export interface SavedPlace {
   address?: string;
   latitude: number;
   longitude: number;
+  providerId: string;
   createdAt: string;
 }
 

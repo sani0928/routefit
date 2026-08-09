@@ -19,7 +19,7 @@ interface Props {
   onReorder: (id: string, destinationIndex: number) => void;
   onStayDurationChange: (id: string, minutes: number) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
-  onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
+  onSavePlace?: (place: Omit<Place, "id" | "type"> & { providerId: string }) => void;
   currentLocationActive: boolean;
   currentLocationLocating: boolean;
   onCurrentLocationToggle: () => void;
@@ -51,7 +51,7 @@ type SortablePlaceItemProps = {
   isMobileViewportActive: boolean;
   onCardClick: (event: MouseEvent<HTMLElement>, place: Place) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
-  onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
+  onSavePlace?: (place: Omit<Place, "id" | "type"> & { providerId: string }) => void;
   onRemove: (id: string) => void;
   onStayDurationChange: (id: string, delta: number) => void;
   onMobileInputFocus?: () => void;
@@ -255,7 +255,7 @@ function SortablePlaceItem({
             <Trash2 aria-hidden="true" />
             <span className="place-action-label">삭제</span>
           </button>
-          {onSavePlace && (
+          {onSavePlace && place.providerId && (
             <button
               type="button"
               className="icon-action place-save-action"
@@ -268,6 +268,7 @@ function SortablePlaceItem({
                   address: place.address,
                   latitude: place.latitude,
                   longitude: place.longitude,
+                  providerId: place.providerId!,
                   stayDurationMinutes: 0,
                 });
               }}
@@ -359,10 +360,10 @@ function SortablePlaceItem({
         <button type="button" className="mobile-swipe-delete" aria-label={`${place.name} 삭제`} title="삭제" onClick={(event) => { stopCardToggle(event); onRemove(place.id); }}>
           <Trash2 aria-hidden="true" />
         </button>
-        {onSavePlace && (
+        {onSavePlace && place.providerId && (
           <button type="button" className="mobile-swipe-save" aria-label={`${place.name} 장소 리스트에 저장`} title="리스트 저장" onClick={(event) => {
             stopCardToggle(event);
-            onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, stayDurationMinutes: 0 });
+            onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, providerId: place.providerId!, stayDurationMinutes: 0 });
           }}>
             <ListPlus aria-hidden="true" />
           </button>
@@ -423,7 +424,7 @@ function ReturnStop({ place, index, onReturnChange, onSavePlace }: {
   place: Place;
   index: number;
   onReturnChange: (value: boolean) => void;
-  onSavePlace?: (place: Omit<Place, "id" | "type">) => void;
+  onSavePlace?: (place: Omit<Place, "id" | "type"> & { providerId: string }) => void;
 }) {
   const swipe = useMobileActionSwipe();
   return (
@@ -439,8 +440,8 @@ function ReturnStop({ place, index, onReturnChange, onSavePlace }: {
           <Trash2 aria-hidden="true" />
           <span className="place-action-label">복귀 해제</span>
         </button>
-        {onSavePlace && (
-          <button type="button" className="icon-action place-save-action" aria-label={`${place.name} 장소 리스트에 저장`} title="장소 리스트에 저장" onClick={() => onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, stayDurationMinutes: 0 })}>
+        {onSavePlace && place.providerId && (
+          <button type="button" className="icon-action place-save-action" aria-label={`${place.name} 장소 리스트에 저장`} title="장소 리스트에 저장" onClick={() => onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, providerId: place.providerId!, stayDurationMinutes: 0 })}>
             <ListPlus aria-hidden="true" />
             <span className="place-action-label">리스트 저장</span>
           </button>
@@ -514,7 +515,7 @@ export function PlaceList({
     }
 
     resetConfirmationExpiresAtRef.current = Date.now() + 3_000;
-    notify.info("한 번 더 누르면 모든 방문 장소가 삭제됩니다.");
+    notify.info("한 번 더 누르면 방문 장소가 초기화됩니다.");
   }
   function finishDrag() {
     setIsSorting(false);

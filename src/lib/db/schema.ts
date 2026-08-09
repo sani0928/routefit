@@ -94,9 +94,10 @@ export const savedPlaces = pgTable("saved_place", {
   address: text("address"),
   latitude: text("latitude").notNull(),
   longitude: text("longitude").notNull(),
+  providerId: text("provider_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [uniqueIndex("saved_place_list_provider_idx").on(table.placeListId, table.providerId)]);
 // Better Auth's Drizzle adapter resolves its core tables by these singular model names.
 // The plural exports above remain for the rest of the application.
 export const user = users;

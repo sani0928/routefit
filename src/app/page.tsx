@@ -18,7 +18,7 @@ import type { PlaceSearchResult } from "@/features/place-search/types";
 
 type Status = "IDLE" | "BUILDING_MATRIX" | "OPTIMIZING" | "FETCHING_FINAL_ROUTE" | "SUCCESS" | "ERROR";
 type PlaceInput = Omit<Place, "id" | "type">;
-type SavePlaceInput = PlaceInput & { categoryGroupCode?: string };
+type SavePlaceInput = PlaceInput & { providerId: string; categoryGroupCode?: string };
 type MobileTab = "places" | "lists" | "results";
 type MobileSheetState = "collapsed" | "peek" | "expanded";
 type AddPlaceResult = { added: boolean; message?: string };
@@ -187,7 +187,7 @@ export default function Home() {
   const resultFixedVisitOrders = resultSnapshot?.fixedVisitOrders ?? fixedVisitOrders;
   const savedListIdsForSaveTarget = useMemo(() => {
     if (!saveTarget) return [];
-    return member.placeLists.filter((list) => (savedPlacesByListId[list.id] ?? []).some((place) => place.name === saveTarget.name && Math.abs(place.latitude - saveTarget.latitude) < 0.000001 && Math.abs(place.longitude - saveTarget.longitude) < 0.000001)).map((list) => list.id);
+    return member.placeLists.filter((list) => (savedPlacesByListId[list.id] ?? []).some((place) => place.providerId === saveTarget.providerId)).map((list) => list.id);
   }, [member.placeLists, saveTarget, savedPlacesByListId]);
 
   const triggerMobileNavigationHaptic = useCallback(() => {
@@ -600,7 +600,7 @@ export default function Home() {
     const createOutcomes = await Promise.all(listIdsToCreate.map(async (listId) => {
       const optimisticId = `optimistic-${newId()}`;
       const cacheWasLoaded = Object.prototype.hasOwnProperty.call(savedPlacesByListId, listId);
-      const optimisticPlace: SavedPlace = { id: optimisticId, placeListId: listId, name: target.name, address: target.address, latitude: target.latitude, longitude: target.longitude, createdAt: new Date().toISOString() };
+      const optimisticPlace: SavedPlace = { id: optimisticId, placeListId: listId, name: target.name, address: target.address, latitude: target.latitude, longitude: target.longitude, providerId: target.providerId, createdAt: new Date().toISOString() };
       if (cacheWasLoaded) updateCachedPlaces(listId, (current) => [...current, optimisticPlace]);
       updateListCount(listId, 1);
       try {
@@ -622,7 +622,7 @@ export default function Home() {
     }));
 
     const removeOutcomes = await Promise.all(listIdsToRemove.map(async (listId) => {
-      const savedPlace = (savedPlacesByListId[listId] ?? []).find((place) => place.name === target.name && Math.abs(place.latitude - target.latitude) < 0.000001 && Math.abs(place.longitude - target.longitude) < 0.000001);
+      const savedPlace = (savedPlacesByListId[listId] ?? []).find((place) => place.providerId === target.providerId);
       if (!savedPlace) return "저장한 장소를 찾지 못했습니다.";
       updateCachedPlaces(listId, (current) => current.filter((place) => place.id !== savedPlace.id));
       updateListCount(listId, -1);
