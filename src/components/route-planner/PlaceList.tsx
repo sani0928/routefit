@@ -508,6 +508,11 @@ export function PlaceList({
   }
 
   function handleReset() {
+    if (places.length === 0) {
+      resetConfirmationExpiresAtRef.current = 0;
+      notify.info("이미 방문 장소가 비어있습니다.");
+      return;
+    }
     if (Date.now() < resetConfirmationExpiresAtRef.current) {
       resetConfirmationExpiresAtRef.current = 0;
       onReset();
