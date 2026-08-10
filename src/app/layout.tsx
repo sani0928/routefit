@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 const notoSansKr = Noto_Sans_KR({
   weight: "variable",
   display: "swap",
+  preload: false,
   variable: "--font-noto-sans-kr",
 });
 
