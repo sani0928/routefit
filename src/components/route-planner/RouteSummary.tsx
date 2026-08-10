@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { ListOrdered, Lock, RotateCcw, Route, X } from "lucide-react";
+import { ListOrdered, Lock, RotateCcw, Route, ExternalLink, X } from "lucide-react";
 import type { OptimizationResponse, TrafficCongestion } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
 import { routeColor } from "@/lib/route-colors";
@@ -16,7 +16,7 @@ const formatTrafficReferenceTime = (timestamp: string) => new Intl.DateTimeForma
 const segmentLabel = (index: number) => String.fromCharCode(65 + index);
 const CALCULATION_REASSURANCE_DELAY = 10_000;
 const trafficStatus = (congestion: TrafficCongestion) => ({
-  0: { label: "정보 없음", className: "unknown" },
+  0: { label: "없음", className: "unknown" },
   1: { label: "원활", className: "smooth" },
   2: { label: "서행", className: "slow" },
   3: { label: "혼잡", className: "congested" },
@@ -32,7 +32,7 @@ type ResultTab = "stops" | "segments";
 
 type SegmentSwipeFeedback = { direction: "next" | "previous" | "start" | "end"; sequence: number };
 
-export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isRouteStale = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onClearResult, onResultTabOpen }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isRouteStale?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onClearResult?: () => void; onResultTabOpen?: () => void }) {
+export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isRouteStale = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onClearResult, onResultTabOpen, onShare, isSharing = false }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isRouteStale?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onClearResult?: () => void; onResultTabOpen?: () => void; onShare?: () => void; isSharing?: boolean }) {
   const [activeTab, setActiveTab] = useState<ResultTab>("stops");
   const [expandedSegmentIndex, setExpandedSegmentIndex] = useState<number | null>(null);
   const segmentFocusPointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
@@ -209,6 +209,10 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     {isRouteStale && <p className="route-recalculation-notice" role="status">방문 장소가 변경되었습니다.</p>}
       {activeTab === "segments" && focusedSegment && focusedTraffic && activeSegmentIndex !== null && <section key={`${activeSegmentIndex}-${segmentSwipeFeedback?.sequence ?? 0}`} className={`segment-focus-card${segmentSwipeFeedback ? ` segment-swipe-${segmentSwipeFeedback.direction}` : ""}${activeSegmentIndex === 0 ? " segment-at-start" : ""}${activeSegmentIndex === result.segments.length - 1 ? " segment-at-end" : ""}`} style={{ "--route-color": routeColor(activeSegmentIndex) } as CSSProperties} aria-live="polite" aria-label="선택한 구간 정보. 좌우로 밀어 이전 또는 다음 구간을 확인하세요." onPointerDown={handleSegmentFocusPointerDown} onPointerUp={handleSegmentFocusPointerUp} onPointerCancel={() => { segmentFocusPointerStartRef.current = null; }}><div className="segment-focus-heading"><span>{segmentLabel(activeSegmentIndex)} 구간</span><button type="button" aria-label="구간 강조 해제" onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onClick={() => onSegmentSelect(null)}><X aria-hidden="true" /></button></div><div className="segment-focus-places"><div><strong>{focusedFrom?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].departureTime).toISOString())}</small></div><i aria-hidden="true">→</i><div><strong>{focusedTo?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].arrivalTime).toISOString())}</small></div></div><div className="segment-focus-meta"><span>{formatDistance(focusedSegment.distanceMeters)}</span><span>{formatTime(focusedSegment.durationMilliseconds)}</span><em className={`traffic-status ${focusedTraffic.className}`}>{focusedTraffic.label}</em></div></section>}
 <div className="route-hero"><img className="route-hero-logo" src="/icons/logo.png" alt="RouteFit" /><div className="route-hero-heading"><p>예상 소요 시간</p></div><div className="route-hero-overview"><div className={`route-hero-duration${totalDurationMilliseconds >= 60 * 60_000 ? " duration-long" : ""}`}><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">머무는 시간 {formatTime(totalStayDurationMinutes * 60_000)} 포함</span>}</div><div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div><div className="route-hero-times"><span><small>출발</small><time>{formatTrafficReferenceTime(result.summary.calculatedAt)}</time></span><i aria-hidden="true">→</i><span><small>도착 예정</small><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></span></div></div>
+
+    {onShare && <button type="button" className="route-share-action" disabled={isRouteStale || isSharing} onClick={onShare} title={isRouteStale ? "최신 계산 결과에서만 공유할 수 있습니다." : undefined}>
+      <ExternalLink aria-hidden="true" />{isSharing ? "공유 링크 생성 중" : "내 동선 공유하기"}
+    </button>}
 
     <div className="route-result-tabs" role="tablist" aria-label="계산 결과 보기">
       <button type="button" role="tab" id="route-stops-tab" aria-controls="route-stops-panel" aria-selected={activeTab === "stops"} className={activeTab === "stops" ? "is-active" : ""} onClick={() => { setActiveTab("stops"); onSegmentSelect(null); onResultTabOpen?.(); }}><ListOrdered aria-hidden="true" />방문 순서</button>

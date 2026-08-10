@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
+import type { SharedRouteSnapshot } from "@/features/shared-routes/types";
 
 export const users = pgTable("user", {
   id: text("id").primaryKey(),
@@ -98,6 +100,22 @@ export const savedPlaces = pgTable("saved_place", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("saved_place_list_provider_idx").on(table.placeListId, table.providerId)]);
+
+export const sharedRoutes = pgTable("shared_route", {
+  id: text("id").primaryKey(),
+  shareId: text("share_id").notNull(),
+  snapshotFingerprint: text("snapshot_fingerprint").notNull(),
+  state: text("state").notNull().default("active"),
+  snapshot: jsonb("snapshot").$type<SharedRouteSnapshot | null>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  purgedAt: timestamp("purged_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("shared_route_share_id_idx").on(table.shareId),
+  uniqueIndex("shared_route_active_snapshot_fingerprint_idx")
+    .on(table.snapshotFingerprint)
+    .where(sql`${table.state} = 'active'`),
+]);
 // Better Auth's Drizzle adapter resolves its core tables by these singular model names.
 // The plural exports above remain for the rest of the application.
 export const user = users;

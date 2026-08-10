@@ -70,3 +70,12 @@ export async function getCachedRoute(key: string): Promise<RouteSegment | undefi
 export async function setCachedRoute(key: string, value: RouteSegment): Promise<void> {
   await withRedis((client) => client.set(key, JSON.stringify(value), "EX", ttlSeconds));
 }
+
+/** Returns undefined only when the shared Redis cache cannot be used. */
+export async function incrementRateLimit(key: string, windowSeconds: number): Promise<number | undefined> {
+  return withRedis(async (client) => {
+    const count = await client.incr(key);
+    if (count === 1) await client.expire(key, windowSeconds);
+    return count;
+  });
+}
