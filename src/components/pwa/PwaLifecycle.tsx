@@ -9,7 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 const INSTALL_DISMISS_KEY = "routefit:pwa-install-dismissed-until";
 const INSTALL_DELAY_MS = 10_000;
-const INSTALL_DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
+const INSTALL_DISMISS_MS = 3 * 24 * 60 * 60 * 1000;
 
 function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches

@@ -22,6 +22,20 @@
       "when": 1786286252947,
       "tag": "0002_free_korg",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786289000000,
+      "tag": "0003_shared_route",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786290000000,
+      "tag": "0004_shared_route_snapshot_fingerprint",
+      "breakpoints": true
     }
   ]
 }

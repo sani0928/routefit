@@ -123,6 +123,8 @@ export default function Home() {
   const [fixedVisitOrders, setFixedVisitOrders] = useState<FixedVisitOrder[]>([]);
   const [result, setResult] = useState<OptimizationResponse | null>(null);
   const [resultSnapshot, setResultSnapshot] = useState<RouteResultSnapshot | null>(null);
+  const [isSharingRoute, setIsSharingRoute] = useState(false);
+  const [shareDialogUrl, setShareDialogUrl] = useState<string | null>(null);
   const [routeNeedsRecalculation, setRouteNeedsRecalculation] = useState(false);
   const [status, setStatus] = useState<Status>("IDLE");
   const [hoveredSegmentIndex, setHoveredSegmentIndex] = useState<number | null>(null);
@@ -523,6 +525,42 @@ export default function Home() {
     }
   }
 
+  async function copySharedRouteLink(url: string, successMessage = "공유 링크를 복사했습니다.") {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard API is unavailable");
+      await navigator.clipboard.writeText(url);
+      setShareDialogUrl(null);
+      notify.success(successMessage);
+      return true;
+    } catch {
+      setShareDialogUrl(url);
+      return false;
+    }
+  }
+
+  async function shareRoute() {
+    if (!result || routeNeedsRecalculation || isSharingRoute) return;
+    setIsSharingRoute(true);
+    try {
+      const response = await fetch("/api/shared-routes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ version: 1, returnToStart: resultReturnToStart, result }),
+      });
+      const body = await response.json() as { url?: string; reused?: boolean; error?: { message?: string } };
+      if (!response.ok || !body.url) throw new Error(body.error?.message || "공유 링크를 만들지 못했습니다.");
+
+      await copySharedRouteLink(
+        body.url,
+        body.reused ? "기존 공유 링크를 다시 복사했습니다." : "공유 링크를 복사했습니다.",
+      );
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : "공유 링크를 만들지 못했습니다.");
+    } finally {
+      setIsSharingRoute(false);
+    }
+  }
+
   function updateCachedPlaces(listId: string, updater: (current: SavedPlace[]) => SavedPlace[]) {
     setSavedPlacesByListId((current) => ({ ...current, [listId]: updater(current[listId] ?? []) }));
   }
@@ -879,7 +917,7 @@ export default function Home() {
             <div><img className="routefit-logo" src="/icons/logo.png" alt="루트핏 RouteFit" /></div>
             <MemberHeader authConfigured={member.authConfigured} onBeforeLogin={() => undefined} onSessionChange={loadMember} />
           </div>
-          <p>실시간 교통정보를 반영해 방문 순서를 계산합니다.</p>
+          <p className="planner-desktop-tagline">여러 장소의 동선 최적화, 더 간편하게.</p>
         </header>
         <div key={listManagerOpen ? "saved-places" : "visit-places"} className={`planner-content-page${listManagerOpen ? " planner-content-page-lists map-list-manager" : ""}`}>
         {listManagerOpen ? (
@@ -995,10 +1033,11 @@ export default function Home() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
+            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} onShare={() => void shareRoute()} isSharing={isSharingRoute} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
+      {shareDialogUrl && <div className="route-share-dialog-backdrop" role="presentation"><section className="route-share-dialog" role="dialog" aria-modal="true" aria-label="공유 링크 복사"><strong>공유 링크를 복사하였습니다.</strong><p>링크를 직접 복사할 수 있습니다.</p><input value={shareDialogUrl} readOnly onFocus={(event) => event.currentTarget.select()} aria-label="공유 링크" /><div><button type="button" onClick={() => void copySharedRouteLink(shareDialogUrl)}>링크 다시 복사</button><button type="button" onClick={() => setShareDialogUrl(null)}>닫기</button></div></section></div>}
     </main>
     </>
   );

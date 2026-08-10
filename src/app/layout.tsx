@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { AppLaunchScreen } from "@/components/pwa/AppLaunchScreen";
 import { OnlineStatusBanner } from "@/components/pwa/OnlineStatusBanner";
 import { PwaLifecycle } from "@/components/pwa/PwaLifecycle";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+
+const notoSansKr = Noto_Sans_KR({
+  weight: "variable",
+  display: "swap",
+  variable: "--font-noto-sans-kr",
+});
 
 const siteUrl = new URL("https://www.routefit.co.kr");
 const siteTitle = "루트핏 (RouteFit)";
@@ -59,5 +66,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body><AppLaunchScreen />{children}<OnlineStatusBanner /><PwaLifecycle /><ToastProvider /></body></html>;
+  return <html lang="ko"><body className={notoSansKr.variable}><AppLaunchScreen />{children}<OnlineStatusBanner /><PwaLifecycle /><ToastProvider /></body></html>;
 }
