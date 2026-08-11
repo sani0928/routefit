@@ -28,7 +28,18 @@ function stableSerialize(value: unknown): string {
 }
 
 function createSnapshotFingerprint(snapshot: SharedRouteSnapshot) {
-  return createHash("sha256").update(stableSerialize(snapshot)).digest("hex");
+  const {
+    calculationDurationMilliseconds: _calculationDurationMilliseconds,
+    ...summary
+  } = snapshot.result.summary;
+
+  return createHash("sha256").update(stableSerialize({
+    ...snapshot,
+    result: {
+      ...snapshot.result,
+      summary,
+    },
+  })).digest("hex");
 }
 
 function isUniqueConstraintError(error: unknown, constraint: string) {

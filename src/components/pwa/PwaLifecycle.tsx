@@ -143,11 +143,11 @@ export function PwaLifecycle() {
       <div className="pwa-notice-actions"><button type="button" onClick={() => setUpdateReady(false)}>나중에</button><button type="button" className="primary" onClick={applyUpdate}>새로고침</button></div>
     </aside>}
     {showInstall && installEvent && <aside className="pwa-install-notice" role="dialog" aria-label="RouteFit 설치">
-      <div><strong>RouteFit를 앱으로 설치하세요</strong><span>홈 화면에서 더 빠르게 동선을 확인할 수 있어요.</span></div>
+      <div><strong>RouteFit를 앱으로 설치하세요</strong><span>더욱 간편하고 빠르게 동선을 확인할 수 있어요.</span></div>
       <div className="pwa-notice-actions"><button type="button" onClick={dismissInstall}>나중에</button><button type="button" className="primary" onClick={() => void install()}>설치</button></div>
     </aside>}
     {showIosInstall && <aside className="pwa-install-notice" role="dialog" aria-label="RouteFit 설치 안내">
-      <div><strong>RouteFit를 홈 화면에 추가하세요</strong><span>Safari의 공유 버튼을 누른 뒤 ‘홈 화면에 추가’를 선택해 주세요.</span></div>
+      <div><strong>RouteFit를 홈 화면에 추가하세요</strong><span>Safari의 공유 버튼을 누른 뒤 ‘홈 화면에 추가’를 선택하면 더욱 간편하게 RouteFit를 이용하실 수 있어요!</span></div>
       <div className="pwa-notice-actions"><button type="button" onClick={dismissInstall}>확인</button></div>
     </aside>}
   </>;

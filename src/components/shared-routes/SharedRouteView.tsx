@@ -45,7 +45,7 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
   return <main className="shared-route-page" onCopy={(event) => event.preventDefault()} onCut={(event) => event.preventDefault()} onDragStart={(event) => event.preventDefault()}>
     <section className="shared-route-hero-copy">
       <h1>한눈에 보는 방문 동선</h1>
-      <span><Clock3 aria-hidden="true" /> {toKoreanDate(snapshot.result.summary.calculatedAt)} 계산</span>
+      <span><Clock3 aria-hidden="true" /> {toKoreanDate(snapshot.result.summary.calculatedAt, true)} 계산</span>
     </section>
 
     <section className="shared-route-layout" aria-label="공유된 방문 동선">
