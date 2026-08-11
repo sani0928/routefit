@@ -119,7 +119,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
           <div className="route-ready-icon"><Route aria-hidden="true" /></div>
           <div>
             <h2>최적 경로를 계산해 보세요</h2>
-            <p>방문 장소 {placeCount}곳의 순서와 이동 시간을 확인할 수 있어요.</p>
+            <p>{placeCount}곳의 순서와 이동 시간을 확인할 수 있어요.</p>
           </div>
         </div>
         <div className="route-ready-status">
