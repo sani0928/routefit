@@ -5306,7 +5306,7 @@
 
 .guide-use-cases p { margin:0; color:#6b7f99; font-size:.86rem; line-height:1.7; }
 .guide-use-case-carousel { position:relative; display:flex; min-width:0; min-height:0; flex-direction:column; }
-.guide-use-case-viewport { position:relative; min-height:0; overflow-x:auto; overflow-y:hidden; border-radius:18px; cursor:grab; overscroll-behavior-x:contain; scroll-snap-type:x mandatory; scroll-behavior:smooth; user-select:none; scrollbar-width:none; touch-action:pan-y; }
+.guide-use-case-viewport { position:relative; min-height:0; overflow-x:auto; overflow-y:hidden; border-radius:18px; cursor:grab; overscroll-behavior-x:contain; scroll-snap-type:x mandatory; user-select:none; scrollbar-width:none; touch-action:pan-y; }
 .guide-use-case-viewport::-webkit-scrollbar { display:none; }
 .guide-use-case-viewport:active { cursor:grabbing; }
 .guide-use-case-track { --guide-use-case-width:76%; --guide-use-case-gap:12px; display:flex; width:100%; height:100%; gap:var(--guide-use-case-gap); padding:0; }
@@ -5320,7 +5320,8 @@
   min-width:0;
   min-height:230px;
   flex:0 0 var(--guide-use-case-width);
-  grid-template-rows:minmax(0,1fr) auto auto;
+  grid-template-rows:auto auto minmax(0,1fr);
+  align-content:start;
   padding:28px;
   overflow:hidden;
   border:1px solid #d1e3f5;
@@ -5338,9 +5339,7 @@
 .guide-use-case-card span { display:block; max-width:30ch; color:#647a95; font-size:.95rem; line-height:1.68; }
 .guide-use-case-card.is-active { border-color:#9fc8ed; opacity:1; transform:scale(1); box-shadow:0 12px 28px rgb(47 92 140 / .12); }
 
-.guide-use-case-card .guide-use-case-icon { position:relative; display:grid; width:104px; height:104px; max-width:none; place-items:center; align-self:center; justify-self:center; overflow:visible; border-radius:50%; color:#2387cf; background:transparent; font-size:0; line-height:0; isolation:isolate; box-shadow:none; transform:none; }
-.guide-use-case-card .guide-use-case-icon::before { position:absolute; z-index:0; width:166%; height:166%; border-radius:50%; background:radial-gradient(circle, rgb(123 220 229 / .3) 0%, rgb(97 201 231 / .18) 30%, rgb(91 171 235 / .08) 49%, transparent 72%); content:""; }
-.guide-use-case-card .guide-use-case-icon svg { position:relative; z-index:1; display:block; width:48px; height:48px; stroke-width:1.65; }
+.guide-use-case-card .guide-use-case-icon { display:none; }
 
 @media (max-width:700px) {
   .result-panel.mobile-sheet-panel .result-header.result-status-header {
@@ -6087,8 +6086,6 @@ body:has(.shared-route-expired-page) { min-height:100dvh; height:auto; overflow-
   .guide-step-tips .guide-use-case-card { min-height:0; flex-basis:var(--guide-use-case-width); padding:clamp(14px,2.7dvh,20px); border-radius:14px; }
   .guide-step-tips .guide-use-case-card strong { margin-bottom:7px; font-size:clamp(.98rem,2.7dvh,1.18rem); line-height:1.3; }
   .guide-step-tips .guide-use-case-card span { max-width:34ch; font-size:clamp(.74rem,1.95dvh,.88rem); line-height:1.55; }
-  .guide-step-tips .guide-use-case-icon { width:clamp(60px,11dvh,84px); height:clamp(60px,11dvh,84px); border-radius:clamp(20px,3.8dvh,28px); }
-  .guide-step-tips .guide-use-case-icon svg { width:clamp(28px,5dvh,39px); height:clamp(28px,5dvh,39px); }
 
   .guide-page > .guide-step.guide-step-faq { overflow-y:hidden; }
   .guide-step-faq { position:relative; display:flex; min-height:100dvh; flex-direction:column; padding:calc(64px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom)); background:linear-gradient(180deg,#f6fbff 0%,#fff 42%,#f3fbfa 100%); }
