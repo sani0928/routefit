@@ -5305,10 +5305,42 @@
 }
 
 .guide-use-cases p { margin:0; color:#6b7f99; font-size:.86rem; line-height:1.7; }
-.guide-use-cases ul { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0; padding:0; list-style:none; }
-.guide-use-cases li { min-height:112px; padding:17px; border:1px solid #e0ebf7; border-radius:15px; background:#f8fbff; }
-.guide-use-cases li strong { display:block; margin-bottom:7px; color:#28517c; font-size:.82rem; }
-.guide-use-cases li span { display:block; color:#71849d; font-size:.7rem; line-height:1.55; }
+.guide-use-case-carousel { position:relative; display:flex; min-width:0; min-height:0; flex-direction:column; }
+.guide-use-case-viewport { position:relative; min-height:0; overflow-x:auto; overflow-y:hidden; border-radius:18px; cursor:grab; overscroll-behavior-x:contain; scroll-snap-type:x mandatory; scroll-behavior:smooth; user-select:none; scrollbar-width:none; touch-action:pan-y; }
+.guide-use-case-viewport::-webkit-scrollbar { display:none; }
+.guide-use-case-viewport:active { cursor:grabbing; }
+.guide-use-case-track { --guide-use-case-width:76%; --guide-use-case-gap:12px; display:flex; width:100%; height:100%; gap:var(--guide-use-case-gap); padding:0; }
+.guide-use-case-track::before,
+.guide-use-case-track::after { content:""; flex:0 0 calc((100% - var(--guide-use-case-width)) / 2 - var(--guide-use-case-gap)); }
+
+.guide-use-case-card {
+  position:relative;
+  display:grid;
+  width:auto;
+  min-width:0;
+  min-height:230px;
+  flex:0 0 var(--guide-use-case-width);
+  grid-template-rows:minmax(0,1fr) auto auto;
+  padding:28px;
+  overflow:hidden;
+  border:1px solid #d1e3f5;
+  border-radius:18px;
+  box-sizing:border-box;
+  background:linear-gradient(135deg,#f7fbff 0%,#fff 58%,#f2fcf9 100%);
+  scroll-snap-align:center;
+  scroll-snap-stop:always;
+  opacity:.58;
+  transform:scale(.93);
+  transition:opacity .28s ease,transform .28s ease,border-color .28s ease,box-shadow .28s ease;
+}
+
+.guide-use-case-card strong { display:block; margin-bottom:10px; color:#1f4c7d; font-size:1.3rem; letter-spacing:-.03em; }
+.guide-use-case-card span { display:block; max-width:30ch; color:#647a95; font-size:.95rem; line-height:1.68; }
+.guide-use-case-card.is-active { border-color:#9fc8ed; opacity:1; transform:scale(1); box-shadow:0 12px 28px rgb(47 92 140 / .12); }
+
+.guide-use-case-card .guide-use-case-icon { position:relative; display:grid; width:104px; height:104px; max-width:none; place-items:center; align-self:center; justify-self:center; overflow:visible; border-radius:50%; color:#2387cf; background:transparent; font-size:0; line-height:0; isolation:isolate; box-shadow:none; transform:none; }
+.guide-use-case-card .guide-use-case-icon::before { position:absolute; z-index:0; width:166%; height:166%; border-radius:50%; background:radial-gradient(circle, rgb(123 220 229 / .3) 0%, rgb(97 201 231 / .18) 30%, rgb(91 171 235 / .08) 49%, transparent 72%); content:""; }
+.guide-use-case-card .guide-use-case-icon svg { position:relative; z-index:1; display:block; width:48px; height:48px; stroke-width:1.65; }
 
 @media (max-width:700px) {
   .result-panel.mobile-sheet-panel .result-header.result-status-header {
@@ -5861,7 +5893,7 @@ body:has(.shared-route-expired-page) { min-height:100dvh; height:auto; overflow-
     grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);
     gap:34px;
   }
-  .guide-step-tips .guide-use-cases li { min-height:78px; padding:12px; }
+  .guide-step-tips .guide-use-case-carousel { min-height:230px; }
 
   .guide-page > .guide-step.guide-step-faq {
     position:relative;
@@ -6046,14 +6078,17 @@ body:has(.shared-route-expired-page) { min-height:100dvh; height:auto; overflow-
   .guide-step-tips .guide-swipe-card > span strong { font-size:.71rem; }
   .guide-step-tips .guide-swipe-card > span small { margin-top:2px; font-size:.57rem; }
   .guide-step-tips .guide-swipe-hand svg { width:20px; }
-  .guide-step-tips .guide-use-cases { display:flex; width:100%; min-height:0; flex:1 1 auto; flex-direction:column; margin:clamp(8px,1.6dvh,14px) 0 0; padding:clamp(10px,2.1dvh,16px); overflow:hidden; border:1px solid #dbe9f7; border-radius:20px; background:#fff; box-shadow:0 12px 26px rgb(47 92 140 / .07); box-sizing:border-box; }
+  .guide-step-tips .guide-use-cases { display:flex; width:100%; min-height:0; flex:1 1 auto; flex-direction:column; align-items:stretch; margin:clamp(8px,1.6dvh,14px) 0 0; padding:clamp(10px,2.1dvh,16px); overflow:hidden; border:1px solid #dbe9f7; border-radius:20px; background:#fff; box-shadow:0 12px 26px rgb(47 92 140 / .07); box-sizing:border-box; }
   .guide-step-tips .guide-use-cases h2 { margin:4px 0 5px; font-size:clamp(.92rem,2.6dvh,1.28rem); line-height:1.24; }
   .guide-step-tips .guide-use-cases > div > p { margin:0 0 clamp(7px,1.3dvh,10px); font-size:clamp(.54rem,1.45dvh,.7rem); line-height:1.45; }
-  .guide-step-tips .guide-use-cases ul { min-height:0; flex:1 1 auto; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(6px,1dvh,7px); }
-  .guide-step-tips .guide-use-cases li { display:flex; min-height:0; flex-direction:column; justify-content:center; gap:4px; padding:clamp(6px,1dvh,9px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; border-radius:13px; background:#fff; box-shadow:0 7px 18px rgb(47 92 140 / .06); }
-  .guide-step-tips .guide-use-cases li::-webkit-scrollbar { display:none; }
-  .guide-step-tips .guide-use-cases strong { margin:0; font-size:clamp(.72rem,2dvh,.9rem); line-height:1.3; }
-  .guide-step-tips .guide-use-cases li span { font-size:clamp(.62rem,1.65dvh,.74rem); line-height:1.45; }
+  .guide-step-tips .guide-use-case-carousel { width:100%; max-width:100%; min-height:0; min-width:0; align-self:stretch; flex:1 1 auto; box-sizing:border-box; }
+  .guide-step-tips .guide-use-case-viewport { width:100%; max-width:100%; min-height:0; min-width:0; flex:1 1 auto; border-radius:14px; box-sizing:border-box; }
+  .guide-step-tips .guide-use-case-track { --guide-use-case-width:76%; --guide-use-case-gap:9px; min-height:0; }
+  .guide-step-tips .guide-use-case-card { min-height:0; flex-basis:var(--guide-use-case-width); padding:clamp(14px,2.7dvh,20px); border-radius:14px; }
+  .guide-step-tips .guide-use-case-card strong { margin-bottom:7px; font-size:clamp(.98rem,2.7dvh,1.18rem); line-height:1.3; }
+  .guide-step-tips .guide-use-case-card span { max-width:34ch; font-size:clamp(.74rem,1.95dvh,.88rem); line-height:1.55; }
+  .guide-step-tips .guide-use-case-icon { width:clamp(60px,11dvh,84px); height:clamp(60px,11dvh,84px); border-radius:clamp(20px,3.8dvh,28px); }
+  .guide-step-tips .guide-use-case-icon svg { width:clamp(28px,5dvh,39px); height:clamp(28px,5dvh,39px); }
 
   .guide-page > .guide-step.guide-step-faq { overflow-y:hidden; }
   .guide-step-faq { position:relative; display:flex; min-height:100dvh; flex-direction:column; padding:calc(64px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom)); background:linear-gradient(180deg,#f6fbff 0%,#fff 42%,#f3fbfa 100%); }
@@ -6102,10 +6137,9 @@ body:has(.shared-route-expired-page) { min-height:100dvh; height:auto; overflow-
   .guide-step-tips .guide-use-cases { margin-top:10px; padding:12px; }
   .guide-step-tips .guide-use-cases h2 { font-size:1rem; }
   .guide-step-tips .guide-use-cases > div > p { margin-bottom:8px; font-size:.56rem; }
-  .guide-step-tips .guide-use-cases ul { gap:6px; }
-  .guide-step-tips .guide-use-cases li { min-height:0; padding:7px; }
-  .guide-step-tips .guide-use-cases strong { font-size:.7rem; }
-  .guide-step-tips .guide-use-cases li span { font-size:.6rem; }
+  .guide-step-tips .guide-use-case-card { padding:12px; }
+  .guide-step-tips .guide-use-case-card strong { font-size:1.06rem; }
+  .guide-step-tips .guide-use-case-card span { font-size:.78rem; }
 }
 
 @media (max-width:340px) {
@@ -6122,13 +6156,15 @@ body:has(.shared-route-expired-page) { min-height:100dvh; height:auto; overflow-
   .guide-step-faq { height:auto; min-height:100dvh; }
   .guide-step-tips { justify-content:flex-start; }
   .guide-step-tips .guide-use-cases { flex:0 0 auto; }
-  .guide-step-tips .guide-use-cases ul { flex:0 0 auto; grid-template-rows:repeat(2,minmax(54px,auto)); }
-  .guide-step-tips .guide-use-cases li { overflow:visible; }
-  .guide-step-tips .guide-use-cases li,
+  .guide-step-tips .guide-use-case-carousel { flex:0 0 auto; }
+  .guide-step-tips .guide-use-case-viewport { flex:0 0 auto; }
+  .guide-step-tips .guide-use-case-card { min-height:114px; }
+  .guide-step-tips .guide-use-case-viewport,
   .guide-step-faq .guide-faq-chat { overscroll-behavior:auto; }
 }
 
 @media (prefers-reduced-motion:reduce) {
   .guide-page { scroll-behavior:auto; }
   .guide-mobile-pagination > div span { transition:none; }
+  .guide-use-case-card { transition:none; }
 }
