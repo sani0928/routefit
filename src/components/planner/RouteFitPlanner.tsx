@@ -971,7 +971,7 @@ export function RouteFitPlanner() {
           onSearchViewportSettlingChange={setSearchViewportSettling}
           searchViewportKey={mobileSheetState}
           isSearchViewportAdjusting={mobileSheetDragging}
-          showSearchMapRetry={showSearchResultMarkers && searchResultSort === "map-center-distance" && !isSearchResultsLoading && !isSearchViewportSettling && !hasVisibleSearchResult}
+          showSearchMapRetry={showSearchResultMarkers && mobileSheetState !== "expanded" && searchResultSort === "map-center-distance" && !isSearchResultsLoading && !isSearchViewportSettling && (searchMapResults.length === 0 || !hasVisibleSearchResult)}
           onSearchMapRetry={retrySearchNearMapCenter}
           focusedSearchResult={focusedSearchResult}
           focusedSearchResultRequestId={focusedSearchResultRequest}

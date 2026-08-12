@@ -148,6 +148,17 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   const focusedFrom = focusedSegment ? placesById.get(focusedSegment.fromId) : null;
   const focusedTo = focusedSegment ? placesById.get(focusedSegment.toId) : null;
   const focusedTraffic = focusedSegment ? segmentTrafficStatus(focusedSegment.trafficSections ?? []) : null;
+  const renderSegmentPreview = (index: number, position: "previous" | "next") => {
+    const segment = result.segments[index];
+    const from = placesById.get(segment.fromId);
+    const to = placesById.get(segment.toId);
+    return <div className={`segment-focus-preview segment-focus-preview-${position}`} style={{ "--route-color": routeColor(index) } as CSSProperties} aria-hidden="true">
+      <span>{segmentLabel(index)} 구간</span>
+      <strong>{from?.name ?? "출발 장소"}</strong>
+      <i>→</i>
+      <strong>{to?.name ?? "도착 장소"}</strong>
+    </div>;
+  };
   const showSegmentSwipeFeedback = (direction: SegmentSwipeFeedback["direction"]) => {
     if (segmentSwipeFeedbackTimerRef.current !== null) window.clearTimeout(segmentSwipeFeedbackTimerRef.current);
     setSegmentSwipeFeedback((current) => ({ direction, sequence: (current?.sequence ?? 0) + 1 }));
@@ -207,7 +218,15 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
       <span className="result-time">계산 {formatCalculationTime(result.summary.calculationDurationMilliseconds)}</span>
     </div>
     {isRouteStale && <p className="route-recalculation-notice" role="status">방문 장소가 변경되었습니다.</p>}
-      {activeTab === "segments" && focusedSegment && focusedTraffic && activeSegmentIndex !== null && <section key={`${activeSegmentIndex}-${segmentSwipeFeedback?.sequence ?? 0}`} className={`segment-focus-card${segmentSwipeFeedback ? ` segment-swipe-${segmentSwipeFeedback.direction}` : ""}${activeSegmentIndex === 0 ? " segment-at-start" : ""}${activeSegmentIndex === result.segments.length - 1 ? " segment-at-end" : ""}`} style={{ "--route-color": routeColor(activeSegmentIndex) } as CSSProperties} aria-live="polite" aria-label="선택한 구간 정보. 좌우로 밀어 이전 또는 다음 구간을 확인하세요." onPointerDown={handleSegmentFocusPointerDown} onPointerUp={handleSegmentFocusPointerUp} onPointerCancel={() => { segmentFocusPointerStartRef.current = null; }}><div className="segment-focus-heading"><span>{segmentLabel(activeSegmentIndex)} 구간</span><button type="button" aria-label="구간 강조 해제" onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onClick={() => onSegmentSelect(null)}><X aria-hidden="true" /></button></div><div className="segment-focus-places"><div><strong>{focusedFrom?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].departureTime).toISOString())}</small></div><i aria-hidden="true">→</i><div><strong>{focusedTo?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].arrivalTime).toISOString())}</small></div></div><div className="segment-focus-meta"><span>{formatDistance(focusedSegment.distanceMeters)}</span><span>{formatTime(focusedSegment.durationMilliseconds)}</span><em className={`traffic-status ${focusedTraffic.className}`}>{focusedTraffic.label}</em></div></section>}
+      {activeTab === "segments" && focusedSegment && focusedTraffic && activeSegmentIndex !== null && <section key={`${activeSegmentIndex}-${segmentSwipeFeedback?.sequence ?? 0}`} className={`segment-focus-carousel${segmentSwipeFeedback ? ` segment-swipe-${segmentSwipeFeedback.direction}` : ""}${activeSegmentIndex === 0 ? " segment-at-start" : ""}${activeSegmentIndex === result.segments.length - 1 ? " segment-at-end" : ""}`} aria-live="polite" aria-label="선택한 구간 정보. 좌우로 밀어 이전 또는 다음 구간을 확인하세요." onPointerDown={handleSegmentFocusPointerDown} onPointerUp={handleSegmentFocusPointerUp} onPointerCancel={() => { segmentFocusPointerStartRef.current = null; }}>
+        {activeSegmentIndex > 0 && renderSegmentPreview(activeSegmentIndex - 1, "previous")}
+        <article className="segment-focus-card" style={{ "--route-color": routeColor(activeSegmentIndex) } as CSSProperties}>
+          <div className="segment-focus-heading"><span>{segmentLabel(activeSegmentIndex)} 구간</span><button type="button" aria-label="구간 강조 해제" onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onClick={() => onSegmentSelect(null)}><X aria-hidden="true" /></button></div>
+          <div className="segment-focus-places"><div><strong>{focusedFrom?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].departureTime).toISOString())}</small></div><i aria-hidden="true">→</i><div><strong>{focusedTo?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].arrivalTime).toISOString())}</small></div></div>
+          <div className="segment-focus-meta"><span>{formatDistance(focusedSegment.distanceMeters)}</span><span>{formatTime(focusedSegment.durationMilliseconds)}</span><em className={`traffic-status ${focusedTraffic.className}`}>{focusedTraffic.label}</em></div>
+        </article>
+        {activeSegmentIndex < result.segments.length - 1 && renderSegmentPreview(activeSegmentIndex + 1, "next")}
+      </section>}
 <div className="route-hero"><img className="route-hero-logo" src="/icons/logo.png" alt="RouteFit" /><div className="route-hero-heading"><p>예상 소요 시간</p></div><div className="route-hero-overview"><div className={`route-hero-duration${totalDurationMilliseconds >= 60 * 60_000 ? " duration-long" : ""}`}><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">머무는 시간 {formatTime(totalStayDurationMinutes * 60_000)} 포함</span>}</div><div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div><div className="route-hero-times"><span><small>출발</small><time>{formatTrafficReferenceTime(result.summary.calculatedAt)}</time></span><i aria-hidden="true">→</i><span><small>도착 예정</small><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></span></div></div>
 
     {onShare && <button type="button" className="route-share-action" disabled={isRouteStale || isSharing} onClick={onShare} title={isRouteStale ? "최신 계산 결과에서만 공유할 수 있습니다." : undefined}>

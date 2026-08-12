@@ -553,6 +553,7 @@
     --mobile-sheet-expanded-map-peek:clamp(72px, 10dvh, 96px);
   }
   .app-shell { position:relative; display:block; min-height:100dvh; }
+  .mobile-bottom-nav { display:grid; }
   .mobile-navigation-tab.has-route-result {
     color:#1877c9;
     background:linear-gradient(112deg,#e7fbfa 0%,#e5f6ff 28%,#edf0ff 50%,#e2fbf2 73%,#e7fbfa 100%);
@@ -2155,20 +2156,56 @@
     max-height: min(318px, max(116px, calc(var(--mobile-visual-viewport-height) - 188px)));
   }}
 /* The selected route segment can be changed horizontally without stealing vertical sheet scroll. */
-.segment-focus-card {
-  touch-action: pan-y;
-  user-select: none;
-}
-/* Segment selection: directional motion and subdued end guards make horizontal swipes discoverable. */
-.segment-focus-card {
-  position: relative;
-  overflow: hidden;
+.segment-focus-carousel { position:relative; margin:12px 0; touch-action:pan-y; user-select:none; }
+.segment-focus-carousel .segment-focus-card { position:relative; z-index:2; margin:0; overflow:hidden; background:color-mix(in srgb,var(--route-color,#2563eb) 7%,#fff); }
+.segment-focus-preview { display:none; }
+
+@media (max-width:700px) {
+  .segment-focus-carousel { margin:10px -2px; padding:7px 28px; overflow:hidden; isolation:isolate; }
+  .segment-focus-carousel::before,
+  .segment-focus-carousel::after {
+    position:absolute;
+    z-index:3;
+    top:0;
+    bottom:0;
+    width:30px;
+    content:"";
+    pointer-events:none;
+  }
+  .segment-focus-carousel::before { left:0; background:linear-gradient(90deg,#f6f8fc 0%,rgb(246 248 252 / 0) 100%); }
+  .segment-focus-carousel::after { right:0; background:linear-gradient(270deg,#f6f8fc 0%,rgb(246 248 252 / 0) 100%); }
+  .segment-focus-carousel .segment-focus-card { width:100%; margin:0; box-shadow:0 8px 20px rgb(37 99 235 / .14); }
+  .segment-focus-preview {
+    position:absolute;
+    z-index:1;
+    top:15px;
+    bottom:15px;
+    display:grid;
+    width:88px;
+    align-content:center;
+    gap:3px;
+    padding:12px 9px;
+    overflow:hidden;
+    border:1px solid color-mix(in srgb,var(--route-color,#2563eb) 24%,#dbe7f2);
+    border-radius:13px;
+    color:#60768f;
+    background:linear-gradient(145deg,color-mix(in srgb,var(--route-color,#2563eb) 14%,#fff),#f6f9fd);
+    box-shadow:0 5px 14px rgb(37 99 235 / .08);
+    font-size:.57rem;
+    opacity:.94;
+    pointer-events:none;
+  }
+  .segment-focus-preview > span { color:var(--route-color,#2563eb); font-weight:900; }
+  .segment-focus-preview > strong { overflow:hidden; color:#536a83; font-size:.62rem; text-overflow:ellipsis; white-space:nowrap; }
+  .segment-focus-preview > i { color:var(--route-color,#2563eb); font-style:normal; font-weight:900; }
+  .segment-focus-preview-previous { left:-44px; padding-right:24px; transform:perspective(540px) rotateY(34deg) scale(.92); transform-origin:right center; }
+  .segment-focus-preview-next { right:-44px; padding-left:24px; transform:perspective(540px) rotateY(-34deg) scale(.92); transform-origin:left center; }
 }
 
-.segment-focus-card.segment-swipe-next { animation: segment-focus-enter-next .28s cubic-bezier(.2, .75, .2, 1); }
-.segment-focus-card.segment-swipe-previous { animation: segment-focus-enter-previous .28s cubic-bezier(.2, .75, .2, 1); }
-.segment-focus-card.segment-swipe-start { animation: segment-focus-boundary-start .3s cubic-bezier(.25, .7, .35, 1); }
-.segment-focus-card.segment-swipe-end { animation: segment-focus-boundary-end .3s cubic-bezier(.25, .7, .35, 1); }
+.segment-focus-carousel.segment-swipe-next { animation:segment-focus-enter-next .28s cubic-bezier(.2,.75,.2,1); }
+.segment-focus-carousel.segment-swipe-previous { animation:segment-focus-enter-previous .28s cubic-bezier(.2,.75,.2,1); }
+.segment-focus-carousel.segment-swipe-start { animation:segment-focus-boundary-start .3s cubic-bezier(.25,.7,.35,1); }
+.segment-focus-carousel.segment-swipe-end { animation:segment-focus-boundary-end .3s cubic-bezier(.25,.7,.35,1); }
 
 @keyframes segment-focus-enter-next {
   from { opacity: .38; transform: translateX(20px); }
@@ -2205,10 +2242,10 @@
   }}
 
 @media (prefers-reduced-motion: reduce) {
-  .segment-focus-card.segment-swipe-next,
-  .segment-focus-card.segment-swipe-previous,
-  .segment-focus-card.segment-swipe-start,
-  .segment-focus-card.segment-swipe-end { animation: none; }}
+  .segment-focus-carousel.segment-swipe-next,
+  .segment-focus-carousel.segment-swipe-previous,
+  .segment-focus-carousel.segment-swipe-start,
+  .segment-focus-carousel.segment-swipe-end { animation: none; }}
 /* Mobile place cards expose compact swipe-only actions without expanding the list vertically. */
 @media (max-width: 700px) {
   .planner-panel.mobile-sheet-panel .sortable-place-item:has(.place-item.mobile-swipe-actions),
@@ -3150,5 +3187,3 @@
   letter-spacing:-.025em;
   line-height:1.4;
 }
-
-
