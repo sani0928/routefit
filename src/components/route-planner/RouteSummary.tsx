@@ -241,7 +241,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     {activeTab === "stops" && <section id="route-stops-panel" role="tabpanel" aria-labelledby="route-stops-tab" className="route-stops-card route-tab-panel"><div className="stops-heading"><div><small>방문 순서</small><strong>{result.orderedPlaces.length}개 지점</strong></div><span>ROUTE</span></div><ol className="modern-route-order">{result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`} style={{ "--route-color": routeColor(index) } as CSSProperties}><div className="route-stop-row"><span className="stop-number">{String(index + 1).padStart(2, "0")}</span><span className="route-stop-copy"><span className="route-stop-name"><strong>{place.name}</strong>{fixedPlaceIds.has(place.id) && <Lock className="route-stop-lock" size={13} strokeWidth={2.6} aria-label="방문 순서 고정" />}</span><small>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}</small></span></div></li>)}</ol></section>}
 
     {activeTab === "segments" && <section id="route-segments-panel" role="tabpanel" aria-labelledby="route-segments-tab" className="segment-details route-tab-panel">
-      <div className="segment-panel-heading"><div><small>구간별 상세</small><strong>실시간 교통정보 기준</strong></div></div>
+       <div className="segment-panel-heading"><div><small>구간별 상세</small><strong>실시간 교통정보 기준</strong></div><span className="segment-panel-hint">각 구간 클릭 시 상세 정보 표시</span></div>
       <ol>{result.segments.map((segment, index) => {
         const isExpanded = activeSegmentIndex === index;
         const from = placesById.get(segment.fromId);
