@@ -11,7 +11,7 @@ type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
 type MapFocusPlace = Pick<MapPlace, "latitude" | "longitude">;
 type MarkerPopupPlace = Pick<MapPlace, "name" | "latitude" | "longitude"> & { id?: string; providerId?: string };
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; temporaryCurrentLocation?: MapFocusPlace | null; searchResultsFocusRequestId?: number; searchViewportKey?: string; isSearchViewportAdjusting?: boolean; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapCenterChange?: (center: { latitude: number; longitude: number }) => void; onSearchResultsVisibilityChange?: (hasVisibleMarker: boolean) => void; onSearchViewportSettlingChange?: (isSettling: boolean) => void; showSearchMapRetry?: boolean; onSearchMapRetry?: () => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; onListPlaceAdd?: (place: MapPlace) => void; onListPlaceRemove?: (place: MapPlace) => void; isListPlaceAdded?: (place: MapPlace) => boolean; }
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; temporaryCurrentLocation?: MapFocusPlace | null; searchResultsFocusRequestId?: number; searchViewportKey?: string; isSearchViewportAdjusting?: boolean; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapCenterChange?: (center: { latitude: number; longitude: number }) => void; onSearchResultsVisibilityChange?: (hasVisibleMarker: boolean) => void; onSearchViewportSettlingChange?: (isSettling: boolean) => void; showSearchMapRetry?: boolean; onSearchMapRetry?: () => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; listMarkerMode?: "overview" | "detail"; onListPlaceAdd?: (place: MapPlace) => void; onListPlaceRemove?: (place: MapPlace) => void; isListPlaceAdded?: (place: MapPlace) => boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 const MOBILE_SHEET_SETTLE_DURATION_MS = 380;
@@ -156,7 +156,7 @@ function createCurrentLocationPopupContent(address?: string) {
   return container;
 }
 
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, temporaryCurrentLocation, searchResultsFocusRequestId, searchViewportKey, isSearchViewportAdjusting = false, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, showSearchMapRetry = false, onSearchMapRetry, onMapError, listPlaces, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, temporaryCurrentLocation, searchResultsFocusRequestId, searchViewportKey, isSearchViewportAdjusting = false, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, showSearchMapRetry = false, onSearchMapRetry, onMapError, listPlaces, listMarkerMode, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
@@ -587,7 +587,11 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       const listColor = listPlaces?.[index]?.color;
       const markerStyle = isOptimized ? ` style="--marker-color:${routeColor(index)}"` : listColor ? ` style="--marker-color:${listColor}"` : "";
       const markerClass = isSearchResults ? "search-result" : isOptimized || listColor ? "optimized" : roleClass;
-      const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}"${markerStyle}>${label}</div>`, anchor: new window.naver.maps.Point(16, 16) } });
+      const isOverviewListMarker = listMarkerMode === "overview";
+      const markerContent = isOverviewListMarker
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.1 7-12a7 7 0 1 0-14 0c0 6.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>'
+        : label;
+      const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}${isOverviewListMarker ? " list-place" : ""}"${markerStyle}>${markerContent}</div>`, anchor: new window.naver.maps.Point(16, 16) } });
       window.naver.maps.Event.addListener(marker, "click", () => {
         requestIdRef.current += 1;
         const popupPlace = { name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude };
@@ -882,3 +886,4 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     </div>
   );
 }
+
