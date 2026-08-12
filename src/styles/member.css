@@ -1,0 +1,790 @@
+.place-list { list-style:none; padding:0; margin:12px 0; display:grid; gap:10px; }
+.planner-panel .place-list { gap:8px; margin:12px 0 0; }
+/* Prevent long place names from overflowing planner cards */
+.planner-panel .place-list,.planner-panel .place-item { min-width:0; max-width:100%; }
+.member-login,.member-profile summary { display:inline-flex; align-items:center; gap:6px; min-height:31px; padding:7px 9px; border:1px solid #d8e3f0; border-radius:9px; color:#34445a; background:#fff; font-size:.67rem; font-weight:800; white-space:nowrap; }
+.member-login:disabled { opacity:.55; cursor:default; }
+.member-profile { position:relative; }
+.member-profile summary { list-style:none; cursor:pointer; }
+.member-profile summary::-webkit-details-marker { display:none; }
+.member-avatar { display:grid; width:17px; height:17px; place-items:center; overflow:hidden; border-radius:50%; color:#fff; background:#2563eb; }
+.member-avatar img { width:100%; height:100%; object-fit:cover; }
+.member-profile-menu { position:absolute; z-index:50; top:calc(100% + 6px); right:0; min-width:176px; padding:10px; border:1px solid #dce6f1; border-radius:10px; background:#fff; box-shadow:0 12px 28px #17305c20; }
+.member-profile-menu p { overflow:hidden; margin:0 0 8px; color:#789; font-size:.61rem; text-overflow:ellipsis; white-space:nowrap; }
+.member-profile-menu button { display:flex; align-items:center; gap:6px; width:100%; padding:6px; border-radius:6px; color:#3d4a5a; background:transparent; font-size:.67rem; text-align:left; }
+.member-auth-skeleton { width:82px; height:31px; border-radius:9px; background:#eef3f8; }
+.saved-places-panel { padding-top:3px; }
+.member-panel-top { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.member-panel-top > div { min-width:0; flex:1; }
+.member-panel-top .eyebrow { margin:0 0 2px; }
+.member-panel-top h2 { margin:0; color:#26364e; font-size:1rem; }
+.member-count { margin:9px 1px 7px; color:#8a9aae; font-size:.61rem; font-weight:800; }
+.place-list-cards,.saved-place-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
+.place-list-card { display:flex; width:100%; align-items:center; gap:8px; padding:10px; border:1px solid #e1eaf3; border-radius:10px; color:#35475e; background:#fff; text-align:left; }
+.place-list-card span:nth-child(2) { min-width:0; flex:1; }
+.place-list-card strong,.place-list-card small,.saved-place-list strong,.saved-place-list small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.place-list-card strong,.saved-place-list strong { font-size:.71rem; }
+.place-list-card small,.saved-place-list small { margin-top:3px; color:#8b9aad; font-size:.61rem; }
+.saved-place-list li { display:flex; align-items:center; gap:7px; padding:9px; border:1px solid #e1eaf3; border-radius:10px; background:#fff; }
+.saved-place-list li > div:first-child { min-width:0; flex:1; }
+.saved-place-actions { display:flex; align-items:center; gap:3px; }
+.saved-place-actions button { display:grid; width:27px; height:27px; place-items:center; padding:0; border-radius:6px; color:#526b89; background:transparent; }
+.saved-place-actions button:last-child { color:#a45a61; }
+.map-list-manager .saved-places-panel { padding:0; }
+.map-list-manager .member-panel-top { padding-top:0; }
+/* Minimal Google sign-in and avatar-only member menu. */
+.member-login { display:grid; width:32px; height:32px; place-items:center; padding:5px; border:1px solid #e2e8f0; border-radius:50%; background:#fff; box-shadow:0 2px 6px #0f172a0d; transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease; }
+.member-login:hover:not(:disabled) { border-color:#cbd5e1; box-shadow:0 5px 12px #0f172a18; transform:translateY(-1px); }
+.member-login img { display:block; width:18px; height:18px; object-fit:contain; }
+.member-profile summary { display:grid; width:32px; height:32px; place-items:center; padding:0; border:1px solid #d8e3f0; border-radius:50%; background:#fff; box-shadow:0 2px 6px #0f172a0d; }
+.member-profile summary:hover { border-color:#bcd2ef; box-shadow:0 5px 12px #0f172a18; }
+.member-avatar { width:25px; height:25px; color:#fff; }
+.member-avatar img { width:100%; height:100%; object-fit:cover; }
+/* Compact place-list manager: browsing is primary, editing lives in a focused dialog. */
+.map-list-manager { padding:16px; overflow:hidden; }
+.map-list-manager .saved-places-panel { min-height:170px; }
+.map-list-manager .place-list-cards { gap:7px; margin-top:14px; }
+.map-list-manager .place-list-card { min-height:58px; gap:10px; padding:10px 11px; border-color:#e3ebf4; border-radius:12px; transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease; }
+.map-list-manager .place-list-card:hover { border-color:#b8d0ed; box-shadow:0 7px 16px #1d4f8a12; transform:translateY(-1px); }
+.map-list-manager .place-list-card strong { color:#30435d; font-size:.75rem; }
+.map-list-manager .place-list-card small { margin-top:3px; color:#91a0b2; font-size:.61rem; }
+.map-list-manager .saved-place-list { gap:6px; }
+.map-list-manager .saved-place-list li { min-height:54px; padding:9px 10px; border-color:#e3ebf4; border-radius:11px; }
+.map-list-manager .saved-place-list strong { color:#31445d; font-size:.71rem; }
+.map-list-manager .saved-place-list small { font-size:.59rem; }
+.map-list-manager .saved-place-actions { gap:2px; }
+.map-list-manager .saved-place-actions button { width:26px; height:26px; color:#657b97; }
+.map-list-manager .saved-place-actions button:hover { color:#2563eb; background:transparent; }
+.map-list-manager .saved-place-actions button:last-child:hover { color:#d24d58; }
+.map-list-manager .place-list-cards { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:11px 8px; margin-top:17px; }
+.map-list-manager .place-list-cards li { min-width:0; }
+.map-list-manager .place-list-card { display:grid; min-height:0; justify-items:center; gap:6px; padding:0; border:0; border-radius:0; color:#61748c; background:transparent; text-align:center; box-shadow:none; }
+.map-list-manager .place-list-card:hover { border:0; box-shadow:none; transform:translateY(-1px); }
+.map-list-manager .place-list-card .list-color-dot { width:31px; height:31px; flex:0 0 31px; border:3px solid #fff; box-shadow:0 0 0 1px #dce6f2,0 4px 8px #1d4f8a20; }
+.map-list-manager .place-list-card > span:last-child { display:block; width:100%; overflow:hidden; color:#50657d; font-size:.59rem; font-weight:750; line-height:1.25; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width:520px) { .map-list-manager .place-list-cards { gap:10px 6px; } .map-list-manager .place-list-card .list-color-dot { width:28px; height:28px; flex-basis:28px; }}
+/* Place-list header and save affordance */
+.planner-panel .section-heading .place-return-toggle { margin:0; }
+
+/* Keep a long saved-place collection inside the list overlay. */
+.map-list-manager .place-list-detail { display:flex; min-height:0; flex-direction:column; }
+.map-list-manager .place-list-detail .saved-place-list { min-height:0; max-height:clamp(220px,calc(100vh - 430px),340px); overflow-y:auto; padding-right:2px; scrollbar-width:none; overscroll-behavior:contain; }
+.map-list-manager .place-list-detail .saved-place-list::-webkit-scrollbar { display:none; }
+.map-list-manager .place-list-detail .list-pagination { flex:0 0 auto; }
+@media (max-width:700px) { .map-list-manager .place-list-detail .saved-place-list { max-height:calc(52vh - 120px); }}
+/* Keep the place-list manager stable regardless of the current page size. */
+.map-list-manager {
+  height: 390px;
+  max-height: calc(100% - 202px);
+}
+
+.map-list-manager .saved-places-panel {
+  display: flex;
+  min-height: 100%;
+  height: 100%;
+  flex-direction: column;
+}
+
+.map-list-manager .place-list-overview .place-list-cards {
+  flex: 1 1 auto;
+  align-content: start;
+  overflow-y: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.map-list-manager .place-list-overview .place-list-cards::-webkit-scrollbar {
+  display: none;
+}
+
+.map-list-manager .place-list-detail .saved-place-list {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+/* On phones, make list management a focused map-covering workspace. */
+@media (max-width: 700px) {
+
+  .map-list-manager .saved-places-panel {
+    min-height: 100%;
+    height: 100%;
+  }
+
+  .map-list-manager .place-list-detail .saved-place-list {
+    max-height: none;
+  }}
+
+/* dnd-kit sortable feedback: no native drag image, only clear in-list movement. */
+.planner-panel .place-list.dnd-sorting {
+  touch-action: pan-y;
+}
+
+.planner-panel .place-list.dnd-sorting .place-item {
+  transition: box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel .place-item.draggable,
+  .planner-panel .place-list.dnd-sorting .place-item {
+    transition: none;
+  }}
+/* Keep the sortable source constrained to the visit-list column while dnd-kit reorders DOM nodes. */
+.planner-panel .place-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.planner-panel .place-list > .place-item.draggable {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.planner-panel .place-list > .place-item.draggable.dragging {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+/* The sortable library moves this wrapper in the list. Keeping the visual card inside
+   prevents its flex content from changing the sortable element's inline size mid-drag. */
+.planner-panel .place-list > .sortable-place-item {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  list-style: none;
+}
+
+.planner-panel .place-list > .sortable-place-item > .place-item.draggable {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+/* dnd-kit turns the source wrapper into position: fixed. Its measured size must
+   override the normal list-column width while the drag is active. */
+.planner-panel .place-list > .sortable-place-item[data-dnd-dragging] {
+  width: var(--dnd-width, auto);
+  max-width: var(--dnd-width, auto);
+  height: var(--dnd-height, auto);
+  max-height: var(--dnd-height, auto);
+}
+/* Saved-place rows must not stretch when a page has only a few items. */
+.map-list-manager .place-list-detail .saved-place-list {
+  grid-auto-rows:54px;
+  align-content:start;
+}
+.map-list-manager .place-list-detail .saved-place-list > li {
+  height:54px;
+  min-height:54px;
+}
+
+.planner-panel .place-section .place-list-scroll {
+  min-height:0;
+  flex:1 1 auto;
+  margin-top:12px;
+  overflow-y:auto;
+  padding:0 2px 14px 0;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scroll-padding-bottom:14px;
+}
+
+.planner-panel .place-section .place-list-scroll::-webkit-scrollbar {
+  display:none;
+}
+
+.planner-panel .place-section .place-list-scroll .place-list {
+  min-height:max-content;
+  margin:0;
+  overflow:visible;
+  padding-right:0;
+}
+
+/* Place-list manager: favour recognition and quick route building over color-only browsing. */
+.map-list-manager .list-overview-header > div:first-child p {
+  margin:3px 0 0;
+  color:#8797aa;
+  font-size:.61rem;
+  font-weight:650;
+  line-height:1.35;
+}
+.map-list-manager .place-list-cards {
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:15px;
+}
+.map-list-manager .place-list-card {
+  display:flex;
+  min-height:64px;
+  align-items:center;
+  justify-items:normal;
+  gap:9px;
+  padding:10px;
+  border:1px solid #e3ebf4;
+  border-radius:12px;
+  color:#50657d;
+  background:#fbfdff;
+  text-align:left;
+  box-shadow:0 2px 5px #1d4f8a08;
+}
+.map-list-manager .place-list-card:hover {
+  border-color:#b8d0ed;
+  background:#fff;
+  box-shadow:0 7px 16px #1d4f8a12;
+  transform:translateY(-1px);
+}
+.map-list-manager .place-list-card .list-color-dot {
+  width:24px;
+  height:24px;
+  flex:0 0 24px;
+  border-width:2px;
+}
+.map-list-manager .place-list-card .list-card-copy {
+  min-width:0;
+  flex:1;
+}
+.map-list-manager .place-list-card .list-card-copy strong,
+.map-list-manager .place-list-card .list-card-copy small {
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.map-list-manager .place-list-card .list-card-copy strong { color:#30435d; font-size:.72rem; }
+.map-list-manager .place-list-card .list-card-copy small { margin-top:3px; color:#91a0b2; font-size:.58rem; font-weight:700; }
+.map-list-manager .place-list-card .list-card-arrow { margin-left:0; color:#9aabc0; transform:none; }
+.map-list-manager .saved-place-search {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  height:34px;
+  margin:0 0 9px;
+  padding:0 8px;
+  border:1px solid #dce7f3;
+  border-radius:9px;
+  color:#7990aa;
+  background:#fbfdff;
+}
+.map-list-manager .saved-place-search:focus-within { border-color:#9ec2ef; box-shadow:0 0 0 3px #2563eb12; }
+.map-list-manager .saved-place-search input { min-width:0; height:100%; padding:0; border:0; color:#3b4f69; background:transparent; font-size:.66rem; outline:0; }
+.map-list-manager .saved-place-search input::placeholder { color:#9aa9bb; }
+.map-list-manager .saved-place-search button { display:grid; width:20px; height:20px; place-items:center; padding:0; border-radius:5px; color:#7890a9; background:transparent; }
+.map-list-manager .saved-place-search button:hover { color:#2563eb; background:#edf5ff; }
+.map-list-manager .saved-place-actions .saved-place-add-action { display:flex; width:auto; min-width:43px; gap:2px; padding:0 5px; color:#2563eb; font-size:.56rem; font-weight:800; }
+.map-list-manager .saved-place-add-action span { line-height:1; }
+@media (max-width:520px) {
+  .map-list-manager .place-list-cards { grid-template-columns:1fr; }
+  .map-list-manager .place-list-card { min-height:58px; }}
+
+@media (max-width:700px) {
+  .planner-panel.mobile-sheet-panel .place-list-scroll { max-height:calc(100dvh - 300px); }
+  .map-list-manager .saved-places-panel { min-height:0; height:100%; }
+  .map-list-manager .place-list-detail .saved-place-list,
+  .map-list-manager .place-list-overview .place-list-cards { max-height:none; }
+  .map-list-manager .place-list-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }}
+/* Mobile account entry stays available while map and sheets are explored. */
+.mobile-member-overlay { display: none; }
+
+@media (max-width: 700px) {
+  .mobile-member-overlay {
+    position: fixed;
+    z-index: 10;
+    top: max(12px, env(safe-area-inset-top));
+    right: 14px;
+    display: block;
+  }
+
+  .mobile-member-overlay .member-login,
+  .mobile-member-overlay .member-profile summary {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mobile-member-overlay .member-auth-skeleton {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-shadow: 0 4px 14px rgb(15 23 42 / .16);
+  }}
+
+@media (max-width: 700px) {
+  .app-shell.mobile-tab-lists .mobile-member-overlay .member-login:not(:disabled) {
+    animation: mobile-login-attention .48s ease-in-out .18s 2;
+  }}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.mobile-tab-lists .mobile-member-overlay .member-login { animation: none; }}
+/* Mobile sheet interaction contract: viewport-aware layout and state-specific gestures. */
+@media (max-width: 700px) {
+
+  .planner-panel.mobile-sheet-panel .place-list-scroll {
+    max-height: calc(var(--mobile-layout-viewport-height) - 300px);
+  }}
+/* Keep mobile planner actions discoverable above the scrollable stop list. */
+@media (max-width: 700px) {
+
+  .planner-panel.mobile-sheet-panel .place-section .place-list-scroll {
+    max-height: none;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+
+  .app-shell.mobile-sheet-peek .planner-panel.mobile-sheet-panel .place-list-scroll {
+    overflow-y: hidden;
+  }}
+/* Keep the saved-place search hint aligned with the compact card interface. */
+.saved-places-panel .saved-place-search input { color:#415671; font-size:.78rem; font-weight:700; letter-spacing:-.02em; }
+.saved-places-panel .saved-place-search input::placeholder { color:#9aabbe; font-size:.74rem; font-weight:650; letter-spacing:-.025em; opacity:1; }
+/* Saved-list collection view: dense, scannable rows that retain RouteFit's light map language. */
+.map-list-manager .place-list-overview .list-overview-header {
+  align-items: center;
+  min-height: 42px;
+  padding: 2px;
+}
+
+.map-list-manager .place-list-overview .list-overview-heading > span {
+  display: block;
+  margin-bottom: 3px;
+  color: #6f84a0;
+  font-size: .58rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.map-list-manager .place-list-overview .list-overview-heading h2 {
+  font-size: 1.08rem;
+  font-weight: 850;
+  letter-spacing: -.045em;
+}
+
+.map-list-manager .place-list-overview .list-overview-heading p {
+  margin: 4px 0 0;
+  color: #8192a7;
+  font-size: .67rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.map-list-manager .place-list-overview .list-overview-header > div:last-child { gap: 6px; }
+.map-list-manager .place-list-overview .list-create-button { color: #fff; border-color: #2563eb; background: #2563eb; box-shadow: 0 5px 12px rgb(37 99 235 / .2); }
+.map-list-manager .place-list-overview .list-create-button:hover { color: #fff; border-color: #1d4ed8; background: #1d4ed8; }
+
+.map-list-manager .place-list-overview .list-overview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 2px 8px;
+  color: #8494a8;
+  font-size: .66rem;
+  font-weight: 700;
+}
+
+.map-list-manager .place-list-overview .list-overview-meta b { color: #2563eb; font-size: .78rem; }
+.map-list-manager .place-list-overview .list-overview-meta span:last-child { color: #9aa8ba; }
+
+.map-list-manager .place-list-overview .place-list-cards.place-list-collection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 0;
+  padding: 0 2px;
+  border-top: 1px solid #e8eef6;
+  border-bottom: 1px solid #e8eef6;
+  border-radius: 0;
+  background: transparent;
+}
+
+.map-list-manager .place-list-overview .place-list-collection > li + li { border-top: 1px solid #edf2f7; }
+
+.map-list-manager .place-list-overview .place-list-collection .place-list-card {
+  display: grid;
+  width: 100%;
+  min-height: 72px;
+  grid-template-columns: 42px minmax(0, 1fr) 20px;
+  align-items: center;
+  justify-items: stretch;
+  gap: 11px;
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 0;
+  color: #26384f;
+  background: transparent;
+  text-align: left;
+  box-shadow: none;
+}
+
+.map-list-manager .place-list-overview .place-list-collection .place-list-card:hover {
+  border: 0;
+  background: linear-gradient(90deg, #f4f8ff, transparent);
+  box-shadow: none;
+  transform: none;
+}
+
+.map-list-manager .place-list-overview .list-color-emblem {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 15px;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4), 0 4px 10px rgb(15 23 42 / .12);
+}
+
+.map-list-manager .place-list-overview .list-color-emblem svg { stroke-width: 2.2; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy { min-width: 0; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy strong { display: block; overflow: hidden; color: #26384f; font-size: .84rem; font-weight: 820; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy small { display: block; margin-top: 4px; overflow: hidden; color: #8a9aaf; font-size: .66rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy small b { color: #526f91; font-weight: 850; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-arrow { align-self: center; color: #9aabc0; }
+
+@media (max-width: 700px) {
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection { grid-template-columns: minmax(0, 1fr); }
+  .map-list-manager .place-list-overview .place-list-collection .place-list-card { min-height: 76px; padding-block: 12px; }}
+/* Saved-place detail follows the collection language of the list overview. */
+.map-list-manager .place-list-detail .list-detail-header {
+  min-height: 46px;
+  padding: 1px 2px 0;
+}
+
+.map-list-manager .place-list-detail .list-detail-title { gap: 9px; }
+.map-list-manager .place-list-detail .list-detail-title strong { color: #26384f; font-size: .91rem; font-weight: 850; letter-spacing: -.035em; }
+
+.map-list-manager .place-list-detail .list-detail-emblem {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  background: var(--list-color, #2563eb);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--list-color, #2563eb) 28%, transparent);
+}
+
+.map-list-manager .place-list-detail .list-detail-emblem svg { stroke-width: 2.25; }
+
+.map-list-manager .place-list-detail .list-detail-context {
+  margin: 9px 2px 11px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--list-color, #2563eb) 18%, #dbe7f5);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--list-color, #2563eb) 5%, #fff);
+}
+
+.map-list-manager .place-list-detail .list-detail-context b,
+.map-list-manager .place-list-detail .list-detail-context span:last-child { color: var(--list-color, #2563eb); }
+
+.map-list-manager .place-list-detail .saved-place-list.saved-place-collection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 2px;
+  padding: 0 2px;
+  border-top: 1px solid #e8eef6;
+  border-bottom: 1px solid #e8eef6;
+  border-radius: 0;
+  background: transparent;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection > li,
+.map-list-manager .place-list-detail .saved-place-list.saved-place-collection > li {
+  display: grid;
+  height: auto;
+  min-height: 68px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection > li + li { border-top: 1px solid #edf2f7; }
+
+.map-list-manager .place-list-detail .saved-place-index {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--list-color, #2563eb);
+  background: color-mix(in srgb, var(--list-color, #2563eb) 12%, #fff);
+  font-size: .61rem;
+  font-weight: 900;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection li > div:first-of-type { min-width: 0; }
+.map-list-manager .place-list-detail .saved-place-collection strong { color: #30435d; font-size: .74rem; font-weight: 820; }
+.map-list-manager .place-list-detail .saved-place-collection small { margin-top: 4px; color: #8a9aaf; font-size: .61rem; font-weight: 650; }
+
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-actions { gap: 4px; }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action {
+  min-width: 48px;
+  height: 30px;
+  gap: 3px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--list-color, #2563eb) 25%, #dbe7f5);
+  border-radius: 9px;
+  color: var(--list-color, #2563eb);
+  background: color-mix(in srgb, var(--list-color, #2563eb) 5%, #fff);
+  font-size: .59rem;
+  font-weight: 850;
+}
+
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action:hover { background: color-mix(in srgb, var(--list-color, #2563eb) 12%, #fff); }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action.is-on-route {
+  border-color: #fecaca;
+  color: #dc2626;
+  background: #fff7f7;
+}
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action.is-on-route:hover { background: #fff1f2; }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-actions > button:last-child { color: #8b9caf; }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-actions > button:last-child:hover { color: #d24d58; }
+
+@media (max-width: 700px) {
+  .map-list-manager .place-list-detail .saved-place-collection > li,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection > li { min-height: 72px; }}
+/* Desktop list overlay: keep the stable frame and scroll only the collection body. */
+@media (min-width: 701px) {
+
+  .map-list-manager .saved-places-panel {
+    display: flex;
+    min-height: 0;
+    height: 100%;
+    flex-direction: column;
+  }
+
+  .map-list-manager .place-list-overview,
+  .map-list-manager .place-list-detail {
+    min-height: 0;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards,
+  .map-list-manager .place-list-detail .saved-place-list {
+    min-height: 0;
+    max-height: none;
+    flex: 1 1 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }}
+
+/* Mobile tabs and sheet gestures already provide a clear exit from the list workspace. */
+@media (max-width: 700px) {
+  .map-list-manager .place-list-overview .list-close-button { display: none; }}
+/* List creation and editing stay within the same collection workspace. */
+.map-list-manager .place-list-editor-screen {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+}
+/* Collection rows use stable grid areas so the title and metadata never overlap. */
+.map-list-manager .place-list-overview .place-list-collection .place-list-card {
+  grid-template-areas: "emblem copy arrow";
+}
+
+.map-list-manager .place-list-overview .place-list-collection .list-color-emblem {
+  grid-area: emblem;
+}
+
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy {
+  display: grid;
+  grid-area: copy;
+  min-width: 0;
+  align-content: center;
+  grid-template-rows: minmax(0, auto) minmax(0, auto);
+}
+
+.map-list-manager .place-list-overview .place-list-collection .list-card-arrow {
+  grid-area: arrow;
+  justify-self: end;
+}
+/* Desktop collection overlay: reserve a concrete grid row for the scrollable list. */
+@media (min-width: 701px) {
+  .map-list-manager .place-list-overview {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection {
+    display: grid;
+    min-height: 0;
+    height: 100%;
+    align-content: start;
+    overflow-y: auto;
+  }}
+/* Desktop saved-place detail reserves its own scroll row, independent of search or pagination. */
+@media (min-width: 701px) {
+  .map-list-manager .place-list-detail {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  }
+
+  .map-list-manager .place-list-detail .list-detail-header { grid-row: 1; }
+  .map-list-manager .place-list-detail .list-detail-context { grid-row: 2; }
+  .map-list-manager .place-list-detail .saved-place-search { grid-row: 3; }
+
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection {
+    grid-row: 4;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .map-list-manager .place-list-detail .list-pagination { grid-row: 5; }}
+/* Let grid rows size the collection body; a 100% child height would overlap pagination. */
+@media (min-width: 701px) {
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection {
+    height: auto;
+    max-height: none;
+    align-self: stretch;
+    scrollbar-width: thin;
+    scrollbar-color: #b9c9dc transparent;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection::-webkit-scrollbar,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+
+  .map-list-manager .place-list-overview .place-list-cards.place-list-collection::-webkit-scrollbar-thumb,
+  .map-list-manager .place-list-detail .saved-place-list.saved-place-collection::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #b9c9dc;
+  }}
+/* The desktop overlay keeps the mobile-content wrapper, so it must participate in height calculation. */
+@media (min-width: 701px) {
+
+  .map-list-manager > .mobile-sheet-content > .saved-places-panel {
+    min-height: 0;
+    height: 100%;
+    flex: 1 1 auto;
+  }}
+.content-loading-saved-places { min-height:180px; }
+.saved-place-focus { display:block; min-width:0; flex:1; padding:0; border:0; color:inherit; background:transparent; text-align:left; cursor:pointer; }
+.saved-place-focus:focus-visible { outline:2px solid color-mix(in srgb,var(--list-color,#2563eb) 65%,transparent); outline-offset:3px; border-radius:4px; }
+
+/* At peek, a vertical gesture belongs to the sheet even when it begins in a nested list. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-peek .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-peek .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-peek .map-list-manager,
+  .app-shell.mobile-sheet-peek .mobile-sheet-content :is(.place-list-scroll, .saved-place-list, .place-list-cards, .search-results) {
+    overflow-y: hidden;
+    overscroll-behavior-y: none;
+    touch-action: none;
+  }}
+
+.planner-panel .planner-content-page.map-list-manager .saved-places-panel {
+  min-height:250px;
+}
+
+.planner-panel .saved-places-toggle {
+  display:none;
+  align-items:center;
+  gap:4px;
+  padding:5px 7px;
+  border:1px solid #d6e4f4;
+  border-radius:8px;
+  color:#41627f;
+  background:#f8fbff;
+  font-size:.64rem;
+  font-weight:800;
+  line-height:1;
+}
+
+.planner-panel .saved-places-toggle:hover {
+  border-color:#a8c8ee;
+  color:#2563eb;
+  background:#eef5ff;
+}
+
+.planner-panel .saved-places-toggle svg { width:15px; height:15px; }
+
+@media (max-width:700px) {
+
+  .planner-panel.mobile-sheet-panel .planner-content-page-lists .saved-place-list.saved-place-collection {
+    padding-bottom:20px;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .saved-places-panel {
+    height:auto;
+    min-height:0;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-overview .list-close-button {
+    display:grid;
+  }}
+
+/* Every mobile list view owns a bounded scroll body.  Without this explicit
+   flex chain, the saved-list workspace expands to its content and the sheet's
+   hidden overflow clips it instead of allowing the intended inner list/form
+   to scroll. */
+@media (max-width:700px) {
+
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager > .saved-places-panel,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-overview,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-detail,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-editor-screen {
+    min-height:0;
+    height:100%;
+    flex:1 1 auto;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-overview .place-list-cards,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .place-list-detail .saved-place-list,
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager .list-editor-screen-form {
+    min-height:0;
+    flex:1 1 auto;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
+  }}
+
+@media (min-width:701px) {
+
+  .planner-panel .saved-places-toggle { display:none; }}
+
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action {
+  width:30px;
+  min-width:30px;
+  justify-content:center;
+  padding:0;
+}
+
+@media (max-width:700px) {
+
+  .map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action {
+    width:30px;
+    min-width:30px;
+    justify-content:center;
+    padding:0;
+  }}
+
+/* Search rows use the same icon-only add/remove control as saved-place details. */
+.search-results-sheet-actions > .search-results-route-action {
+  width:30px;
+  min-width:30px;
+  height:30px;
+  min-height:30px;
+  padding:0;
+  border-color:#a7d7bd;
+  color:#078443;
+  background:#f3fcf6;
+}
+
+

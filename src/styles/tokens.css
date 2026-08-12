@@ -1,0 +1,28 @@
+:root {
+  --ink:#172033;
+  --muted:#64748b;
+  --line:#dbe3ee;
+  --soft:#f5f8fc;
+  --danger:#dc2626;
+
+  /* RouteFit brand palette */
+  --routefit-blue:rgb(37 99 235);
+  --routefit-blue-deep:rgb(36 83 200);
+  --routefit-blue-strong:rgb(15 123 246);
+  --routefit-sky:rgb(20 140 221);
+  --routefit-sky-bright:rgb(20 156 225);
+  --routefit-sky-strong:rgb(19 155 222);
+  --routefit-sky-vivid:rgb(21 150 221);
+  --routefit-aqua:rgb(25 181 216);
+  --routefit-cyan:rgb(17 159 197);
+  --routefit-mint:rgb(26 188 174);
+  --routefit-mint-strong:rgb(26 185 169);
+  --routefit-mint-vivid:rgb(31 187 169);
+  --routefit-gradient:linear-gradient(108deg,var(--routefit-blue) 0%,var(--routefit-sky) 52%,var(--routefit-mint) 100%);
+  --routefit-gradient-compact:linear-gradient(108deg,var(--routefit-blue) 0%,var(--routefit-sky) 50%,var(--routefit-mint) 100%);
+
+  /* Legacy alias: keep existing components on the RouteFit primary color. */
+  --blue:var(--routefit-blue);
+}
+
+

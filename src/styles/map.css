@@ -1,0 +1,826 @@
+.map-panel { min-height:100vh; background:#dde8f4; }.place-badge,.map-marker { width:26px; height:26px; flex:0 0 26px; border-radius:50%; display:grid; place-items:center; background:#e0ebff; color:#1d4ed8; font-weight:800; font-size:.75rem; }.place-badge.start,.map-marker.start { background:#dcfce7; color:#15803d; }.place-badge.destination,.map-marker.destination { background:#fee2e2; color:#b91c1c; }.map-marker { border:2px solid white; box-shadow:0 1px 5px #33415566; }.map-placeholder { height:100%; display:grid; place-items:center; padding:30px; color:#334155; background:radial-gradient(circle at 20% 20%,#cfe0ff,transparent 32%),linear-gradient(135deg,#ecf3fb,#dbeafe); text-align:center; }.map-placeholder p { color:#64748b; } @media (max-width:1000px) { .map-panel { min-height:60vh; }} @media (max-width:700px) {.map-panel { min-height:46vh; order:-1; }}
+
+/* Map place candidate popup */
+.nearby-place-popup { width:224px; overflow:hidden; padding:8px; border:1px solid #dbe7fb; border-radius:14px; background:#fff; box-shadow:0 12px 28px #0f172a26; animation:nearby-popup-enter .22s cubic-bezier(.16,1,.3,1) both; }
+.nearby-place-title { margin:2px 4px 7px; color:#64748b; font-size:.68rem; font-weight:800; }
+.nearby-place-option { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:3px; padding:9px 10px; border-radius:9px; color:#243247; background:#f8faff; text-align:left; transition:transform .16s ease, background-color .16s ease, box-shadow .16s ease; }
+.nearby-place-option:hover { transform:translateY(-1px); background:#eef4ff; box-shadow:0 3px 8px #2563eb1c; }
+.nearby-place-option:active { transform:scale(.98); }.nearby-place-option strong { max-width:158px; overflow:hidden; font-size:.75rem; text-overflow:ellipsis; white-space:nowrap; }.nearby-place-option span { color:#5b86c7; font-size:.64rem; font-weight:800; }
+.nearby-place-loading { display:flex; align-items:center; gap:8px; padding:5px 4px; color:#64748b; font-size:.7rem; font-weight:700; }.nearby-place-loading span { width:12px; height:12px; border:2px solid #dbeafe; border-top-color:#2563eb; border-radius:50%; animation:nearby-place-spin .7s linear infinite; }.nearby-place-empty { margin:3px 4px; color:#718096; font-size:.68rem; line-height:1.5; } @keyframes nearby-place-spin { to { transform:rotate(1turn); } }
+
+/* Refined place-popup anchor and motion */
+.nearby-place-popup { position:relative; overflow:visible; animation:nearby-popup-enter .42s cubic-bezier(.16,1,.3,1) both; }
+.nearby-place-popup::after { position:absolute; bottom:-8px; left:50%; width:15px; height:15px; border-right:1px solid #dbe7fb; border-bottom:1px solid #dbe7fb; background:#fff; content:normal; transform:translateX(-50%) rotate(45deg); z-index:-1; }
+.nearby-place-popup > :not(.nearby-place-option) { position:relative; z-index:1; }
+.nearby-place-option { position:relative; z-index:1; opacity:0; animation:nearby-place-option-enter .34s cubic-bezier(.16,1,.3,1) both; }
+.nearby-place-option:nth-child(2) { animation-delay:.12s; }.nearby-place-option:nth-child(3) { animation-delay:.18s; }.nearby-place-option:nth-child(4) { animation-delay:.24s; }
+@keyframes nearby-place-option-enter { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:translateY(0); } }
+
+.map-marker { color:#fff; background:var(--marker-color,var(--routefit-blue)); }
+.map-marker.list-place svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:2; }
+.map-marker.list-place svg circle { fill:currentColor; stroke:none; }
+
+/* Custom map zoom control */
+.map-view { position:relative; width:100%; height:100%; }.map-zoom-control { position:absolute; z-index:2; top:16px; left:16px; display:grid; width:38px; padding:3px; border:1px solid #ffffffa8; border-radius:13px; background:#ffffffdb; box-shadow:0 10px 22px #0f172a24; backdrop-filter:blur(12px); }.map-zoom-control button { display:grid; width:30px; height:30px; place-items:center; padding:0; border-radius:9px; color:#2e4058; background:transparent; font-size:1.3rem; font-weight:500; line-height:1; transition:background .18s ease,color .18s ease,transform .18s ease; }.map-zoom-control button:hover { color:#fff; background:#2563eb; transform:scale(1.04); }.map-zoom-control span { height:1px; margin:2px 5px; background:#dce5f0; }
+.map-search-retry { position:absolute; z-index:3; bottom:16px; left:50%; padding:9px 12px; border:1px solid #bfdbfe; border-radius:10px; color:#1d4ed8; background:#eff6ffef; box-shadow:0 8px 18px #0f172a24; font-size:.72rem; font-weight:800; opacity:0; pointer-events:none; transform:translate(-50%,56px) scale(.97); transition:opacity .18s ease,transform .22s cubic-bezier(.16,1,.3,1),background .18s ease,color .18s ease; backdrop-filter:blur(12px); }.map-search-retry.visible { opacity:1; pointer-events:auto; transform:translate(-50%,0) scale(1); }.map-search-retry:hover { color:#fff; background:#2563eb; }
+@media (prefers-reduced-motion:reduce) {.map-search-retry { transition:none; }}
+/* Drag-based map zoom */
+.map-zoom-control { display:flex; width:36px; height:142px; align-items:center; justify-content:center; padding:10px 0; }.map-zoom-control input { width:116px; height:6px; margin:0; padding:0; cursor:ns-resize; accent-color:#2563eb; appearance:none; writing-mode:vertical-lr; direction:rtl; }.map-zoom-control input::-webkit-slider-runnable-track { width:5px; border-radius:999px; background:#dce7f6; }.map-zoom-control input::-webkit-slider-thumb { width:18px; height:18px; margin-left:-6px; border:3px solid #fff; border-radius:50%; background:#2563eb; box-shadow:0 2px 7px #2563eb66; appearance:none; }.map-zoom-control input:focus-visible { outline:2px solid #93c5fd; outline-offset:5px; }
+/* Restored button zoom control */
+.map-zoom-control { display:grid; width:38px; height:auto; padding:3px; }.map-zoom-control button { display:grid; width:30px; height:30px; place-items:center; padding:0; border-radius:9px; color:#2e4058; background:transparent; font-size:1.3rem; font-weight:500; line-height:1; transition:background .18s ease,color .18s ease,transform .18s ease; }.map-zoom-control button:hover { color:#fff; background:#2563eb; transform:scale(1.04); }.map-zoom-control span { height:1px; margin:2px 5px; background:#dce5f0; }
+/* Current location control and marker */
+.map-location-control { position:absolute; z-index:2; top:92px; left:16px; display:grid; width:38px; height:38px; place-items:center; padding:0; border:1px solid #ffffffa8; border-radius:13px; color:#2563eb; background:#ffffffdb; box-shadow:0 8px 18px #0f172a20; backdrop-filter:blur(12px); transition:color .18s ease,background .18s ease,transform .18s ease; }.map-location-control:hover { color:#fff; background:#2563eb; transform:translateY(-1px); }.map-location-control:disabled { opacity:.8; }.map-location-control svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-width:1.9; }.map-location-control.locating svg { animation:current-location-spin 1s linear infinite; }.current-location-marker { position:relative; display:grid; width:30px; height:30px; place-items:center; border:3px solid #fff; border-radius:50%; background:#15803d; box-shadow:0 2px 8px #15803d80; }.current-location-marker::before { position:absolute; inset:-8px; border:2px solid #15803d66; border-radius:50%; content:normal; animation:current-location-pulse 1.8s ease-out infinite; }.current-location-marker span { width:7px; height:7px; border-radius:50%; background:#fff; }
+/* Compact current-location marker */
+.current-location-marker { width:22px; height:22px; border-width:2px; }.current-location-marker::before { inset:-6px; }.current-location-marker span { width:5px; height:5px; }
+/* Independent sidebar scrolling on desktop */
+@media (min-width:1001px) {
+  .map-panel { min-height:0; height:100%; overflow:hidden; }}
+/* Map marker information popup */
+.map-place-popup { width:224px; padding:12px 13px; }
+.map-place-popup-name { display:block; overflow:hidden; color:#1f2f46; font-size:.8rem; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.map-place-popup-address { display:-webkit-box; margin:5px 0 0; overflow:hidden; color:#718096; font-size:.68rem; line-height:1.45; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.current-location-start.map-place-popup-remove { border-color:#f8c7c9; color:#dc2626; background:#fff7f7; }
+.current-location-start.map-place-popup-remove:hover { border-color:#f59da2; background:#fff1f2; }
+
+/* Mobile maps need an explicit viewport height for their 100%-height container. */
+@media (max-width:700px) {
+  .map-panel { height:46svh; min-height:320px; }
+  .map-view,.map-canvas { height:100%; }}
+/* Keep the SDK canvas tied to its responsive host, not its SDK-written inline size. */
+.map-view { overflow:hidden; }
+.map-view .map-canvas { width:100%; height:100%; }
+/* Member place lists live over the map so the route planner stays visible. */
+.map-list-control { position:absolute; z-index:3; top:138px; left:16px; display:grid; width:38px; height:38px; place-items:center; padding:0; border:1px solid #ffffffa8; border-radius:13px; color:#34506e; background:#ffffffdb; box-shadow:0 8px 18px #0f172a20; backdrop-filter:blur(12px); transition:color .18s ease,background .18s ease,transform .18s ease; }
+.map-list-control:hover,.map-list-control.active { color:#fff; background:#2563eb; transform:translateY(-1px); }
+.map-list-control svg { width:18px; height:18px; stroke-width:2; }
+.map-list-manager { position:absolute; z-index:4; top:18px; left:70px; width:min(380px,calc(100% - 88px)); max-height:calc(100% - 36px); overflow:auto; padding:18px; border:1px solid #dbe7f5; border-radius:18px; background:#fffffff2; box-shadow:0 20px 48px #0f172a2b; backdrop-filter:blur(16px); animation:map-list-manager-in .28s cubic-bezier(.16,1,.3,1) both; scrollbar-width:none; }
+.map-list-manager::-webkit-scrollbar { display:none; }
+@media (max-width:700px) { .map-list-manager { top:auto; right:12px; bottom:12px; left:12px; width:auto; max-height:min(64%,520px); border-radius:18px; } .map-list-control { top:138px; }}
+@media (prefers-reduced-motion:reduce) { .map-list-manager { animation:none; }}
+/* Keep the list manager inside the map panel, directly below its map control. */
+.map-panel { position:relative; }
+.map-list-manager { top:184px; left:16px; width:min(380px,calc(100% - 32px)); max-height:calc(100% - 202px); }
+@media (max-width:700px) { .map-list-manager { top:auto; right:12px; bottom:12px; left:12px; width:auto; max-height:min(64%,520px); }}
+.map-list-manager .list-overview-header,.map-list-manager .list-detail-header { display:grid; grid-template-columns:32px minmax(0,1fr) 32px; align-items:center; gap:8px; min-height:38px; }
+.map-list-manager .list-overview-header { display:flex; justify-content:space-between; }
+.map-list-manager .list-overview-header > div:first-child { min-width:0; }
+.map-list-manager .list-overview-header > div:last-child { display:flex; align-items:center; gap:5px; }
+.map-list-manager .eyebrow { margin:0 0 2px; color:#73869e; font-size:.58rem; font-weight:850; letter-spacing:.08em; }
+.map-list-manager .list-overview-header h2 { margin:0; color:#24364f; font-size:1rem; letter-spacing:-.03em; }
+.map-list-manager .list-icon-button { display:grid; width:32px; height:32px; place-items:center; padding:0; border:1px solid #e0e9f3; border-radius:9px; color:#536982; background:#fff; transition:border-color .18s ease,color .18s ease,transform .18s ease; }
+.map-list-manager .list-icon-button:hover { border-color:#a6c4ea; color:#2563eb; transform:translateY(-1px); }
+.map-list-manager .list-color-dot { width:11px; height:11px; flex-basis:11px; box-shadow:0 0 0 4px color-mix(in srgb,currentColor 8%,transparent); }
+.map-list-manager .list-card-arrow { margin-left:auto; color:#9aabc0; transform:rotate(180deg); }
+.map-list-manager .list-detail-title { display:flex; min-width:0; align-items:center; gap:8px; padding:0; color:#2d4059; background:transparent; text-align:left; }
+.map-list-manager .list-detail-title strong { overflow:hidden; font-size:.78rem; text-overflow:ellipsis; white-space:nowrap; }
+.map-list-manager .list-detail-title span { width:10px; height:10px; flex:0 0 10px; border-radius:50%; }
+.map-list-manager .list-detail-count { margin:8px 0 10px 40px; color:#93a2b4; font-size:.59rem; font-weight:750; }
+.map-list-manager .list-empty-state { margin:22px 6px 5px; color:#8b9bae; font-size:.66rem; line-height:1.55; text-align:center; }
+.map-list-manager .list-editor-backdrop { position:absolute; z-index:10; inset:0; display:grid; place-items:center; padding:16px; border-radius:17px; background:#edf4fc9c; backdrop-filter:blur(5px); animation:list-editor-fade .2s ease both; }
+.map-list-manager .list-editor-dialog { width:min(278px,100%); padding:14px; border:1px solid #dce8f5; border-radius:15px; background:#fff; box-shadow:0 18px 38px #17315a26; animation:list-editor-rise .24s cubic-bezier(.16,1,.3,1) both; }
+.map-list-manager .list-editor-dialog header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.map-list-manager .list-editor-dialog header p { margin:0 0 2px; color:#8192a7; font-size:.59rem; font-weight:800; }
+.map-list-manager .list-editor-dialog header strong { color:#30435c; font-size:.78rem; }
+.map-list-manager .list-editor-close,.map-list-manager .list-editor-delete,.map-list-manager .list-editor-confirm { display:grid; width:30px; height:30px; place-items:center; padding:0; border-radius:8px; background:transparent; }
+.map-list-manager .list-editor-close { color:#71839a; }
+.map-list-manager .list-editor-dialog input { width:100%; height:36px; margin:13px 0 11px; padding:0 10px; border:1px solid #d8e5f3; border-radius:9px; color:#32455e; background:#fbfdff; font-size:.72rem; outline:none; }
+.map-list-manager .list-editor-dialog input:focus { border-color:#75a8e9; box-shadow:0 0 0 3px #2563eb12; }
+.map-list-manager .list-color-picker { justify-content:center; gap:7px; }
+.map-list-manager .list-color-picker button { width:18px; height:18px; border:3px solid transparent; }
+.map-list-manager .list-editor-dialog footer { display:flex; align-items:center; justify-content:space-between; margin-top:13px; }
+.map-list-manager .list-editor-delete { color:#c96a72; }
+.map-list-manager .list-editor-confirm { color:#fff; background:#2563eb; box-shadow:0 5px 10px #2563eb2a; }
+@media (max-width:700px) { .map-list-manager { padding:14px; } .map-list-manager .list-editor-backdrop { border-radius:16px; }}
+/* List overview: a calm 5 by 2 color grid. */
+.map-list-manager .list-overview-header { display:flex; align-items:center; justify-content:space-between; min-height:34px; }
+.map-list-manager .list-overview-header h2 { margin:0; color:#24364f; font-size:.92rem; letter-spacing:-.03em; }
+.map-list-manager .list-overview-header > div:first-child { display:block; }
+.map-list-manager .list-overview-header > div:last-child { display:flex; align-items:center; gap:5px; }
+.map-list-manager .list-pagination { display:flex; align-items:center; justify-content:center; gap:9px; margin:17px 0 1px; color:#8393a7; font-size:.61rem; font-weight:800; }
+.map-list-manager .list-pagination button { display:grid; width:24px; height:24px; place-items:center; padding:0; border:1px solid #e0e8f2; border-radius:7px; color:#5f738b; background:#fff; }
+.map-list-manager .list-pagination button:disabled { opacity:.35; cursor:default; }
+.map-list-manager .list-editor-dialog header { align-items:center; }
+.map-list-manager .list-editor-dialog header strong { color:#30435c; font-size:.78rem; }
+
+.map-list-manager .list-overview-header h2 { font-weight:600; }
+
+@media (max-width: 1024px) and (min-width: 701px) {
+  .map-list-manager {
+    height: 360px;
+  }}
+
+/* On phones, make list management a focused map-covering workspace. */
+@media (max-width: 700px) {
+  .map-list-manager {
+    inset: 0;
+    width: auto;
+    height: 100%;
+    max-height: none;
+    padding: calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+    border: 0;
+    border-radius: 0;
+    background: rgb(255 255 255 / 0.97);
+  }
+
+  .map-list-manager .list-editor-backdrop {
+    border-radius: 0;
+  }}
+/* Preserve the desktop card language when the mobile manager covers the map. */
+@media (max-width: 700px) {
+  .map-list-manager {
+    inset: 12px;
+    width: auto;
+    height: auto;
+    padding: calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+    border: 1px solid var(--line, #dce6f4);
+    border-radius: 24px;
+    background: rgb(255 255 255 / 0.97);
+  }
+
+  .map-list-manager .list-editor-backdrop {
+    border-radius: 18px;
+  }}
+
+/* Desktop collections use the same comfortable scroll area as the visit-place panel. */
+@media (min-width:701px) {
+  .planner-panel .map-list-manager {
+    height:clamp(300px,calc(100dvh - 285px),570px);
+  }}
+/* Align map utilities on a shared vertical rhythm and keep the sticky actions clear of the viewport edge. */
+.map-view {
+  --map-control-top: 16px;
+  --map-control-gap: 8px;
+}
+.map-zoom-control { top:var(--map-control-top); }
+.map-location-control { top:calc(var(--map-control-top) + 81px); }
+.map-list-control { top:calc(var(--map-control-top) + 81px); }
+@media (max-width:700px) {
+  /* Keep map zoom aligned with the account entry on the transparent iOS status bar. */
+  .map-panel .map-view { --map-control-top:max(12px, env(safe-area-inset-top)); }}
+.map-list-manager .list-detail-context {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:9px 0 10px 40px;
+  color:#8494a7;
+  font-size:.6rem;
+  font-weight:700;
+}
+.map-list-manager .list-detail-context b { color:#2563eb; }
+.map-list-manager .list-detail-context span:last-child { color:#4d789f; }
+.map-list-manager .list-empty-action-area { display:flex; min-height:170px; align-items:center; justify-content:center; flex-direction:column; gap:7px; margin:0; padding:18px; text-align:center; }
+.map-list-manager .list-empty-action-area p { margin:0; color:#526b89; font-size:.7rem; font-weight:800; }
+.map-list-manager .list-empty-action-area > span { color:#91a0b2; font-size:.6rem; line-height:1.45; }
+.map-list-manager .list-empty-action-area > button { display:inline-flex; align-items:center; gap:5px; margin-top:4px; padding:7px 9px; border:1px solid #c8daf7; border-radius:8px; color:#2563eb; background:#f4f8ff; font-size:.62rem; }
+.map-list-manager .list-empty-action-area > button:hover { border-color:#9fbeed; background:#eaf2ff; }
+.map-list-manager .search-empty-state { margin-top:30px; }
+
+@media (max-width:700px) {
+  .map-panel {
+    position:fixed;
+    z-index:0;
+    inset:0;
+    min-height:100dvh;
+    height:100dvh;
+    background:#dde8f4;
+  }
+  .map-panel:focus { outline:0; }
+  .map-panel .map-view,
+  .map-panel .map-canvas { height:100%; }
+  .map-panel .map-list-control { display:none; }
+  .map-panel .map-zoom-control { z-index:3; }
+  .map-search-retry { position:fixed; z-index:19; bottom:calc(var(--mobile-nav-height) + var(--mobile-sheet-peek) + 12px); left:50%; }
+  .app-shell.mobile-sheet-expanded .map-search-retry { bottom:calc(100dvh - var(--mobile-sheet-expanded-map-peek) + 12px); }
+  .app-shell.mobile-sheet-collapsed .map-search-retry { bottom:calc(var(--mobile-nav-height) + 56px); }
+
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager {
+    position:fixed;
+    z-index:20;
+    right:0;
+    bottom:var(--mobile-nav-height);
+    left:0;
+    height:var(--mobile-sheet-peek);
+    max-height:calc(100dvh - var(--mobile-nav-height));
+    margin:0;
+    padding:22px 14px 14px;
+    overflow:hidden;
+    overscroll-behavior:contain;
+    border:0;
+    border-radius:20px 20px 0 0;
+    background:#f6f8fc;
+    box-shadow:0 -12px 34px #0f172a22;
+    transform:translateY(0);
+    transition:height .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1),opacity .16s ease;
+  }
+  .map-list-manager { display:none; width:auto; }
+  .app-shell.mobile-tab-places .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-tab-results .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-tab-lists .map-list-manager { display:flex; flex-direction:column; }
+
+  .app-shell.mobile-sheet-collapsed .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .map-list-manager {
+    transform:translateY(calc(100% - 34px));
+    pointer-events:auto;
+  }
+  .app-shell.mobile-sheet-expanded .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-expanded .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-expanded .map-list-manager { height:calc(100dvh - var(--mobile-nav-height) - var(--mobile-sheet-expanded-map-peek)); }
+
+  .map-list-manager {
+    top:auto;
+    max-height:calc(100dvh - var(--mobile-nav-height));
+    min-height:0;
+    padding:22px 14px 14px;
+    border-radius:20px 20px 0 0;
+    background:#f6f8fc;
+  }
+  .map-list-manager .list-editor-backdrop { border-radius:20px 20px 0 0; }}
+@media (max-width: 700px) {
+
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager {
+    padding: 0;
+  }
+
+  .map-list-manager > .mobile-sheet-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-chrome .mobile-sheet-handle,
+  .result-panel.mobile-sheet-panel > .mobile-sheet-chrome .mobile-sheet-handle,
+  .map-list-manager > .mobile-sheet-chrome .mobile-sheet-handle {
+    position: static;
+    z-index: auto;
+    transform: none;
+  }}
+@media (max-width: 700px) {
+  /* The desktop list-entry animation owns transform and blocks sheet collapse. */
+  .map-list-manager { animation: none; }}
+/* Mobile sheet interaction contract: viewport-aware layout and state-specific gestures. */
+@media (max-width: 700px) {
+
+  .app-shell,
+  .map-panel {
+    min-height: var(--mobile-layout-viewport-height);
+    height: var(--mobile-layout-viewport-height);
+  }
+
+  .map-panel,
+  .map-panel .map-view,
+  .map-panel .map-canvas {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager {
+    max-height: calc(var(--mobile-layout-viewport-height) - var(--mobile-nav-height));
+  }
+
+  .app-shell.mobile-sheet-expanded .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-expanded .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-expanded .map-list-manager {
+    height: calc(var(--mobile-layout-viewport-height) - var(--mobile-nav-height) - var(--mobile-sheet-expanded-map-peek));
+  }
+
+  .app-shell.mobile-sheet-collapsed .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .map-list-manager {
+    transform: translateY(calc(100% - var(--mobile-sheet-visible-handle)));
+  }}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager,
+  .mobile-bottom-nav,
+  .planner-panel .naver-search-form .search-control {
+    transition-duration: 1ms !important;
+  }}
+/* Keep mobile planner actions discoverable above the scrollable stop list. */
+@media (max-width: 700px) {
+
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-content > .planner-content-page:not(.map-list-manager) {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }}
+/* Prevent iOS input-focus zoom and double-tap zoom on mobile UI without disabling map or accessibility pinch zoom. */
+@media (max-width: 700px) {
+
+  .mobile-sheet-panel,
+  .map-list-manager,
+  .mobile-bottom-nav,
+  .mobile-sheet-panel button,
+  .map-list-manager button,
+  .mobile-bottom-nav button,
+  .mobile-sheet-panel input,
+  .mobile-sheet-panel select,
+  .mobile-sheet-panel textarea {
+    touch-action: manipulation;
+  }
+
+  .map-panel,
+  .map-panel .map-view,
+  .map-panel .map-canvas {
+    touch-action: pan-x pan-y pinch-zoom;
+  }}
+/* Desktop list overlay: keep the stable frame and scroll only the collection body. */
+@media (min-width: 701px) {
+  .map-list-manager {
+    display: block;
+    overflow: hidden;
+  }}
+
+.map-list-manager .list-editor-screen-header {
+  display: grid;
+  min-height: 56px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 12px;
+  border-bottom: 1px solid #eaf0f7;
+}
+
+.map-list-manager .list-editor-back {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+
+.map-list-manager .list-editor-screen-header span {
+  display: block;
+  margin-bottom: 3px;
+  color: #7188a4;
+  font-size: .58rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.map-list-manager .list-editor-screen-header h2 {
+  margin: 0;
+  color: #24364f;
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -.035em;
+}
+
+.map-list-manager .list-editor-screen-form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 21px;
+  overflow-y: auto;
+  padding: 20px 2px 2px;
+  scrollbar-width: none;
+}
+
+.map-list-manager .list-editor-screen-form::-webkit-scrollbar { display: none; }
+
+.map-list-manager .list-editor-name-field,
+.map-list-manager .list-editor-colors {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.map-list-manager .list-editor-name-field > span,
+.map-list-manager .list-editor-colors legend {
+  display: block;
+  margin-bottom: 8px;
+  padding: 0;
+  color: #405773;
+  font-size: .68rem;
+  font-weight: 850;
+}
+
+.map-list-manager .list-editor-name-field > div {
+  position: relative;
+}
+
+.map-list-manager .list-editor-name-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 52px 0 13px;
+  border: 1px solid #d5e2f1;
+  border-radius: 13px;
+  color: #263a54;
+  background: #f9fbfe;
+  font: inherit;
+  font-size: .77rem;
+  font-weight: 750;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.map-list-manager .list-editor-name-field input::placeholder { color: #a6b3c2; }
+.map-list-manager .list-editor-name-field input:focus { border-color: #5f9be6; background: #fff; box-shadow: 0 0 0 3px rgb(37 99 235 / .11); }
+.map-list-manager .list-editor-name-field small { position: absolute; top: 50%; right: 13px; color: #91a0b2; font-size: .59rem; font-weight: 750; transform: translateY(-50%); }
+
+.map-list-manager .list-editor-colors p {
+  margin: -3px 0 12px;
+  color: #8898aa;
+  font-size: .61rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.map-list-manager .list-editor-color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.map-list-manager .list-editor-color-options button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: 0 0 0 1px rgb(76 99 127 / .18), 0 3px 8px rgb(15 23 42 / .13);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.map-list-manager .list-editor-color-options button:hover { transform: translateY(-1px) scale(1.04); }
+.map-list-manager .list-editor-color-options button.selected { border-color: #fff; box-shadow: 0 0 0 3px #2563eb, 0 4px 10px rgb(37 99 235 / .25); }
+.map-list-manager .list-editor-color-options button svg { opacity: 0; stroke-width: 3; }
+.map-list-manager .list-editor-color-options button.selected svg { opacity: 1; }
+
+.map-list-manager .list-editor-preview {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--list-color, #2563eb) 20%, #dbe7f5);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--list-color, #2563eb) 6%, #fff);
+}
+
+.map-list-manager .list-editor-preview-emblem {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--list-color, #2563eb);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--list-color, #2563eb) 30%, transparent);
+}
+
+.map-list-manager .list-editor-preview div { min-width: 0; }
+.map-list-manager .list-editor-preview div > span { display: block; margin-bottom: 2px; color: #8192a6; font-size: .57rem; font-weight: 750; }
+.map-list-manager .list-editor-preview strong { display: block; overflow: hidden; color: #30445f; font-size: .74rem; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+
+.map-list-manager .list-editor-screen-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding: 14px 0 2px;
+  border-top: 1px solid #eaf0f7;
+}
+
+.map-list-manager .list-editor-delete-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 3px;
+  border: 0;
+  color: #c35d68;
+  background: transparent;
+  font-size: .65rem;
+  font-weight: 800;
+}
+
+.map-list-manager .list-editor-submit {
+  min-width: 112px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 6px 14px rgb(37 99 235 / .2);
+  font-size: .67rem;
+  font-weight: 850;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.map-list-manager .list-editor-submit:hover:not(:disabled) { background: #1d4ed8; box-shadow: 0 8px 18px rgb(37 99 235 / .26); transform: translateY(-1px); }
+.map-list-manager .list-editor-submit:disabled { opacity: .45; cursor: default; }
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-screen-header { min-height: 66px; padding: 8px 2px 14px; }
+  .map-list-manager .list-editor-screen-header h2 { font-size: 1.08rem; }
+  .map-list-manager .list-editor-screen-form { gap: 25px; padding-top: 22px; }
+  .map-list-manager .list-editor-name-field input { height: 48px; font-size: .83rem; }
+  .map-list-manager .list-editor-color-options { gap: 12px; }
+  .map-list-manager .list-editor-color-options button { width: 34px; height: 34px; }
+  .map-list-manager .list-editor-preview { padding: 13px; }
+  .map-list-manager .list-editor-screen-footer { position: sticky; bottom: 0; padding: 14px 0 calc(4px + env(safe-area-inset-bottom)); background: #f6f8fc; }
+  .map-list-manager .list-editor-submit { min-width: 136px; height: 42px; border-radius: 13px; font-size: .74rem; }}
+/* Keep the editor's persistent action visible without masking the content beneath it. */
+.map-list-manager .list-editor-screen-header:has(.list-editor-delete-icon) {
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+}
+
+.map-list-manager .list-editor-delete-icon {
+  width: 34px;
+  height: 34px;
+  border-color: #fde1e4;
+  color: #c95764;
+  background: #fffafb;
+}
+
+.map-list-manager .list-editor-delete-icon:hover {
+  border-color: #f6bfc7;
+  color: #b84250;
+  background: #fff4f5;
+}
+
+.map-list-manager .list-editor-screen-footer {
+  justify-content: flex-end;
+  background: transparent;
+}
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-screen-form { padding-bottom: 66px; }
+  .map-list-manager .list-editor-screen-footer {
+    background: transparent;
+    box-shadow: none;
+  }}
+/* The primary list-editor action belongs with the title, not above the mobile navigation. */
+.map-list-manager .list-editor-screen-header {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.map-list-manager .list-editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-list-manager .list-editor-header-submit {
+  height: 34px;
+  min-width: 48px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 4px 10px rgb(37 99 235 / .18);
+  font-size: .62rem;
+  font-weight: 850;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.map-list-manager .list-editor-header-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 6px 13px rgb(37 99 235 / .24);
+  transform: translateY(-1px);
+}
+
+.map-list-manager .list-editor-header-submit:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-screen-form { padding-bottom: 2px; }
+  .map-list-manager .list-editor-header-submit { height: 36px; min-width: 54px; border-radius: 11px; font-size: .67rem; }}
+/* Text actions use their own header space; do not inherit the old icon-only column. */
+.map-list-manager .list-editor-screen-header:has(.list-editor-header-actions) {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.map-list-manager .list-editor-screen-header > div:nth-child(2),
+.map-list-manager .list-editor-header-actions,
+.map-list-manager .list-detail-header:has(.list-detail-edit-action),
+.map-list-manager .list-editor-screen,
+.map-list-manager .mobile-sheet-content {
+  min-width: 0;
+}
+
+.map-list-manager .list-editor-header-actions { flex: 0 0 auto; }
+
+.map-list-manager .list-editor-delete-action {
+  height: 34px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 10px;
+  color: #c95764;
+  background: transparent;
+  font-size: .62rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.map-list-manager .list-editor-delete-action:hover { color: #b84250; background: #fff4f5; }
+
+.map-list-manager .list-detail-header:has(.list-detail-edit-action) {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+}
+
+.map-list-manager .list-detail-edit-action {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #dbe7f5;
+  border-radius: 9px;
+  color: #526b89;
+  background: #fff;
+  font-size: .61rem;
+  font-weight: 850;
+  white-space: nowrap;
+  transition: border-color .18s ease, color .18s ease, background .18s ease;
+}
+
+.map-list-manager .list-detail-edit-action:hover { border-color: #a6c4ea; color: #2563eb; background: #f8fbff; }
+
+@media (max-width: 700px) {
+  .map-list-manager .mobile-sheet-content { overflow-x: hidden; }
+  .map-list-manager .list-editor-delete-action { height: 36px; padding-inline: 6px; font-size: .64rem; }
+  .map-list-manager .list-detail-edit-action { height: 34px; padding-inline: 9px; font-size: .65rem; }}
+/* Deletion uses the same deliberate hit area as the save action. */
+.map-list-manager .list-editor-delete-action,
+.map-list-manager .list-editor-header-submit {
+  width: 72px;
+  min-width: 72px;
+  height: 34px;
+  padding: 0;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .map-list-manager .list-editor-delete-action,
+  .map-list-manager .list-editor-header-submit {
+    width: 72px;
+    min-width: 72px;
+    height: 36px;
+  }}
+/* The desktop overlay keeps the mobile-content wrapper, so it must participate in height calculation. */
+@media (min-width: 701px) {
+  .map-list-manager > .mobile-sheet-chrome {
+    display: none;
+  }
+
+  .map-list-manager > .mobile-sheet-content {
+    display: flex;
+    min-height: 0;
+    height: 100%;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }}
+/* During a mobile sheet drag, the visible sheet height follows the finger before snapping. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    height: var(--mobile-sheet-drag-height) !important;
+    transform: translateY(0) !important;
+    transition: none !important;
+  }}
+/* Smooth the live drag slightly without disconnecting the sheet from the finger. */
+@media (max-width: 700px) {
+  .planner-panel.mobile-sheet-panel,
+  .result-panel.mobile-sheet-panel,
+  .map-list-manager {
+    transition-duration: .36s, .36s, .2s;
+    transition-timing-function: cubic-bezier(.22, .61, .36, 1), cubic-bezier(.22, .61, .36, 1), ease;
+  }
+
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    will-change: height;
+    transition: height .08s linear !important;
+  }}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    transition: none !important;
+  }}
+/* Collapsed uses the same physical height model as the drag preview.
+   This avoids a height expansion plus translate transition when a drag snaps down. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-collapsed .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-collapsed .map-list-manager {
+    height: var(--mobile-sheet-visible-handle, 44px) !important;
+    transform: translateY(0) !important;
+  }}
+/* The sheet must track the finger directly; reserve easing for the post-release snap. */
+@media (max-width: 700px) {
+  .app-shell.mobile-sheet-dragging .planner-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .result-panel.mobile-sheet-panel,
+  .app-shell.mobile-sheet-dragging .map-list-manager {
+    transition: none !important;
+  }}
+.map-marker.search-result { background:#2563eb; color:#fff; }
+
+.planner-panel .planner-content-page.map-list-manager {
+  position:relative;
+  z-index:auto;
+  top:auto;
+  right:auto;
+  bottom:auto;
+  left:auto;
+  display:block;
+  width:auto;
+  min-height:0;
+  max-height:none;
+  margin:0;
+  padding:0;
+  overflow:visible;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  backdrop-filter:none;
+}
+
+@media (max-width:700px) {
+
+  .planner-panel.mobile-sheet-panel .planner-content-page:not(.map-list-manager) {
+    display:flex;
+    flex-direction:column;
+  }
+
+  .planner-panel.mobile-sheet-panel .planner-content-page:not(.map-list-manager) > .naver-search-form { order:0; }
+  .planner-panel.mobile-sheet-panel .planner-content-page:not(.map-list-manager) > .planner-footer { order:1; }
+  .planner-panel.mobile-sheet-panel .planner-content-page:not(.map-list-manager) > .place-section { order:2; }
+
+  .planner-panel.mobile-sheet-panel .planner-content-page.map-list-manager {
+    position:relative;
+    right:auto;
+    bottom:auto;
+    left:auto;
+    display:block !important;
+    width:auto;
+    height:auto;
+    max-height:none;
+    padding:0;
+    overflow:visible;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+  }}
+
+/* Every mobile list view owns a bounded scroll body.  Without this explicit
+   flex chain, the saved-list workspace expands to its content and the sheet's
+   hidden overflow clips it instead of allowing the intended inner list/form
+   to scroll. */
+@media (max-width:700px) {
+  .planner-panel.mobile-sheet-panel > .mobile-sheet-content > .planner-content-page.map-list-manager {
+    display:flex !important;
+    min-height:0;
+    height:100%;
+    flex:1 1 auto;
+    flex-direction:column;
+    overflow:hidden;
+  }}
+
+/* List deletion follows the result-reset confirmation affordance. */
+.map-list-manager .list-editor-delete-action {
+  border:1px solid #d7e3f0;
+  color:#5b718b;
+  background:#fff;
+  box-shadow:0 3px 9px #0f172a0d;
+  transition:border-color .18s ease,color .18s ease,background .18s ease;
+}
+
+.map-list-manager .list-editor-delete-action:hover {
+  border-color:#aac3df;
+  color:#415a78;
+  background:#f8fbff;
+}
+
+.map-list-manager .list-editor-delete-action.is-pending {
+  border-color:#f3c48d;
+  color:#b45309;
+  background:#fffbeb;
+}
+
+
