@@ -1,8 +1,8 @@
 import type { RouteSegment } from "@/features/route-optimization/types/route.types";
 import Redis from "ioredis";
 
-const configuredTtlSeconds = Number(process.env.ROUTE_CACHE_TTL_SECONDS ?? 180);
-const ttlSeconds = Number.isFinite(configuredTtlSeconds) ? Math.max(30, configuredTtlSeconds) : 180;
+const configuredTtlSeconds = Number(process.env.ROUTE_CACHE_TTL_SECONDS ?? 600);
+const ttlSeconds = Number.isFinite(configuredTtlSeconds) ? Math.max(30, configuredTtlSeconds) : 600;
 const redisUrl = process.env.REDIS_URL;
 let redisUnavailableLogged = false;
 
