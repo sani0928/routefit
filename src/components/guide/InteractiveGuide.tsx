@@ -117,7 +117,7 @@ export function InteractiveGuide() {
   return <main className="guide-page">
     <section className="guide-step guide-step-intro" id="guide-intro">
       <header className="guide-nav"><a className="guide-brand" href="/" aria-label="루트핏 RouteFit 홈으로 이동"><img src="/icons/logo.png" alt="루트핏 RouteFit" /></a><a className="guide-nav-start" href="/">내 동선 계산하기</a></header>
-      <div className="guide-hero"><span className="guide-kicker">1분 체험 가이드</span><h1>오늘 갈 곳을 추가하고,<br />최적의 동선을 찾아보세요.</h1><p>루트핏은 여러 방문 장소를 순서대로 모아, 이동 경로를 한눈에 확인하도록 돕습니다.<br />아래 화면에서 실제 사용 흐름을 미리 체험해 보세요.</p><div className="guide-flow" aria-label="RouteFit 가이드 순서"><span className="active"><b>1</b>소개</span><ChevronRight /><span><b>2</b>체험</span><ChevronRight /><span><b>3</b>활용</span><ChevronRight /><span><b>4</b>자주 묻는 질문</span></div></div>
+      <div className="guide-hero"><span className="guide-kicker">1분 체험 가이드</span><h1>오늘 갈 곳을 추가하고,<br />최적의 동선을 찾아봐요.</h1><p>루트핏은 여러 방문 장소를 순서대로 모아, 이동 경로를 한눈에 확인하도록 돕습니다.<br />아래 화면에서 실제 사용 흐름을 미리 체험해 보세요.</p><div className="guide-flow" aria-label="RouteFit 가이드 순서"><span className="active"><b>1</b>소개</span><ChevronRight /><span><b>2</b>체험</span><ChevronRight /><span><b>3</b>활용</span><ChevronRight /><span><b>4</b>자주 묻는 질문</span></div></div>
     </section>
 
     <GuideWorkspace places={places} resultPlaces={resultPlaces} stage={stage} routePath={routePath} visitPlaceCount={visitPlaces.length} routeEstimate={routeEstimate} suggestedPlaces={suggestedGuidePlaces} onAddPlace={addSuggestedPlace} onRemovePlace={removePlace} onCalculate={calculateRoute} onResetResult={resetResult} />
