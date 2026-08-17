@@ -50,6 +50,7 @@ type SortablePlaceItemProps = {
   mobileSheetExpanded: boolean;
   isMobileViewportActive: boolean;
   onCardClick: (event: MouseEvent<HTMLElement>, place: Place) => void;
+  onDesktopCardLeave: (placeId: string) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
   onSavePlace?: (place: Omit<Place, "id" | "type"> & { providerId: string }) => void;
   onRemove: (id: string) => void;
@@ -69,6 +70,7 @@ function SortablePlaceItem({
   mobileSheetExpanded,
   isMobileViewportActive,
   onCardClick,
+  onDesktopCardLeave,
   onFixedVisitOrderChange,
   onSavePlace,
   onRemove,
@@ -202,6 +204,13 @@ function SortablePlaceItem({
     setMobileSwipe((current) => current === nextSwipe ? null : nextSwipe);
   }
 
+  function handleDesktopCardLeave() {
+    if (isMobileViewport()) return;
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && itemRef.current?.contains(activeElement)) activeElement.blur();
+    onDesktopCardLeave(place.id);
+  }
+
   return (
     <li
       ref={(node) => {
@@ -226,6 +235,7 @@ function SortablePlaceItem({
           if (isMobileViewport()) return;
           onCardClick(event, place);
         }}
+        onMouseLeave={handleDesktopCardLeave}
       >
         <span ref={dragDisabled ? undefined : handleRef} className={`drag-handle${mobileReorderDisabled ? " disabled" : ""}`} aria-label="드래그하여 순서 변경" title="드래그하여 순서 변경">⠿</span>
         <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{index + 1}</div>
@@ -507,6 +517,11 @@ export function PlaceList({
     setStayEditingPlaceId((current) => (current === place.id ? null : place.id));
   }
 
+  function handleDesktopCardLeave(placeId: string) {
+    if (isMobileViewportActive) return;
+    setStayEditingPlaceId((current) => current === placeId ? null : current);
+  }
+
   function handleReset() {
     if (places.length === 0) {
       resetConfirmationExpiresAtRef.current = 0;
@@ -618,6 +633,7 @@ export function PlaceList({
                 mobileSheetExpanded={mobileSheetExpanded}
                 isMobileViewportActive={isMobileViewportActive}
                 onCardClick={handleCardClick}
+                onDesktopCardLeave={handleDesktopCardLeave}
                 onFixedVisitOrderChange={onFixedVisitOrderChange}
                 onSavePlace={onSavePlace}
                 onRemove={onRemove}

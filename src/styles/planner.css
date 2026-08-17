@@ -2160,6 +2160,49 @@
 .segment-focus-carousel .segment-focus-card { position:relative; z-index:2; margin:0; overflow:hidden; background:color-mix(in srgb,var(--route-color,#2563eb) 7%,#fff); }
 .segment-focus-preview { display:none; }
 
+@media (min-width:701px) {
+  .segment-focus-carousel { box-sizing:border-box; width:100%; margin:10px 0; padding:7px 18px; overflow:hidden; isolation:isolate; cursor:grab; }
+  .segment-focus-carousel:active { cursor:grabbing; }
+  .segment-focus-carousel::before,
+  .segment-focus-carousel::after {
+    position:absolute;
+    z-index:3;
+    top:0;
+    bottom:0;
+    width:25px;
+    content:"";
+    pointer-events:none;
+  }
+  .segment-focus-carousel::before { left:0; background:linear-gradient(90deg,#f6f8fc 0%,rgb(246 248 252 / 0) 100%); }
+  .segment-focus-carousel::after { right:0; background:linear-gradient(270deg,#f6f8fc 0%,rgb(246 248 252 / 0) 100%); }
+  .segment-focus-carousel .segment-focus-card { width:100%; margin:0; box-shadow:0 8px 20px rgb(37 99 235 / .14); }
+  .segment-focus-preview {
+    position:absolute;
+    z-index:1;
+    top:15px;
+    bottom:15px;
+    display:grid;
+    width:82px;
+    align-content:center;
+    gap:3px;
+    padding:10px 8px;
+    overflow:hidden;
+    border:1px solid color-mix(in srgb,var(--route-color,#2563eb) 24%,#dbe7f2);
+    border-radius:13px;
+    color:#60768f;
+    background:linear-gradient(145deg,color-mix(in srgb,var(--route-color,#2563eb) 14%,#fff),#f6f9fd);
+    box-shadow:0 5px 14px rgb(37 99 235 / .08);
+    font-size:.54rem;
+    opacity:.94;
+    pointer-events:none;
+  }
+  .segment-focus-preview > span { color:var(--route-color,#2563eb); font-weight:900; }
+  .segment-focus-preview > strong { overflow:hidden; color:#536a83; font-size:.59rem; text-overflow:ellipsis; white-space:nowrap; }
+  .segment-focus-preview > i { color:var(--route-color,#2563eb); font-style:normal; font-weight:900; }
+  .segment-focus-preview-previous { left:-42px; padding-right:22px; transform:perspective(540px) rotateY(34deg) scale(.92); transform-origin:right center; }
+  .segment-focus-preview-next { right:-42px; padding-left:22px; transform:perspective(540px) rotateY(-34deg) scale(.92); transform-origin:left center; }
+}
+
 @media (max-width:700px) {
   .segment-focus-carousel { margin:10px -2px; padding:7px 28px; overflow:hidden; isolation:isolate; }
   .segment-focus-carousel::before,
