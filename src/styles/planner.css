@@ -2737,6 +2737,18 @@
 .segment-row p > strong { color:#31445d; font-size:.8rem; font-weight:900; white-space:nowrap; }.segment-row .segment-duration { display:inline-flex; align-items:center; gap:3px; padding:3px 5px; border-radius:999px; color:var(--route-color, #2563eb); background:color-mix(in srgb, var(--route-color, #2563eb) 13%, #fff); font-size:.66rem; font-weight:900; line-height:1; white-space:nowrap; }.segment-row .segment-duration svg { width:11px; height:11px; stroke-width:2.6; }.segment-row .segment-duration b { font-weight:900; }
 .segment-row[aria-expanded="true"] .segment-number,.segment-row[aria-expanded="true"] p > strong { color:#fff; }.segment-row[aria-expanded="true"] .segment-duration { color:#fff; background:rgb(255 255 255 / .2); }
 .segment-row .traffic-status { margin-left: auto; }
+
+/* Departure time remains directly editable without disturbing the summary layout. */
+.route-hero-time-control { position:relative; display:inline-flex; align-items:center; }
+.route-hero-time-editor { display:inline-flex; align-items:baseline; color:#fff; font:inherit; font-size:1rem; font-variant-numeric:tabular-nums; font-weight:900; letter-spacing:-.035em; line-height:1.1; }
+.route-hero-time-editor input { width:5ch; min-width:5ch; padding:0; border:0; color:inherit; background:transparent; font:inherit; font-weight:inherit; letter-spacing:inherit; line-height:inherit; scroll-margin-block:20px; text-align:center; }
+.route-hero-time-editor input:focus-visible { outline:1px solid rgb(255 255 255 / .9); outline-offset:2px; border-radius:3px; }
+.route-hero-time-editor.is-edited,.route-hero-time-editor.is-edited input { color:#fff1a8; }
+.route-hero-time-reset { position:absolute; z-index:1; top:50%; left:calc(100% + 4px); display:grid; width:24px; height:24px; place-items:center; padding:0; border:0; color:#fff1a8; background:transparent; transform:translateY(-50%); }
+.route-hero-time-reset svg { width:11px; height:11px; }
+.route-hero-time-reset:focus-visible { outline:1px solid #fff; outline-offset:2px; }
+
+@media (max-width:700px) { .route-hero-time-editor { font-size:1.04rem; } }
 /* Calculation-ready state: keep the route result sheet concise before a route exists. */
 .route-summary-ready {
   gap: 0;

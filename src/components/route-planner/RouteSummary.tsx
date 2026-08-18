@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent as ReactChangeEvent, type CSSProperties, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { Clock, ListOrdered, Lock, RotateCcw, Route, LocateFixed, ExternalLink, X } from "lucide-react";
 import type { OptimizationResponse, TrafficCongestion } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
@@ -13,6 +13,20 @@ const formatTime = (milliseconds: number) => {
 };
 const formatCalculationTime = (milliseconds: number) => milliseconds < 1_000 ? "1초 미만" : `${(milliseconds / 1_000).toFixed(1)}초`;
 const formatTrafficReferenceTime = (timestamp: string) => new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).format(new Date(timestamp));
+const getTrafficReferenceTimeParts = (timestamp: string) => {
+  const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).formatToParts(new Date(timestamp));
+  return {
+    hour: parts.find((part) => part.type === "hour")?.value ?? "00",
+    minute: parts.find((part) => part.type === "minute")?.value ?? "00",
+  };
+};
+const formatDepartureTimeInput = (digits: string) => `${digits.slice(0, 2).padEnd(2, " ")}:${digits.slice(2, 4).padEnd(2, " ")}`;
+const normalizeDepartureTimeInput = (value: string) => {
+  let digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length >= 2 && Number(digits.slice(0, 2)) > 23) digits = `00${digits.slice(2)}`;
+  if (digits.length === 4 && Number(digits.slice(2, 4)) > 59) digits = `${digits.slice(0, 2)}59`;
+  return digits;
+};
 const segmentLabel = (index: number) => String.fromCharCode(65 + index);
 const CALCULATION_REASSURANCE_DELAY = 10_000;
 const trafficStatus = (congestion: TrafficCongestion) => ({
@@ -38,21 +52,25 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   const segmentFocusPointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const segmentSwipeFeedbackTimerRef = useRef<number | null>(null);
   const clearResultConfirmationTimerRef = useRef<number | null>(null);
+  const departureInputScrollTimerRef = useRef<number | null>(null);
   const clearResultConfirmationRef = useRef(false);
   const [segmentSwipeFeedback, setSegmentSwipeFeedback] = useState<SegmentSwipeFeedback | null>(null);
   const [isCalculationTakingLong, setIsCalculationTakingLong] = useState(false);
   const [isClearResultPending, setIsClearResultPending] = useState(false);
+  const [editedDepartureTime, setEditedDepartureTime] = useState<string | null>(null);
 
   const fixedPlaceIds = new Set(fixedVisitOrders.map(({ placeId }) => placeId));
 
   useEffect(() => () => {
     if (segmentSwipeFeedbackTimerRef.current !== null) window.clearTimeout(segmentSwipeFeedbackTimerRef.current);
     if (clearResultConfirmationTimerRef.current !== null) window.clearTimeout(clearResultConfirmationTimerRef.current);
+    if (departureInputScrollTimerRef.current !== null) window.clearTimeout(departureInputScrollTimerRef.current);
   }, []);
 
   useEffect(() => {
     clearResultConfirmationRef.current = false;
     setIsClearResultPending(false);
+    setEditedDepartureTime(null);
     if (clearResultConfirmationTimerRef.current !== null) window.clearTimeout(clearResultConfirmationTimerRef.current);
   }, [result]);
 
@@ -137,8 +155,14 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   const placesById = new Map(result.orderedPlaces.map((place) => [place.id, place]));
   const totalStayDurationMinutes = result.summary.totalStayDurationMinutes ?? 0;
   const totalDurationMilliseconds = result.summary.totalDurationMilliseconds + totalStayDurationMinutes * 60_000;
-  const estimatedArrivalTime = new Date(new Date(result.summary.calculatedAt).getTime() + totalDurationMilliseconds);
-  let scheduleCursor = new Date(result.summary.calculatedAt).getTime();
+  const calculatedDepartureTime = getTrafficReferenceTimeParts(result.summary.calculatedAt);
+  const hasEditedDepartureTime = editedDepartureTime !== null && editedDepartureTime.length === 4;
+  const departureTime = hasEditedDepartureTime
+    ? { hour: editedDepartureTime.slice(0, 2), minute: editedDepartureTime.slice(2, 4) }
+    : calculatedDepartureTime;
+  const adjustedDepartureTime = new Date(new Date(result.summary.calculatedAt).getTime() + ((Number(departureTime.hour) * 60 + Number(departureTime.minute)) - (Number(calculatedDepartureTime.hour) * 60 + Number(calculatedDepartureTime.minute))) * 60_000);
+  const estimatedArrivalTime = new Date(adjustedDepartureTime.getTime() + totalDurationMilliseconds);
+  let scheduleCursor = adjustedDepartureTime.getTime();
   const segmentSchedules = result.segments.map((segment, index) => {
     const departureTime = scheduleCursor;
     const arrivalTime = departureTime + segment.durationMilliseconds;
@@ -152,6 +176,52 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   const focusedFrom = focusedSegment ? placesById.get(focusedSegment.fromId) : null;
   const focusedTo = focusedSegment ? placesById.get(focusedSegment.toId) : null;
   const focusedTraffic = focusedSegment ? segmentTrafficStatus(focusedSegment.trafficSections ?? []) : null;
+  const updateDepartureTime = (value: string) => setEditedDepartureTime(normalizeDepartureTimeInput(value));
+  const normalizeDepartureTime = () => setEditedDepartureTime((current) => current?.length === 4 ? current : null);
+  const moveDepartureTimeCaretToEnd = (input: HTMLInputElement) => window.requestAnimationFrame(() => input.setSelectionRange(input.value.length, input.value.length));
+  const handleDepartureTimeChange = (event: ReactChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    updateDepartureTime(input.value);
+    moveDepartureTimeCaretToEnd(input);
+  };
+  const handleDepartureTimeKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+      return;
+    }
+    if (event.key !== "Backspace") return;
+    event.preventDefault();
+    const input = event.currentTarget;
+    const initialValue = `${calculatedDepartureTime.hour}${calculatedDepartureTime.minute}`;
+    const clearsSelectedValue = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+    setEditedDepartureTime((current) => clearsSelectedValue ? "" : (current ?? initialValue).slice(0, -1));
+    moveDepartureTimeCaretToEnd(input);
+  };
+  const scrollDepartureInputIntoView = (input: HTMLInputElement) => {
+    if (departureInputScrollTimerRef.current !== null) window.clearTimeout(departureInputScrollTimerRef.current);
+    departureInputScrollTimerRef.current = window.setTimeout(() => {
+      if (document.activeElement !== input) return;
+      input.scrollIntoView({ block: "nearest", inline: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    }, 260);
+  };
+  const handleDepartureTimePointerDown = (event: ReactPointerEvent<HTMLInputElement>) => {
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+    event.stopPropagation();
+    event.preventDefault();
+    const input = event.currentTarget;
+    window.requestAnimationFrame(() => input.focus({ preventScroll: true }));
+  };
+  const handleDepartureTimeFocus = (event: ReactFocusEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    input.select();
+    if (selectedSegmentIndex !== null || expandedSegmentIndex !== null) {
+      setExpandedSegmentIndex(null);
+      onSegmentSelect(null);
+    }
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+    onResultTabOpen?.();
+    scrollDepartureInputIntoView(input);
+  };
   const renderSegmentPreview = (index: number, position: "previous" | "next") => {
     const segment = result.segments[index];
     const from = placesById.get(segment.fromId);
@@ -231,7 +301,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
         </article>
         {activeSegmentIndex < result.segments.length - 1 && renderSegmentPreview(activeSegmentIndex + 1, "next")}
       </section>}
-<div className="route-hero"><img className="route-hero-logo" src="/icons/logo.png" alt="RouteFit" /><div className="route-hero-heading"><p>예상 소요 시간</p></div><div className="route-hero-overview"><div className={`route-hero-duration${totalDurationMilliseconds >= 60 * 60_000 ? " duration-long" : ""}`}><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">머무는 시간 {formatTime(totalStayDurationMinutes * 60_000)} 포함</span>}</div><div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div><div className="route-hero-times"><span><small>출발</small><time>{formatTrafficReferenceTime(result.summary.calculatedAt)}</time></span><i aria-hidden="true">→</i><span><small>도착 예정</small><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></span></div></div>
+<div className="route-hero"><img className="route-hero-logo" src="/icons/logo.png" alt="RouteFit" /><div className="route-hero-heading"><p>예상 소요 시간</p></div><div className="route-hero-overview"><div className={`route-hero-duration${totalDurationMilliseconds >= 60 * 60_000 ? " duration-long" : ""}`}><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">머무는 시간 {formatTime(totalStayDurationMinutes * 60_000)} 포함</span>}</div><div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div><div className="route-hero-times"><span><small>출발</small><div className="route-hero-time-control"><div className={`route-hero-time-editor${hasEditedDepartureTime ? " is-edited" : ""}`}><input aria-label="출발 시각, 시와 분을 네 자리로 입력" inputMode="numeric" enterKeyHint="done" maxLength={9} value={formatDepartureTimeInput(editedDepartureTime ?? `${calculatedDepartureTime.hour}${calculatedDepartureTime.minute}`)} onPointerDown={handleDepartureTimePointerDown} onChange={handleDepartureTimeChange} onBlur={normalizeDepartureTime} onFocus={handleDepartureTimeFocus} onKeyDown={handleDepartureTimeKeyDown} /></div>{hasEditedDepartureTime && <button type="button" className="route-hero-time-reset" aria-label="수정한 출발 시간 초기화" title="계산 시각으로 되돌리기" onClick={() => setEditedDepartureTime(null)}><RotateCcw aria-hidden="true" /></button>}</div></span><i aria-hidden="true">→</i><span><small>도착 예정</small><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></span></div></div>
 
     {onShare && <button type="button" className="route-share-action" disabled={isRouteStale || isSharing} onClick={onShare} title={isRouteStale ? "최신 계산 결과에서만 공유할 수 있습니다." : undefined}>
       <ExternalLink aria-hidden="true" />{isSharing ? "공유 링크 생성 중" : "내 동선 공유하기"}
