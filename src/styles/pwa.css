@@ -40,7 +40,7 @@
 .pwa-install-notice { border-color:#b9e7d0; }
 .pwa-update-notice > div:first-child,.pwa-install-notice > div:first-child { display:grid; gap:4px; }
 .pwa-update-notice strong,.pwa-install-notice strong { color:#253b57; font-size:.84rem; }
-.pwa-update-notice span,.pwa-install-notice span { color:#7387a0; font-size:.7rem; font-weight:600; line-height:1.45; }
+.pwa-update-notice span,.pwa-install-notice span { color:#7387a0; font-size:.7rem; font-weight:500; line-height:1.45; }
 .pwa-notice-actions { display:flex; justify-content:flex-end; gap:7px; }
 .pwa-notice-actions button { min-height:32px; padding:6px 10px; border:1px solid #d9e4f1; border-radius:8px; color:#637b98; background:#fff; font-size:.68rem; }
 .pwa-notice-actions .primary { border-color:#2563eb; color:#fff; background:#2563eb; }
@@ -69,7 +69,7 @@
 .offline-page-card img { width:132px; height:auto; object-fit:contain; }
 .offline-page-card p { margin:12px 0 0; color:#2563eb; font-size:.72rem; font-weight:800; }
 .offline-page-card h1 { margin:0; color:#263b55; font-size:1.25rem; letter-spacing:-.04em; }
-.offline-page-card span { color:#74869c; font-size:.78rem; font-weight:600; line-height:1.55; }
+.offline-page-card span { color:#74869c; font-size:.78rem; font-weight:500; line-height:1.55; }
 .offline-page-card button { margin-top:10px; padding:10px 15px; border-radius:10px; color:#fff; background:#2563eb; box-shadow:0 6px 14px #2563eb2b; font-size:.76rem; }
 
 /* PWA launch surface intentionally contains only the installed app icon. */

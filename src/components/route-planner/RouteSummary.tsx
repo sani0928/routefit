@@ -32,7 +32,7 @@ type ResultTab = "stops" | "segments";
 
 type SegmentSwipeFeedback = { direction: "next" | "previous" | "start" | "end"; sequence: number };
 
-export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isRouteStale = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onClearResult, onResultTabOpen, onShare, isSharing = false }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isRouteStale?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onClearResult?: () => void; onResultTabOpen?: () => void; onShare?: () => void; isSharing?: boolean }) {
+export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isLocatingCurrentLocation = false, isRouteStale = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onClearResult, onResultTabOpen, onShare, isSharing = false }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isLocatingCurrentLocation?: boolean; isRouteStale?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onClearResult?: () => void; onResultTabOpen?: () => void; onShare?: () => void; isSharing?: boolean }) {
   const [activeTab, setActiveTab] = useState<ResultTab>("stops");
   const [expandedSegmentIndex, setExpandedSegmentIndex] = useState<number | null>(null);
   const segmentFocusPointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
@@ -75,19 +75,23 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     <a className="route-guide-link" href="/guide">1분 체험 가이드</a>
   </div>;
   if (isCalculating) {
+    const title = isLocatingCurrentLocation ? "현재 위치를 확인하고 있어요" : "최적 경로를 계산하고 있어요";
+    const message = isLocatingCurrentLocation
+      ? "출발지를 최신 위치로 갱신하는 중이에요."
+      : isCalculationTakingLong ? "최적의 동선을 열심히 찾고 있어요!" : "실시간 교통정보를 반영하는 중이에요.";
     return (
       <section className="route-summary-panel route-summary-empty route-summary-ready route-summary-calculating">
-        {renderReadyStatusHeader("계산 중", "calculating")}
+        {renderReadyStatusHeader(isLocatingCurrentLocation ? "현재 위치 확인 중" : "계산 중", "calculating")}
         <div className="route-ready-card route-ready-calculating-card">
           <div className="route-ready-icon"><Route aria-hidden="true" /></div>
           <div>
-            <h2>최적 경로를 계산하고 있어요</h2>
-            <p>{isCalculationTakingLong ? "최적의 동선을 열심히 찾고 있어요!" : "실시간 교통정보를 반영하는 중이에요."}</p>
+            <h2>{title}</h2>
+            <p>{message}</p>
           </div>
         </div>
         <div className="route-ready-status">
-          <span>{isCalculationTakingLong ? "계산 진행 중" : "분석 중"}</span>
-          <strong>{isCalculationTakingLong ? "잠시 후 결과를 보여드릴게요." : "잠시만 기다려 주세요."}</strong>
+          <span>{isLocatingCurrentLocation ? "위치 확인 중" : isCalculationTakingLong ? "계산 진행 중" : "분석 중"}</span>
+          <strong>{isLocatingCurrentLocation ? "현재 위치를 확인한 뒤 계산을 시작할게요." : isCalculationTakingLong ? "잠시 후 결과를 보여드릴게요." : "잠시만 기다려 주세요."}</strong>
         </div>
       </section>
     );

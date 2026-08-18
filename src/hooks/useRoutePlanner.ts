@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { FixedVisitOrder, OptimizationResponse, Place } from "@/features/route-optimization/types/route.types";
 
-export type RoutePlannerStatus = "IDLE" | "BUILDING_MATRIX" | "OPTIMIZING" | "FETCHING_FINAL_ROUTE" | "SUCCESS" | "ERROR";
+export type RoutePlannerStatus = "IDLE" | "LOCATING_CURRENT_LOCATION" | "BUILDING_MATRIX" | "OPTIMIZING" | "FETCHING_FINAL_ROUTE" | "SUCCESS" | "ERROR";
 export type RouteResultSnapshot = { returnToStart: boolean; fixedVisitOrders: FixedVisitOrder[] };
 
 export function useRoutePlanner() {

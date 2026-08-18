@@ -35,7 +35,7 @@
   box-shadow:0 4px 13px rgb(15 23 42 / .06);
 }
 
-.guide-search-placeholder { padding:0 12px; color:#a2a9b3; font-size:.8rem; font-weight:600; }
+.guide-search-placeholder { padding:0 12px; color:#a2a9b3; font-size:.8rem; font-weight:500; }
 .guide-search-submit { display:grid; width:32px; height:32px; flex:0 0 32px; place-items:center; color:#0f7bf6; }
 .guide-search-submit svg { width:18px; height:18px; }
 
@@ -185,7 +185,7 @@
 
 /* Use one readable weight for every visible guide label on desktop and mobile. */
 .guide-page :is(h1,h2,h3,p,span,strong,b,small,a,button,label,li,em,i) {
-  font-weight:600 !important;
+  font-weight:500 !important;
 }
 
 /* A restrained RouteFit blue-to-mint finish gives the final next step visual energy. */
@@ -323,7 +323,7 @@
   color:#48617f;
   background:#f1f7fc;
   font-size:.75rem;
-  font-weight:600;
+  font-weight:500;
   line-height:1.55;
   animation:guide-faq-message-enter .32s cubic-bezier(.2,.75,.25,1) both;
 }

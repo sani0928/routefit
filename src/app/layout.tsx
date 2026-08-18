@@ -1,15 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_KR } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AppLaunchScreen } from "@/components/pwa/AppLaunchScreen";
 import { OnlineStatusBanner } from "@/components/pwa/OnlineStatusBanner";
 import { PwaLifecycle } from "@/components/pwa/PwaLifecycle";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 
-const notoSansKr = Noto_Sans_KR({
-  weight: "variable",
+const notoSansKr = localFont({
+  src: [
+    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Thin.woff2", weight: "100", style: "normal" },
+    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Light.woff2", weight: "200", style: "normal" },
+    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-DemiLight.woff2", weight: "300", style: "normal" },
+    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Black.woff2", weight: "700", style: "normal" },
+    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Bold.woff2", weight: "900", style: "normal" },
+  ],
   display: "swap",
-  preload: false,
   variable: "--font-noto-sans-kr",
 });
 

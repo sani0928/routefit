@@ -102,7 +102,7 @@
 .map-list-manager .list-editor-dialog header { align-items:center; }
 .map-list-manager .list-editor-dialog header strong { color:#30435c; font-size:.78rem; }
 
-.map-list-manager .list-overview-header h2 { font-weight:600; }
+.map-list-manager .list-overview-header h2 { font-weight:500; }
 
 @media (max-width: 1024px) and (min-width: 701px) {
   .map-list-manager {

@@ -65,6 +65,30 @@ function distanceInMeters(first: LocationCoordinates, second: LocationCoordinate
   return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function requestCurrentLocationCoordinates(): Promise<LocationCoordinates> {
+  if (!navigator.geolocation) return Promise.reject(new Error("CURRENT_LOCATION_UNAVAILABLE"));
+
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
+      () => reject(new Error("CURRENT_LOCATION_UNAVAILABLE")),
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
+    );
+  });
+}
+
+async function resolveCurrentLocationAddress({ latitude, longitude }: LocationCoordinates) {
+  try {
+    const response = await fetch(`/api/maps/reverse-geocode?lat=${latitude}&lng=${longitude}`);
+    const body = await response.json() as { address?: string };
+    if (response.ok && body.address?.trim()) return body.address;
+  } catch {
+    // Route calculation can continue when a human-readable address is unavailable.
+  }
+
+  return "현재 위치";
+}
+
 function isFixedOrderValid(fixed: FixedVisitOrder, items: Place[]) {
   const index = items.findIndex((place) => place.id === fixed.placeId);
   return index > 0 && fixed.visitOrder >= 2 && fixed.visitOrder <= items.length;
@@ -125,6 +149,7 @@ export function RouteFitPlanner() {
   const start = places[0];
   const currentLocation = places.find((place) => place.isCurrentLocation) ?? null;
   const currentLocationActive = currentLocation !== null;
+  const isRouteCalculationInProgress = ["LOCATING_CURRENT_LOCATION", "BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status);
   const showSearchResultMarkers = searchQuery !== null && mobileTab === "places" && !listManagerOpen;
   const activeList = member.placeLists.find((list) => list.id === selectedListId) ?? null;
   const savedListPlaces = selectedListId ? savedPlacesByListId[selectedListId] ?? [] : [];
@@ -445,10 +470,54 @@ export function RouteFitPlanner() {
     markRouteStale();
   }
   function removePlace(id: string) { if (places.some((place) => place.id === id && place.isCurrentLocation)) setCurrentLocationLocating(false); setPlaces((current) => normalizePlaceRoles(current.filter((place) => place.id !== id))); markRouteStale(); }
-  function setStayDuration(id: string, minutes: number) { setPlaces((current) => current.map((place) => place.id === id && !place.isCurrentLocation ? { ...place, stayDurationMinutes: minutes } : place)); markRouteStale(); }  async function optimize() {
-    if (places.length < 2 || !start) return;
+  function setStayDuration(id: string, minutes: number) { setPlaces((current) => current.map((place) => place.id === id && !place.isCurrentLocation ? { ...place, stayDurationMinutes: minutes } : place)); markRouteStale(); }
+  async function optimize() {
+    if (places.length < 2 || !start || isRouteCalculationInProgress || currentLocationLocating) return;
+
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      setMobileTab("results");
+      setMobileSheetState((current) => current === "collapsed" ? "peek" : current);
+      hideListManager();
+    }
+
+    let calculationPlaces = places;
+    let currentLocationWasRefreshed = false;
+    if (currentLocation) {
+      setStatus("LOCATING_CURRENT_LOCATION");
+      try {
+        const coordinates = await requestCurrentLocationCoordinates();
+        const address = await resolveCurrentLocationAddress(coordinates);
+        const refreshedCurrentLocation: Place = {
+          ...currentLocation,
+          name: "현재 위치",
+          address,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          type: "START",
+          stayDurationMinutes: 0,
+          isCurrentLocation: true,
+        };
+        calculationPlaces = normalizePlaceRoles([
+          refreshedCurrentLocation,
+          ...places.filter((place) => !place.isCurrentLocation),
+        ]);
+        calculatedCurrentLocationRef.current = coordinates;
+        currentLocationWasRefreshed = true;
+        setPlaces(calculationPlaces);
+      } catch {
+        notify.error("현재 위치를 확인하지 못했습니다.");
+        setStatus("IDLE");
+        return;
+      }
+    }
+
+    const calculationStart = calculationPlaces[0];
+    if (!calculationStart) {
+      setStatus("IDLE");
+      return;
+    }
     const coordinateKeys = new Set<string>();
-    const hasDuplicatePlace = places.some((place) => {
+    const hasDuplicatePlace = calculationPlaces.some((place) => {
       const key = `${place.latitude.toFixed(6)},${place.longitude.toFixed(6)}`;
       if (coordinateKeys.has(key)) return true;
       coordinateKeys.add(key);
@@ -461,24 +530,19 @@ export function RouteFitPlanner() {
     }
     setHoveredSegmentIndex(null);
     setSelectedSegmentIndex(null);
-    const destination = returnToStart ? null : places.at(-1) ?? null;
-    const waypoints = returnToStart ? places.slice(1) : places.slice(1, -1);
-    const calculationCurrentLocation = start.isCurrentLocation
-      ? { latitude: start.latitude, longitude: start.longitude }
+    const destination = returnToStart ? null : calculationPlaces.at(-1) ?? null;
+    const waypoints = returnToStart ? calculationPlaces.slice(1) : calculationPlaces.slice(1, -1);
+    const calculationCurrentLocation = calculationStart.isCurrentLocation
+      ? { latitude: calculationStart.latitude, longitude: calculationStart.longitude }
       : null;
     const calculationSnapshot: RouteResultSnapshot = {
       returnToStart,
       fixedVisitOrders: fixedVisitOrders.map((fixed) => ({ ...fixed })),
     };
     const calculationInputVersion = routeInputVersionRef.current;
-    if (window.matchMedia("(max-width: 700px)").matches) {
-      setMobileTab("results");
-      setMobileSheetState((current) => current === "collapsed" ? "peek" : current);
-      hideListManager();
-    }
     setStatus("BUILDING_MATRIX");
     try {
-      const response = await fetch("/api/routes/optimize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ start, waypoints, destination, returnToStart, fixedVisitOrders }) });
+      const response = await fetch("/api/routes/optimize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ start: calculationStart, waypoints, destination, returnToStart, fixedVisitOrders }) });
       setStatus("OPTIMIZING");
       const body = await response.json() as OptimizationResponse & { error?: { message?: string } };
       if (!response.ok) throw new Error(body.error?.message || "동선 계산에 실패했습니다.");
@@ -489,6 +553,7 @@ export function RouteFitPlanner() {
       setRouteNeedsRecalculation(routeInputVersionRef.current !== calculationInputVersion);
       setStatus("SUCCESS");
     } catch (reason) {
+      if (currentLocationWasRefreshed) markRouteStale();
       const message = reason instanceof Error ? reason.message : "동선 계산에 실패했습니다.";
       if (message.includes("동일한 장소는 중복 등록할 수 없습니다.")) {
         setStatus("IDLE");
@@ -924,13 +989,13 @@ export function RouteFitPlanner() {
             </div>
           )
         ) : <>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
         {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addSearchResultToRoute} onRemove={removeSearchResultFromRoute} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSearchFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
           <div className="planner-footer">
             <div className="route-primary-group">
               <div className="route-calculate-control optimize-action">
-                <button className="primary route-calculate-action" onClick={optimize} disabled={places.length < 2 || status === "BUILDING_MATRIX"} aria-label="경로 최적화 계산" title="경로 최적화 계산">경로 최적화 계산</button>
+                <button className="primary route-calculate-action" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산" title="경로 최적화 계산">경로 최적화 계산</button>
               </div>
             </div>
           </div>
@@ -952,6 +1017,7 @@ export function RouteFitPlanner() {
           onSegmentSelect={handleMapSegmentSelect}
           onMapPlaceSelect={addPlace}
           currentLocationActive={currentLocationActive}
+          currentLocation={currentLocation}
           currentLocationRequestId={currentLocationRequestId}
           onCurrentLocationUpdate={updateCurrentLocation}
           onCurrentLocationTrackingChange={handleCurrentLocationTrackingChange}
@@ -1008,7 +1074,7 @@ export function RouteFitPlanner() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={["BUILDING_MATRIX", "OPTIMIZING", "FETCHING_FINAL_ROUTE"].includes(status)} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} onShare={() => void shareRoute()} isSharing={isSharingRoute} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
+            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={isRouteCalculationInProgress} isLocatingCurrentLocation={status === "LOCATING_CURRENT_LOCATION"} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} onShare={() => void shareRoute()} isSharing={isSharingRoute} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />

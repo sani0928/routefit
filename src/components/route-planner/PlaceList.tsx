@@ -241,7 +241,7 @@ function SortablePlaceItem({
         <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{index + 1}</div>
         <div className="place-main">
           <strong>{place.name}</strong>
-          <small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
+          <small>{place.isCurrentLocation ? "계산 시 현재 위치로 갱신" : place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
         </div>
         <div className="place-mobile-status" aria-label="장소 상태">
           {canSetStayDuration && stayDuration > 0 && (
@@ -443,7 +443,7 @@ function ReturnStop({ place, index, onReturnChange, onSavePlace }: {
       <div className="place-badge destination">{index + 1}</div>
       <div className="place-main">
         <strong>{place.name}</strong>
-        <small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
+        <small>{place.isCurrentLocation ? "계산 시 현재 위치로 갱신" : place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
       </div>
       <div className="place-actions">
         <button type="button" className="danger icon-action place-delete-action" aria-label="복귀 지점 제거" title="복귀 해제" onClick={() => onReturnChange(false)}>

@@ -128,7 +128,7 @@
 .save-list-empty { display:flex; align-items:flex-start; gap:9px; margin:2px 20px 18px; padding:15px; border:1px dashed #cbd9e8; border-radius:13px; color:#7b91aa; background:#f8fbfe; }
 .save-list-empty > svg { flex:0 0 auto; margin-top:2px; color:#7c9bc1; }
 .save-list-empty p { display:grid; gap:4px; margin:0; color:#536d8c; font-size:.69rem; font-weight:760; }
-.save-list-empty small { color:#869bb4; font-size:.61rem; font-weight:600; line-height:1.45; }
+.save-list-empty small { color:#869bb4; font-size:.61rem; font-weight:500; line-height:1.45; }
 @keyframes save-dialog-in { from { opacity:0; transform:translateY(10px) scale(.975); } to { opacity:1; transform:translateY(0) scale(1); } }
 @keyframes save-dialog-mobile-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
 @media (max-width:760px) {
