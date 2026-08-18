@@ -8,13 +8,15 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const notoSansKr = localFont({
   src: [
-    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Thin.woff2", weight: "100", style: "normal" },
-    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Light.woff2", weight: "200", style: "normal" },
-    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-DemiLight.woff2", weight: "300", style: "normal" },
-    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Regular.woff2", weight: "400", style: "normal" },
-    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Medium.woff2", weight: "500", style: "normal" },
-    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Black.woff2", weight: "700", style: "normal" },
-    { path: "../../font/noto-sans-korean-webfont-master/fonts/NotoSans-Bold.woff2", weight: "900", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-Thin.woff2", weight: "100", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-ExtraLight.woff2", weight: "200", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-Light.woff2", weight: "300", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-Bold.woff2", weight: "700", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-ExtraBold.woff2", weight: "800", style: "normal" },
+    { path: "../../font/Noto_Sans_KR/NotoSansKR-Black.woff2", weight: "900", style: "normal" },
   ],
   display: "swap",
   variable: "--font-noto-sans-kr",

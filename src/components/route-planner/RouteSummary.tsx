@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { ListOrdered, Lock, RotateCcw, Route, ExternalLink, X } from "lucide-react";
+import { ListOrdered, Lock, RotateCcw, Route, LocateFixed, ExternalLink, X } from "lucide-react";
 import type { OptimizationResponse, TrafficCongestion } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
 import { routeColor } from "@/lib/route-colors";
@@ -83,7 +83,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
       <section className="route-summary-panel route-summary-empty route-summary-ready route-summary-calculating">
         {renderReadyStatusHeader(isLocatingCurrentLocation ? "현재 위치 확인 중" : "계산 중", "calculating")}
         <div className="route-ready-card route-ready-calculating-card">
-          <div className="route-ready-icon"><Route aria-hidden="true" /></div>
+          <div className="route-ready-icon">{isLocatingCurrentLocation ? <LocateFixed aria-hidden="true" /> : <Route aria-hidden="true" />}</div>
           <div>
             <h2>{title}</h2>
             <p>{message}</p>

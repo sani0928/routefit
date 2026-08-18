@@ -24,7 +24,7 @@ export function GuideFaq({ messages, leavingIds, isTyping, items, onSelect }: Gu
         <div className="guide-faq-questions">{items.map((item) => <button type="button" key={item.id} onClick={() => onSelect(item)}>{item.question}</button>)}</div>
       </div>
     </div>
-    <div className="guide-final-cta"><div><h2>이제 시작해 볼까요?</h2><p>RouteFit은 PC와 모바일 모두 편하게 사용할 수 있어요.</p></div><a href="/">RouteFit 시작하기</a></div>
+    <div className="guide-final-cta"><div><h2>이제 시작해 볼까요?</h2><p>RouteFit은 PC와 모바일, 모두 편하게 사용할 수 있어요.</p></div><a href="/">RouteFit 시작하기</a></div>
   </section>;
 }
 
