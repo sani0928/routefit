@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { List, MapPin, Waypoints } from "lucide-react";
+import { ChevronDown, List, MapPin, Waypoints } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { SavePlaceDialog } from "@/components/member/SavePlaceDialog";
@@ -171,6 +171,32 @@ export function RouteFitPlanner() {
     navigator.vibrate?.(65);
   }, []);
 
+  const isMobileNavigationTabActive = (tab: MobileTab) => (
+    tab === "lists"
+      ? mobileTab === "places" && listManagerOpen
+      : tab === "places"
+        ? mobileTab === "places" && !listManagerOpen
+        : mobileTab === "results"
+  );
+
+  const getMobileNavigationIcon = (tab: MobileTab) => {
+    const primaryIcon = tab === "places"
+      ? <MapPin className="mobile-navigation-primary-icon" size={20} />
+      : tab === "lists"
+        ? <List className="mobile-navigation-primary-icon" size={20} />
+        : <Waypoints className="mobile-navigation-primary-icon" size={20} />;
+
+    return <span className={`mobile-navigation-icon${isMobileNavigationTabActive(tab) ? " is-toggle" : ""}`} aria-hidden="true">
+      {primaryIcon}
+      <ChevronDown className="mobile-navigation-toggle-chevron" size={20} />
+    </span>;
+  };
+
+  const getMobileNavigationActionLabel = (tab: MobileTab, label: string) => {
+    if (!isMobileNavigationTabActive(tab)) return label;
+    return `${label}, 다시 누르면 패널 ${mobileSheetState === "expanded" ? "낮추기" : "높이기"}`;
+  };
+
   const loadMember = useCallback(async () => {
     try {
       const response = await fetch("/api/member/state", { cache: "no-store" });
@@ -331,7 +357,7 @@ export function RouteFitPlanner() {
       return { added: false, message };
     }
     if (places.length >= 15) {
-      const message = "방문 장소는 최대 15곳까지 추가할 수 있습니다.";
+      const message = "방문 장소는 15곳까지 추가할 수 있습니다.";
       notify.info(message);
       return { added: false, message };
     }
@@ -1045,17 +1071,17 @@ export function RouteFitPlanner() {
 
       </section>
       <nav className="mobile-bottom-nav" aria-label="모바일 주요 메뉴" role="tablist">
-        <label className="mobile-navigation-tab" role="tab" tabIndex={0} aria-selected={mobileTab === "places" && !listManagerOpen} aria-controls="mobile-places-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("places"); } }}>
+        <label className={`mobile-navigation-tab${isMobileNavigationTabActive("places") && mobileSheetState !== "expanded" ? " is-sheet-toggle-up" : ""}`} role="tab" tabIndex={0} aria-label={getMobileNavigationActionLabel("places", "방문 장소")} aria-selected={mobileTab === "places" && !listManagerOpen} aria-controls="mobile-places-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("places"); } }}>
           <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onChange={(event) => { triggerMobileNavigationHaptic(); event.currentTarget.checked = false; handleMobileTabSelect("places"); }} />
-          <MapPin size={20} aria-hidden="true" /><span>방문 장소</span>
+          {getMobileNavigationIcon("places")}<span>방문 장소</span>
         </label>
-        <label className="mobile-navigation-tab" role="tab" tabIndex={0} aria-selected={mobileTab === "places" && listManagerOpen} aria-controls="mobile-places-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("lists"); } }}>
+        <label className={`mobile-navigation-tab${isMobileNavigationTabActive("lists") && mobileSheetState !== "expanded" ? " is-sheet-toggle-up" : ""}`} role="tab" tabIndex={0} aria-label={getMobileNavigationActionLabel("lists", "장소 리스트")} aria-selected={mobileTab === "places" && listManagerOpen} aria-controls="mobile-places-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("lists"); } }}>
           <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onChange={(event) => { triggerMobileNavigationHaptic(); event.currentTarget.checked = false; handleMobileTabSelect("lists"); }} />
-          <List size={20} aria-hidden="true" /><span>장소 리스트</span>
+          {getMobileNavigationIcon("lists")}<span>장소 리스트</span>
         </label>
-        <label className={`mobile-navigation-tab${result ? " has-route-result" : ""}`} role="tab" tabIndex={0} aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("results"); } }}>
+        <label className={`mobile-navigation-tab${result ? " has-route-result" : ""}${isMobileNavigationTabActive("results") && mobileSheetState !== "expanded" ? " is-sheet-toggle-up" : ""}`} role="tab" tabIndex={0} aria-label={getMobileNavigationActionLabel("results", "계산 결과")} aria-selected={mobileTab === "results"} aria-controls="mobile-results-panel" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMobileTabSelect("results"); } }}>
           <input className="ios-navigation-haptic-switch" type="checkbox" tabIndex={-1} aria-hidden="true" ref={(node) => node?.setAttribute("switch", "")} onChange={(event) => { triggerMobileNavigationHaptic(); event.currentTarget.checked = false; handleMobileTabSelect("results"); }} />
-          <Waypoints size={20} aria-hidden="true" /><span>계산 결과</span>
+          {getMobileNavigationIcon("results")}<span>계산 결과</span>
         </label>
       </nav>
       <aside

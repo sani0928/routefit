@@ -176,7 +176,19 @@
     font-weight:750;
   }
   .mobile-navigation-tab[aria-selected=true] { color:#2563eb; background:#f4f8ff; }
-  .mobile-navigation-tab svg { stroke-width:2.2; }}
+  .mobile-navigation-tab svg { stroke-width:2.2; }
+  .mobile-navigation-icon { display:grid; width:20px; height:20px; place-items:center; }
+  .mobile-navigation-icon > svg { grid-area:1 / 1; transition:opacity .12s ease, transform .18s cubic-bezier(.2,.8,.2,1); }
+  .mobile-navigation-primary-icon { opacity:1; transform:scale(1); }
+  .mobile-navigation-toggle-chevron { opacity:0; transform:scale(.72); }
+  .mobile-navigation-icon.is-toggle .mobile-navigation-primary-icon { opacity:0; transform:scale(.72); }
+  .mobile-navigation-icon.is-toggle .mobile-navigation-toggle-chevron { opacity:1; transform:scale(1); }
+  .mobile-navigation-tab.is-sheet-toggle-up .mobile-navigation-toggle-chevron { transform:scale(1) rotate(180deg); }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .mobile-navigation-icon > svg { transition:none; }
+}
 /* RouteFit toast feedback */
 .routefit-toast-container.Toastify__toast-container {
   z-index: 10000;

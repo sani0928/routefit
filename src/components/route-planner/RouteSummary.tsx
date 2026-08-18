@@ -53,10 +53,14 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   const segmentSwipeFeedbackTimerRef = useRef<number | null>(null);
   const clearResultConfirmationTimerRef = useRef<number | null>(null);
   const departureInputScrollTimerRef = useRef<number | null>(null);
+  const completionTransitionTimerRef = useRef<number | null>(null);
+  const wasCalculatingRef = useRef(false);
   const clearResultConfirmationRef = useRef(false);
   const [segmentSwipeFeedback, setSegmentSwipeFeedback] = useState<SegmentSwipeFeedback | null>(null);
   const [isCalculationTakingLong, setIsCalculationTakingLong] = useState(false);
   const [isClearResultPending, setIsClearResultPending] = useState(false);
+  const [isCompletionTransitioning, setIsCompletionTransitioning] = useState(false);
+  const [hasCompletedTransition, setHasCompletedTransition] = useState(false);
   const [editedDepartureTime, setEditedDepartureTime] = useState<string | null>(null);
 
   const fixedPlaceIds = new Set(fixedVisitOrders.map(({ placeId }) => placeId));
@@ -65,6 +69,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     if (segmentSwipeFeedbackTimerRef.current !== null) window.clearTimeout(segmentSwipeFeedbackTimerRef.current);
     if (clearResultConfirmationTimerRef.current !== null) window.clearTimeout(clearResultConfirmationTimerRef.current);
     if (departureInputScrollTimerRef.current !== null) window.clearTimeout(departureInputScrollTimerRef.current);
+    if (completionTransitionTimerRef.current !== null) window.clearTimeout(completionTransitionTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -87,9 +92,27 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     const timer = window.setTimeout(() => setIsCalculationTakingLong(true), CALCULATION_REASSURANCE_DELAY);
     return () => window.clearTimeout(timer);
   }, [isCalculating]);
-  const renderReadyStatusHeader = (label: string, orbClassName = "") => <div className="result-header result-status-header">
+  useEffect(() => {
+    if (isCalculating) {
+      if (completionTransitionTimerRef.current !== null) window.clearTimeout(completionTransitionTimerRef.current);
+      completionTransitionTimerRef.current = null;
+      wasCalculatingRef.current = true;
+      setIsCompletionTransitioning(false);
+      setHasCompletedTransition(false);
+      return;
+    }
+    if (!result || !wasCalculatingRef.current) return;
+    wasCalculatingRef.current = false;
+    setIsCompletionTransitioning(true);
+    completionTransitionTimerRef.current = window.setTimeout(() => {
+      setIsCompletionTransitioning(false);
+      setHasCompletedTransition(true);
+      completionTransitionTimerRef.current = null;
+    }, 360);
+  }, [isCalculating, result]);
+  const renderReadyStatusHeader = (label: string, variant: "idle" | "calculating" = "idle") => <div className="result-header result-status-header">
     <span aria-hidden="true" />
-    <div className="result-eyebrow"><span className={`status-orb ${orbClassName}`} />{label}</div>
+    <div className="result-eyebrow"><span className={`route-summary-status-orbit is-${variant}`} aria-hidden="true"><i /></span>{label}</div>
     <a className="route-guide-link" href="/guide">1분 체험 가이드</a>
   </div>;
   if (isCalculating) {
@@ -99,7 +122,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
       : isCalculationTakingLong ? "최적의 동선을 열심히 찾고 있어요!" : "실시간 교통정보를 반영하는 중이에요.";
     return (
       <section className="route-summary-panel route-summary-empty route-summary-ready route-summary-calculating">
-        {renderReadyStatusHeader(isLocatingCurrentLocation ? "현재 위치 확인 중" : "계산 중", "calculating")}
+        {renderReadyStatusHeader(isLocatingCurrentLocation ? "위치 확인 중" : "계산 중", "calculating")}
         <div className="route-ready-card route-ready-calculating-card">
           <div className="route-ready-icon">{isLocatingCurrentLocation ? <LocateFixed aria-hidden="true" /> : <Route aria-hidden="true" />}</div>
           <div>
@@ -287,7 +310,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     <div className="result-header">
       <div className="result-header-leading">
         {onClearResult && <button type="button" className={`route-summary-clear${isClearResultPending ? " is-pending" : ""}`} aria-label="계산 결과 초기화" onClick={handleClearResult}><RotateCcw aria-hidden="true" /><span>초기화</span></button>}
-        <div className="result-eyebrow"><span className={`status-orb ${isRouteStale ? "stale" : "success"}`} />{isRouteStale ? "재계산 필요" : "최적화 완료"}</div>
+        <div className="result-eyebrow">{isRouteStale ? <span className="status-orb stale" /> : (isCompletionTransitioning || wasCalculatingRef.current) ? <span className="route-summary-status-transition is-settling" aria-hidden="true"><span className="route-summary-status-orbit is-calculating"><i /></span><span className="route-summary-complete-mark"><svg viewBox="0 0 20 20" fill="none"><polyline points="4 10 8 14 16 6" /></svg></span></span> : <span key={result.summary.calculatedAt} className={`route-summary-complete-mark${hasCompletedTransition ? " is-settled" : ""}`} aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><polyline points="4 10 8 14 16 6" /></svg></span>}{isRouteStale ? "재계산 필요" : "최적화 완료"}</div>
       </div>
       <span className="result-time">계산 {formatCalculationTime(result.summary.calculationDurationMilliseconds)}</span>
     </div>

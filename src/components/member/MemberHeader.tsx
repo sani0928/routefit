@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, UserRound } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, LogOut, UserRound } from "lucide-react";
 import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { notify } from "@/lib/notify";
@@ -51,6 +52,7 @@ export function MemberHeader({ authConfigured, onBeforeLogin, onSessionChange }:
         </summary>
         <div className="member-profile-menu">
           <p>{session.user.email}</p>
+          <Link href="/guide"><BookOpen size={14} /> 1분 체험 가이드</Link>
           <button type="button" onClick={handleSignOut}><LogOut size={14} /> 로그아웃</button>
         </div>
       </details>
