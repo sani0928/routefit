@@ -14,10 +14,29 @@ type Props = {
 
 const DEFAULT_CENTER = { latitude: 36.3504, longitude: 127.3845 };
 
+function createSharedPlacePopup(place: SharedRouteSnapshot["result"]["orderedPlaces"][number]) {
+  const container = document.createElement("div");
+  container.className = "nearby-place-popup map-place-popup";
+
+  const name = document.createElement("strong");
+  name.className = "map-place-popup-name";
+  name.textContent = isSharedCurrentLocation(place) ? "현재 위치" : place.name;
+
+  const address = document.createElement("p");
+  address.className = "map-place-popup-address";
+  address.textContent = place.address || (isSharedCurrentLocation(place)
+    ? "위치정보법에 따라 상세 주소 미표시"
+    : `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`);
+
+  container.append(name, address);
+  return container;
+}
+
 export function SharedRouteMap({ snapshot, highlightedSegmentIndex, focusedPlaceIndex, onSegmentSelect }: Props) {
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
   const overlaysRef = useRef<naver.maps.OverlayView[]>([]);
+  const popupRef = useRef<naver.maps.InfoWindow | null>(null);
   const selectRef = useRef(onSegmentSelect);
   const viewportRef = useRef({ snapshot, highlightedSegmentIndex, focusedPlaceIndex });
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
@@ -74,6 +93,16 @@ export function SharedRouteMap({ snapshot, highlightedSegmentIndex, focusedPlace
         zoomControl: false,
       });
       mapRef.current = map;
+      popupRef.current = new window.naver.maps.InfoWindow({
+        content: "",
+        maxWidth: 260,
+        backgroundColor: "transparent",
+        borderWidth: 0,
+        disableAnchor: true,
+        disableAutoPan: true,
+        pixelOffset: new window.naver.maps.Point(0, -12),
+        zIndex: 100,
+      });
       setMapReady(true);
       observer = new ResizeObserver(() => {
         if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
@@ -110,14 +139,27 @@ export function SharedRouteMap({ snapshot, highlightedSegmentIndex, focusedPlace
       if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
       overlaysRef.current.forEach((overlay) => overlay.setMap(null));
       overlaysRef.current = [];
+      popupRef.current?.close();
+      popupRef.current = null;
       mapRef.current = null;
       setMapReady(false);
     };
   }, [clientId]);
 
   useEffect(() => {
+    if (!mapReady) return;
+    const dismissPopupOnOutsidePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest(".nearby-place-popup")) return;
+      popupRef.current?.close();
+    };
+    document.addEventListener("pointerdown", dismissPopupOnOutsidePointerDown, true);
+    return () => document.removeEventListener("pointerdown", dismissPopupOnOutsidePointerDown, true);
+  }, [mapReady]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.naver) return;
+    popupRef.current?.close();
     overlaysRef.current.forEach((overlay) => overlay.setMap(null));
     overlaysRef.current = [];
 
@@ -142,6 +184,11 @@ export function SharedRouteMap({ snapshot, highlightedSegmentIndex, focusedPlace
           content: `<div class="map-marker optimized" style="--marker-color:${markerColor}">${markerNumber}</div>`,
           anchor: new window.naver.maps.Point(16, 16),
         },
+      });
+      window.naver.maps.Event.addListener(marker, "click", () => {
+        popupRef.current?.setContent(createSharedPlacePopup(place));
+        popupRef.current?.setPosition(position);
+        popupRef.current?.open(map, position);
       });
       overlaysRef.current.push(marker);
     });

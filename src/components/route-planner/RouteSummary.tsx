@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { ListOrdered, Lock, RotateCcw, Route, LocateFixed, ExternalLink, X } from "lucide-react";
+import { Clock, ListOrdered, Lock, RotateCcw, Route, LocateFixed, ExternalLink, X } from "lucide-react";
 import type { OptimizationResponse, TrafficCongestion } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
 import { routeColor } from "@/lib/route-colors";
@@ -226,8 +226,8 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
         {activeSegmentIndex > 0 && renderSegmentPreview(activeSegmentIndex - 1, "previous")}
         <article className="segment-focus-card" style={{ "--route-color": routeColor(activeSegmentIndex) } as CSSProperties}>
           <div className="segment-focus-heading"><span>{segmentLabel(activeSegmentIndex)} 구간</span><button type="button" aria-label="구간 강조 해제" onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onClick={() => onSegmentSelect(null)}><X aria-hidden="true" /></button></div>
-          <div className="segment-focus-places"><div><strong>{focusedFrom?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].departureTime).toISOString())}</small></div><i aria-hidden="true">→</i><div><strong>{focusedTo?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].arrivalTime).toISOString())}</small></div></div>
-          <div className="segment-focus-meta"><span>{formatDistance(focusedSegment.distanceMeters)}</span><span>{formatTime(focusedSegment.durationMilliseconds)}</span><em className={`traffic-status ${focusedTraffic.className}`}>{focusedTraffic.label}</em></div>
+          <div className="segment-focus-places"><div><strong>{focusedFrom?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].departureTime).toISOString())}</small></div><div className="segment-focus-connector"><i aria-hidden="true">→</i><span><Clock aria-hidden="true" /><b>{formatTime(focusedSegment.durationMilliseconds)}</b></span></div><div><strong>{focusedTo?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[activeSegmentIndex].arrivalTime).toISOString())}</small></div></div>
+          <div className="segment-focus-meta"><span>{formatDistance(focusedSegment.distanceMeters)}</span><em className={`traffic-status ${focusedTraffic.className}`}>{focusedTraffic.label}</em></div>
         </article>
         {activeSegmentIndex < result.segments.length - 1 && renderSegmentPreview(activeSegmentIndex + 1, "next")}
       </section>}
@@ -248,10 +248,8 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
        <div className="segment-panel-heading"><div><small>구간별 상세</small><strong>실시간 교통정보 기준</strong></div><span className="segment-panel-hint">각 구간 클릭 시 상세 정보 표시</span></div>
       <ol>{result.segments.map((segment, index) => {
         const isExpanded = activeSegmentIndex === index;
-        const from = placesById.get(segment.fromId);
-        const to = placesById.get(segment.toId);
         const traffic = segmentTrafficStatus(segment.trafficSections ?? []);
-        return <li key={`${segment.fromId}-${segment.toId}-${index}`} className={isExpanded ? "segment-expanded" : ""} style={{ "--route-color": routeColor(index) } as CSSProperties}><button type="button" className="segment-row" aria-label={`${segmentLabel(index)} 구간 ${isExpanded ? "접기" : "출발지와 도착지 보기"}`} aria-expanded={isExpanded} onMouseEnter={() => onSegmentHover(index)} onMouseLeave={() => onSegmentHover(null)} onFocus={() => onSegmentHover(index)} onBlur={() => onSegmentHover(null)} onClick={() => { const nextIndex = isExpanded ? null : index; setExpandedSegmentIndex(nextIndex); onSegmentSelect(nextIndex); }}><span className="segment-number">{segmentLabel(index)}</span><p>{formatDistance(segment.distanceMeters)}<small>{formatTime(segment.durationMilliseconds)}</small><em className={`traffic-status ${traffic.className}`}>{traffic.label}</em></p></button>{isExpanded && <div className="segment-place-details"><div className="segment-place-time"><strong>{from?.name ?? "출발 장소"}</strong><small>출발 {formatTrafficReferenceTime(new Date(segmentSchedules[index].departureTime).toISOString())}</small></div><div className="segment-place-time"><strong>{to?.name ?? "도착 장소"}</strong><small>도착 {formatTrafficReferenceTime(new Date(segmentSchedules[index].arrivalTime).toISOString())}</small></div></div>}</li>;
+        return <li key={`${segment.fromId}-${segment.toId}-${index}`} className={isExpanded ? "segment-expanded" : ""} style={{ "--route-color": routeColor(index) } as CSSProperties}><button type="button" className="segment-row" aria-label={`${segmentLabel(index)} 구간 ${isExpanded ? "접기" : "출발지와 도착지 보기"}`} aria-expanded={isExpanded} onMouseEnter={() => onSegmentHover(index)} onMouseLeave={() => onSegmentHover(null)} onFocus={() => onSegmentHover(index)} onBlur={() => onSegmentHover(null)} onClick={() => { const nextIndex = isExpanded ? null : index; setExpandedSegmentIndex(nextIndex); onSegmentSelect(nextIndex); }}><span className="segment-number">{segmentLabel(index)}</span><p><strong>{formatDistance(segment.distanceMeters)}</strong><small className="segment-duration"><Clock aria-hidden="true" /><b>{formatTime(segment.durationMilliseconds)}</b></small><em className={`traffic-status ${traffic.className}`}>{traffic.label}</em></p></button></li>;
       })}</ol>
     </section>}
   </section>;

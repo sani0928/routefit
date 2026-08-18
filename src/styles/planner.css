@@ -1340,8 +1340,9 @@
 .segment-details.route-tab-panel { margin-top:12px; }.segment-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 14px 10px; border-bottom:1px solid #edf1f6; }.segment-panel-heading small,.segment-panel-heading strong { display:block; }.segment-panel-heading small { color:#526174; font-size:.78rem; font-weight:850; }.segment-panel-heading strong { margin-top:3px; color:#94a3b8; font-size:.6rem; font-weight:700; }.segment-panel-heading b { flex:0 0 auto; color:#2563eb; font-size:.67rem; }.segment-panel-hint { flex:0 1 auto; color:#8a9ab0; font-size:.59rem; font-weight:700; line-height:1.35; text-align:right; }.segment-details.route-tab-panel > ol { padding-top:11px; }
 @media (max-width:700px) { .route-hero-times { margin-top:12px; }.route-result-tabs button { min-height:44px; font-size:.72rem; }.route-stop-row { min-height:48px; padding:9px 7px; }.segment-panel-heading { padding-top:12px; }.segment-details.route-tab-panel > ol { padding-bottom:12px; }}
 /* The selected segment keeps each endpoint and its time together. */
-.segment-focus-places { display:grid; grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr); align-items:center; gap:7px; margin-top:3px; }
-.segment-focus-places > div { min-width:0; }.segment-focus-places > div:last-child { text-align:right; }.segment-focus-places strong,.segment-focus-places small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.segment-focus-places strong { color:#27384f; font-size:.8rem; }.segment-focus-places small { margin-top:4px; color:#7890aa; font-size:.64rem; font-weight:750; }.segment-focus-places i { color:var(--route-color,#2563eb); font-style:normal; font-weight:900; text-align:center; }
+.segment-focus-places { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:7px; margin-top:3px; }
+.segment-focus-places > div { min-width:0; }.segment-focus-places > div:last-child { text-align:right; }.segment-focus-places strong,.segment-focus-places small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.segment-focus-places strong { color:#27384f; font-size:.8rem; }.segment-focus-places small { margin-top:4px; color:#7890aa; font-size:.64rem; font-weight:750; }
+.segment-focus-connector { display:grid; min-width:42px !important; place-items:center; gap:2px; color:var(--route-color,#2563eb); }.segment-focus-connector > i { font-style:normal; font-weight:900; line-height:1; }.segment-focus-connector > span { display:inline-flex; align-items:center; gap:3px; padding:2px 5px; border-radius:999px; color:var(--route-color,#2563eb); background:color-mix(in srgb,var(--route-color,#2563eb) 12%,#fff); font-size:.62rem; font-weight:800; line-height:1; white-space:nowrap; }.segment-focus-connector svg { width:11px; height:11px; stroke-width:2.5; }.segment-focus-connector b { font-weight:800; }
 @media (max-width:700px) { .segment-focus-places strong { font-size:.78rem; }.segment-focus-places small { font-size:.62rem; }}
 /* Make total duration and the trip's start/end time the primary result cues. */
 .route-summary-panel .route-hero > strong { font-size:clamp(2.18rem,3.1vw,2.62rem); letter-spacing:-.075em; }
@@ -2714,42 +2715,29 @@
 .segment-row {
   display: grid;
   width: 100%;
-  min-height: 44px;
-  grid-template-columns: 20px minmax(0, 1fr);
+  min-height: 48px;
+  grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
-  padding: 8px 10px;
-  border-left: 3px solid var(--route-color, #dce5f0);
-  border-radius: 9px;
+  padding: 8px 12px 8px 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 10px;
   color: #31445d;
-  background: transparent;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--route-color, #2563eb) 18%, #fff) 0%, color-mix(in srgb, var(--route-color, #2563eb) 7%, #fff) 45%, #fff 78%);
   text-align: left;
-  transition: background .18s ease, transform .18s ease;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .segment-row:hover,
-.segment-row[aria-expanded="true"] { background: color-mix(in srgb, var(--route-color, #2563eb) 8%, #fff); }
+.segment-row[aria-expanded="true"] { box-shadow: 0 6px 14px color-mix(in srgb, var(--route-color, #2563eb) 16%, transparent); }
+.segment-row[aria-expanded="true"] { color:#fff; background:var(--route-color, #2563eb); }
 .segment-row:active { transform: scale(.985); }
 .segment-row:focus-visible { outline: 2px solid var(--route-color, #2563eb); outline-offset: 2px; }
-.segment-row .segment-number { display: grid; width: 20px; height: 20px; place-items: center; border-radius: 5px; color: #fff; background: var(--route-color, #64748b); font-size: .62rem; font-weight: 800; line-height: 1; }
-.segment-row p { display: flex; min-width: 0; align-items: baseline; gap: 7px; margin: 0; color: #31445d; font-size: .76rem; font-weight: 850; }
-.segment-row p small { color: #8291a5; font-size: .66rem; font-weight: 700; }
+.segment-row .segment-number { display: grid; width: 34px; height: calc(100% + 16px); min-height: 48px; place-items: center; align-self:stretch; margin:-8px 0 -8px -8px; color: var(--route-color, #64748b); background: transparent; font-size: .82rem; font-weight: 900; line-height: 1; }
+.segment-row p { display: flex; min-width: 0; align-items: center; gap: 7px; margin: 0; color: #31445d; font-size: .76rem; font-weight: 850; }
+.segment-row p > strong { color:#31445d; font-size:.8rem; font-weight:900; white-space:nowrap; }.segment-row .segment-duration { display:inline-flex; align-items:center; gap:3px; padding:3px 5px; border-radius:999px; color:var(--route-color, #2563eb); background:color-mix(in srgb, var(--route-color, #2563eb) 13%, #fff); font-size:.66rem; font-weight:900; line-height:1; white-space:nowrap; }.segment-row .segment-duration svg { width:11px; height:11px; stroke-width:2.6; }.segment-row .segment-duration b { font-weight:900; }
+.segment-row[aria-expanded="true"] .segment-number,.segment-row[aria-expanded="true"] p > strong { color:#fff; }.segment-row[aria-expanded="true"] .segment-duration { color:#fff; background:rgb(255 255 255 / .2); }
 .segment-row .traffic-status { margin-left: auto; }
-.segment-details.route-tab-panel .segment-place-details { width: auto; margin: 0 10px 8px; padding: 8px 3px 0; }
-/* Expanded segment endpoints remain balanced without a text separator. */
-.segment-details.route-tab-panel .segment-place-details {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 12px;
-}
-.segment-details.route-tab-panel .segment-place-time { min-width: 0; }
-.segment-details.route-tab-panel .segment-place-time:last-child { text-align: right; }
-.segment-details.route-tab-panel .segment-place-time strong,
-.segment-details.route-tab-panel .segment-place-time small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 /* Calculation-ready state: keep the route result sheet concise before a route exists. */
 .route-summary-ready {
   gap: 0;

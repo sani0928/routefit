@@ -76,7 +76,7 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
               <button type="button" onClick={() => { setSelectedSegmentIndex(null); setFocusedPlaceIndex(index); }} aria-label={`${isSharedCurrentLocation(place) ? "현재 위치" : place.name} 중심으로 지도 보기`}>
               <span className="shared-route-stop-number" style={{ "--route-color": routeColor(index) } as React.CSSProperties}>{index + 1}</span>
               <div><strong>{isSharedCurrentLocation(place) ? "현재 위치" : place.name}</strong>{!isSharedCurrentLocation(place) && place.address && <small>{place.address}</small>}</div>
-              {Boolean(place.stayDurationMinutes) && <em className="shared-route-stop-stay">{place.stayDurationMinutes}분</em>}
+              {Boolean(place.stayDurationMinutes) && <em className="shared-route-stop-stay"><span>머무는 시간</span><b>{place.stayDurationMinutes}분</b></em>}
               </button>
             </li>)}
           </ol>
@@ -93,7 +93,7 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
                 <button type="button" aria-pressed={selected} onClick={() => { setFocusedPlaceIndex(null); setSelectedSegmentIndex(index); }}>
                   <span className="shared-route-segment-label">{String.fromCharCode(65 + index)}</span>
                   <span className="shared-route-segment-places"><strong>{from && isSharedCurrentLocation(from) ? "현재 위치" : from?.name ?? "출발 장소"}<i>→</i>{to && isSharedCurrentLocation(to) ? "현재 위치" : to?.name ?? "도착 장소"}</strong></span>
-                  <span className="shared-route-segment-metrics"><strong>{formatDistance(segment.distanceMeters)}</strong><small><span>{formatTime(segment.durationMilliseconds)}</span><em className={`traffic-status ${trafficTone(segment.trafficSections)}`}>{trafficLabel(segment.trafficSections)}</em></small></span>
+                  <span className="shared-route-segment-metrics"><strong>{formatDistance(segment.distanceMeters)}</strong><small><span className="shared-route-segment-duration"><Clock3 aria-hidden="true" /><b>{formatTime(segment.durationMilliseconds)}</b></span><em className={`traffic-status ${trafficTone(segment.trafficSections)}`}>{trafficLabel(segment.trafficSections)}</em></small></span>
                 </button>
               </li>;
             })}

@@ -39,7 +39,7 @@
 .shared-route-tab-panel { min-height:0; margin-top:14px; }
 .shared-route-stops.shared-route-tab-panel,.shared-route-segments.shared-route-tab-panel { margin-top:14px; }
 .shared-route-stops li > button > div { min-width:0; flex:1 1 auto; }
-.shared-route-stop-stay { flex:0 0 auto; margin:0 0 0 auto !important; padding-left:8px; color:#178864; font-size:.72rem; font-style:normal; font-weight:850; white-space:nowrap; }
+.shared-route-stops .shared-route-stop-stay { display:inline-flex; flex:0 0 auto; align-items:center; gap:4px; margin:0 0 0 auto !important; padding-left:8px; font-size:.72rem; font-style:normal; white-space:nowrap; }.shared-route-stop-stay span { color:#7a90ad; font-weight:700; }.shared-route-stop-stay b { color:#178864; font-weight:850; }
 .shared-route-segments li.is-selected { border-color:var(--route-color); box-shadow:0 8px 18px rgb(37 99 235 / .09); }
 .shared-route-segments li.is-selected button { background:color-mix(in srgb,var(--route-color) 5%,#fff); }
 .shared-route-segments .is-selected button > svg { transform:none; }
@@ -70,6 +70,7 @@
 .shared-route-segment-metrics { display:grid !important; min-width:72px; flex:0 0 auto; gap:2px; text-align:right; }
 .shared-route-segment-metrics strong { color:#16385f; font-size:.78rem; }
 .shared-route-segment-metrics small { display:flex; align-items:center; justify-content:flex-end; gap:4px; color:#7a90ad; font-size:.67rem; white-space:nowrap; }
+.shared-route-segment-duration { display:inline-flex; align-items:center; gap:3px; padding:2px 5px; border-radius:999px; color:var(--route-color); background:color-mix(in srgb,var(--route-color) 12%,#fff); font-size:.68rem; font-weight:900; line-height:1; }.shared-route-segment-duration svg { width:11px; height:11px; stroke-width:2.6; }.shared-route-segment-duration b { font-weight:900; }
 .shared-route-segment-metrics .traffic-status { min-height:17px; padding:0 5px; font-size:.58rem; }
 
 @media (max-width:520px) {
@@ -140,5 +141,3 @@ body:has(.shared-route-expired-page) { min-height:100dvh; height:auto; overflow-
   .shared-route-header-cta:focus-visible,
   .shared-route-final-cta a:focus-visible,
   .shared-route-expired-page a:focus-visible { animation:none; }}
-
-
