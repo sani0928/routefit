@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Briefcase, Heart, Map, Truck } from "lucide-react";
 import { guideUseCases } from "./guide-content";
 import { useGuidePointerDrag } from "./useGuideSwipe";
+
+const useCaseIcons = {
+  sales: Briefcase,
+  delivery: Truck,
+  travel: Map,
+  date: Heart,
+} as const;
 
 export function GuideUseCaseCarousel() {
   const [activeIndex, setActiveIndex] = useState(1);
@@ -60,9 +68,11 @@ export function GuideUseCaseCarousel() {
   return <div className="guide-use-case-carousel" role="region" aria-roledescription="carousel" aria-label="활용 사례">
     <div className="guide-use-case-viewport" ref={viewportRef} {...pointerDrag.handlers}>
       <div className={`guide-use-case-track${isDragging ? " is-dragging" : ""}`} style={{ transform: `translateX(${translate}px)` }}>
-        {guideUseCases.map((item, index) => <article className={`guide-use-case-card${activeIndex === index ? " is-active" : ""}`} key={item.id} aria-hidden={activeIndex !== index}><strong>{item.title}</strong><span>{item.description}</span></article>)}
+        {guideUseCases.map((item, index) => {
+          const Icon = useCaseIcons[item.id];
+          return <article className={`guide-use-case-card${activeIndex === index ? " is-active" : ""}`} key={item.id} aria-hidden={activeIndex !== index}><strong>{item.title}</strong><span>{item.description}</span><Icon className="guide-use-case-icon" aria-hidden="true" /></article>;
+        })}
       </div>
     </div>
   </div>;
 }
-

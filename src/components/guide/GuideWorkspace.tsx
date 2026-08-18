@@ -60,9 +60,8 @@ export function GuideWorkspace({
         <div className="guide-search" role="img" aria-label="장소, 주소 검색창 예시"><span className="guide-search-placeholder">장소, 주소 검색</span><span className="guide-search-submit"><Search /></span></div>
         <div className="guide-suggestions" aria-label="예시 장소 추가"><span>예시로 추가</span>{suggestedPlaces.filter((place) => !places.some((current) => current.id === place.id)).map((place) => <button type="button" key={place.id} onClick={() => onAddPlace(place)}><MapPin />{place.name}</button>)}</div>
         <ol className="guide-place-list">{places.map((place, index) => <li key={place.id} data-guide-place-id={place.id} className={`guide-place-item${index === 0 ? " is-start" : ""}`}><div className="guide-place-card"><b>{index + 1}</b><span><strong>{place.name}</strong><small>{index === 0 ? "출발 기준 위치" : "방문할 장소"}</small></span>{index > 0 && <button type="button" className="guide-place-delete" onClick={() => onRemovePlace(place.id)} aria-label={`${place.name} 삭제`}><Trash2 /></button>}</div></li>)}</ol>
-        {stage === "calculating" ? <div className="guide-calculating" aria-live="polite"><span /><strong>가장 효율적인 경로를 계산하고 있어요</strong></div> : <button className="guide-calculate" type="button" disabled={!canCalculate} onClick={onCalculate}><Route />{canCalculate ? "경로 최적화 계산" : "장소를 2곳 이상 추가해 보세요."}</button>}
+        {stage === "calculating" ? <div className="guide-calculating" aria-live="polite" aria-label="경로 최적화 계산 중"><span /></div> : <button className="guide-calculate" type="button" disabled={!canCalculate} onClick={onCalculate}><Route />{canCalculate ? "경로 최적화 계산" : "장소를 2곳 이상 추가해 보세요."}</button>}
       </div>}
     </div>
   </section>;
 }
-

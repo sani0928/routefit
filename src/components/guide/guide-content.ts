@@ -35,7 +35,7 @@ export const guideFaqItems: readonly GuideFaqItem[] = [
   { id: "route-selection-criteria", question: "경로 선택 기준이 뭐야?", answer: "방문 장소의 좌표를 기준으로 출발지에서 가까운 곳부터 이동할 수 있도록 순서를 만들고, 선택한 각 구간은 실제 도로 이동 정보를 조회해 거리와 예상 시간을 계산해요. 여러 장소를 방문할 때 이동 동선을 빠르게 정리할 수 있어요." },
   { id: "stay-time-and-lock", question: "머무는 시간? 자물쇠?", answer: "머무는 시간은 해당 장소에 머물 예상 시간으로, 전체 일정의 도착 예정 시간에 함께 반영돼요. 순서 보장은 원하는 장소를 해당 순서에 고정해 경로를 계산해도 그 순서가 바뀌지 않도록 해줘요." },
   { id: "mobile-use", question: "폰으로도 사용할 수 있어?", answer: "폰에서도 장소 추가, 방문 순서 확인, 경로 계산을 모두 사용할 수 있어요. 설치 안내가 보이면 홈 화면에 추가해 앱처럼 사용할 수도 있어요! iOS라면 Safari에서 공유 후 홈 화면에 추가를 사용해보세요." },
-  { id: "member-benefits", question: "회원 혜택이 뭐야?", answer: "회원은 자주 가는 장소를 장소 리스트로 저장해 다음 일정에 다시 활용할 수 있어요. 방문 장소도 사라지지 않고 유지되기 때문에 동선도 더 빠르게 준비할 수 있어요." },
+  { id: "member-benefits", question: "회원 혜택이 뭐야?", answer: "회원은 자주 가는 장소를 장소 리스트로 저장해 다음 일정에 다시 활용할 수 있어요. 방문 장소도 사라지지 않고 유지되기 때문에 동선을 더 빠르게 준비할 수 있어요." },
   { id: "contact", question: "더 궁금한 게 있어!", answer: "궁금한 점이나 문의 사항이 있으면", email: "kksan12@gmail.com", afterEmail: "으로 연락해주세요. 다양한 피드백은 항상 환영합니다!" },
 ] as const;
 

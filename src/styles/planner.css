@@ -2728,8 +2728,7 @@
   text-align: left;
   transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.segment-row:hover,
-.segment-row[aria-expanded="true"] { box-shadow: 0 6px 14px color-mix(in srgb, var(--route-color, #2563eb) 16%, transparent); }
+.segment-row:hover:not([aria-expanded="true"]) { box-shadow: inset 0 0 0 1px var(--route-color, #2563eb); }
 .segment-row[aria-expanded="true"] { color:#fff; background:var(--route-color, #2563eb); }
 .segment-row:active { transform: scale(.985); }
 .segment-row:focus-visible { outline: 2px solid var(--route-color, #2563eb); outline-offset: 2px; }

@@ -107,10 +107,10 @@ export function InteractiveGuide() {
 
   const moveToGuidePage = (index: number) => {
     const nextPage = Math.max(0, Math.min(index, guidePages.length - 1));
-    setMobilePage(nextPage);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const guidePage = document.querySelector<HTMLElement>(".guide-page");
     const targetSection = document.getElementById(guidePages[nextPage].id);
+    if (reduceMotion) setMobilePage(nextPage);
     if (guidePage && targetSection) guidePage.scrollTo({ top: targetSection.offsetTop, behavior: reduceMotion ? "auto" : "smooth" });
   };
 
@@ -134,4 +134,3 @@ export function InteractiveGuide() {
     <nav className="guide-mobile-pagination" aria-label="가이드 페이지 이동"><button type="button" onClick={() => moveToGuidePage(mobilePage - 1)} disabled={mobilePage === 0} aria-label="이전 가이드 페이지"><ChevronRight /></button><div>{guidePages.map((page, index) => <button type="button" key={page.id} className={mobilePage === index ? "active" : ""} aria-label={`${page.label} 페이지로 이동`} aria-current={mobilePage === index ? "page" : undefined} onClick={() => moveToGuidePage(index)}><span /></button>)}</div><button type="button" onClick={() => moveToGuidePage(mobilePage + 1)} disabled={mobilePage === guidePages.length - 1} aria-label="다음 가이드 페이지"><ChevronRight /></button></nav>
   </main>;
 }
-
