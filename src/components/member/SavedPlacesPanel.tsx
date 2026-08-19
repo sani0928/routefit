@@ -63,7 +63,6 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
   }, [activeList?.id]);
 
   function openCreate() {
-    onInputFocus?.();
     setName("");
     setColor(LIST_COLORS[0]);
     setEditorMode("create");
@@ -71,14 +70,9 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
 
   function openEdit() {
     if (!activeList) return;
-    onInputFocus?.();
     setName(activeList.name);
     setColor(activeList.color);
     setEditorMode("edit");
-  }
-
-  function prepareSheetForInputFocus() {
-    onInputFocus?.();
   }
 
   function submit(event: FormEvent) {
@@ -116,7 +110,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
       <form id="place-list-editor-form" className="list-editor-screen-form" onSubmit={submit}>
         <label className="list-editor-name-field">
           <span>리스트 이름</span>
-          <div><input autoFocus value={name} maxLength={40} onPointerDown={prepareSheetForInputFocus} onFocus={() => onInputFocus?.()} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
+          <div><input autoFocus value={name} maxLength={40} onFocus={() => onInputFocus?.()} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
         </label>
         <fieldset className="list-editor-colors">
           <legend>대표 색상</legend>
@@ -142,7 +136,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
         <button className="list-detail-edit-action" type="button" onClick={openEdit}>리스트 수정</button>
       </header>
       <div className="list-detail-context" aria-label={`${activeList.placeCount}곳 저장됨`}><span><b>{activeList.placeCount}</b>곳 저장됨</span><span>지도에 표시 중</span></div>
-      {!isPlacesLoading && places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onPointerDown={prepareSheetForInputFocus} onFocus={() => onInputFocus?.()} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
+      {!isPlacesLoading && places.length > 0 && <div className="saved-place-search"><Search size={15} aria-hidden="true" /><input value={placeQuery} onFocus={() => onInputFocus?.()} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="저장한 장소 검색" aria-label="저장한 장소 검색" />{placeQuery && <button type="button" onClick={() => setPlaceQuery("")} aria-label="저장한 장소 검색어 지우기"><X size={14} /></button>}</div>}
       {isPlacesLoading && <ContentLoading variant="saved-places" />}
       {!isPlacesLoading && pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => {
         const isOnRoute = isPlaceOnRoute(place);

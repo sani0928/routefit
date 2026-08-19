@@ -142,11 +142,6 @@ function SortablePlaceItem({
     latestStayDurationChangeRef.current(place.id, delta);
   }
 
-  function focusAfterSheetExpansion(event: ReactPointerEvent<HTMLInputElement>) {
-    event.stopPropagation();
-    onMobileInputFocus?.();
-  }
-
   function clearStayStepHold() {
     if (holdStartTimeoutRef.current !== null) {
       window.clearTimeout(holdStartTimeoutRef.current);
@@ -336,7 +331,6 @@ function SortablePlaceItem({
                 inputMode="numeric"
                 aria-label="머무는 시간(분)"
                 value={stayInput}
-                onPointerDown={focusAfterSheetExpansion}
                 onFocus={() => onMobileInputFocus?.()}
                 onChange={(event) => setStayInput(event.target.value)}
                 onBlur={commitStayDuration}
@@ -391,7 +385,7 @@ function SortablePlaceItem({
       {canSetStayDuration && (
         <div className="mobile-swipe-stay-tray" inert={mobileSwipe !== "stay"}>
           <button type="button" aria-label="머무는 시간 5분 줄이기" onPointerDown={(event) => startStayStepHold(event, -5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(-5); }}>−</button>
-          <input type="number" min="0" max="1440" step="1" inputMode="numeric" aria-label="머무는 시간(분)" value={stayInput} onPointerDown={focusAfterSheetExpansion} onFocus={() => onMobileInputFocus?.()} onChange={(event) => setStayInput(event.target.value)} onBlur={commitStayDuration} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
+          <input type="number" min="0" max="1440" step="1" inputMode="numeric" aria-label="머무는 시간(분)" value={stayInput} onFocus={() => onMobileInputFocus?.()} onChange={(event) => setStayInput(event.target.value)} onBlur={commitStayDuration} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
           <span aria-hidden="true">분</span>
           <button type="button" aria-label="머무는 시간 5분 늘리기" onPointerDown={(event) => startStayStepHold(event, 5)} onPointerUp={clearStayStepHold} onPointerCancel={clearStayStepHold} onClick={(event) => { if (event.detail !== 0) return; stopCardToggle(event); applyStayStep(5); }}>+</button>
         </div>

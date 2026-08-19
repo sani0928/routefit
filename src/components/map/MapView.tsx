@@ -570,18 +570,28 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     const isSearchResults = searchResults !== undefined;
     const markerPlaces = searchResults ?? listPlaces ?? places.filter((place) => !place.isCurrentLocation);
     const markerScope = isSearchResults ? "search" : listPlaces ? `list:${listPlaces.map((place) => place.id).join("|")}` : "route";
+    const isOptimized = !isSearchResults && !listPlaces && segments.length > 0;
+    const currentLocationPlace = !isSearchResults && !listPlaces
+      ? places.find((place) => place.isCurrentLocation)
+      : undefined;
+    const fitPlaces = currentLocationPlace && !markerPlaces.some((place) => (
+      Math.abs(place.latitude - currentLocationPlace.latitude) < 0.000001
+      && Math.abs(place.longitude - currentLocationPlace.longitude) < 0.000001
+    ))
+      ? [...markerPlaces, currentLocationPlace]
+      : markerPlaces;
     const visibleMarkerPopupKeys = new Set(markerPlaces.map((place) => markerPopupKey(markerScope, place)));
     if (popupMarkerKeyRef.current && !visibleMarkerPopupKeys.has(popupMarkerKeyRef.current)) {
       popupRef.current?.close();
       popupOpenRef.current = false;
       popupMarkerKeyRef.current = null;
     }
-    const first = markerPlaces[0] ?? { latitude: CENTER.latitude, longitude: CENTER.longitude };
+    const first = fitPlaces[0] ?? { latitude: CENTER.latitude, longitude: CENTER.longitude };
     const initial = new window.naver.maps.LatLng(first.latitude, first.longitude);
     const bounds = new window.naver.maps.LatLngBounds(initial, initial);
-    const isOptimized = !isSearchResults && !listPlaces && segments.length > 0;
+    fitPlaces.forEach((place) => bounds.extend(new window.naver.maps.LatLng(place.latitude, place.longitude)));
     markerPlaces.forEach((place, index) => {
-      const position = new window.naver.maps.LatLng(place.latitude, place.longitude); bounds.extend(position);
+      const position = new window.naver.maps.LatLng(place.latitude, place.longitude);
       const visitOrder = isSearchResults || listPlaces || !("id" in place)
         ? index + 1
         : places.findIndex((candidate) => candidate.id === place.id) + 1;
@@ -657,17 +667,19 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       window.naver.maps.Event.addListener(polyline, "click", selectSegment);
       overlays.current.push(hitArea, polyline);
     });
-    const placesKey = markerPlaces.map((place) => `${"id" in place ? place.id : place.providerId ?? place.name}:${place.latitude}:${place.longitude}`).join("|");
-    if (!listPlaces && !isSearchResults && markerPlaces.length > 1 && fittedPlacesKeyRef.current !== placesKey) {
+    const placesKey = fitPlaces.map((place) => `${"id" in place ? place.id : place.providerId ?? place.name}:${place.latitude}:${place.longitude}`).join("|");
+    const fitKey = `${isOptimized ? "route-result" : "planner"}:${placesKey}`;
+    if (!listPlaces && !isSearchResults && fitPlaces.length > 1 && fittedPlacesKeyRef.current !== fitKey) {
       const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
-      const mobileInsets = getMobileMapInsets(nodeRef.current);
+      const mobileInsets = isOptimized
+        ? getMobilePeekMapInsets(nodeRef.current)
+        : getMobileMapInsets(nodeRef.current);
       map.fitBounds(bounds, isMobileMap
         ? { top: mobileInsets.top, right: mobileInsets.right, bottom: mobileInsets.bottom, left: mobileInsets.left }
         : { top: 48, right: 48, bottom: 48, left: 48 });
-      if (isMobileMap) map.setZoom(map.getZoom() + 1, false);
-      fittedPlacesKeyRef.current = placesKey;
+      fittedPlacesKeyRef.current = fitKey;
     }
-  }, [places, segments, highlightedSegmentIndex, listPlaces, searchResults]);
+  }, [places, segments, highlightedSegmentIndex, listPlaces, searchResults, mapInitialized]);
 
   useEffect(() => {
     const map = mapRef.current;

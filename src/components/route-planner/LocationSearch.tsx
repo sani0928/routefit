@@ -19,14 +19,13 @@ type Props = {
   isSaveDialogOpen?: boolean;
   onSearchSubmit: (query: string) => void;
   onSearchFocus?: () => void;
-  onSearchPointerDown?: () => void;
   onSavedPlacesOpen?: () => void;
   onSearchClear?: () => void;
   showClearAction?: boolean;
   mobileAction?: ReactNode;
 };
 
-export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProviderId, isSaveDialogOpen = false, onSearchSubmit, onSearchFocus, onSearchPointerDown, onSavedPlacesOpen, onSearchClear, showClearAction = false, mobileAction }: Props) {
+export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProviderId, isSaveDialogOpen = false, onSearchSubmit, onSearchFocus, onSavedPlacesOpen, onSearchClear, showClearAction = false, mobileAction }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,15 +123,11 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
     onSearchSubmit(term);
   }
 
-  function prepareSheetForInputFocus() {
-    onSearchPointerDown?.();
-  }
-
   return <form ref={searchRootRef} onSubmit={submit} className={`search-form naver-search-form${isExpanded || query ? " search-expanded" : ""}`}>
     <label className="sr-only" htmlFor="search">장소 또는 주소 검색</label>
     <div className="search-control">
       <div className={`search-input-row ${feedback !== "idle" ? `search-feedback ${feedback}` : ""}`}>
-        <input id="search" value={query} onPointerDown={prepareSheetForInputFocus} onFocus={() => { setExpanded(true); onSearchFocus?.(); }} onBlur={() => { if (!query.trim()) clearSearch(); }} onChange={(event) => { setQuery(event.target.value); setExpanded(true); }} placeholder="장소, 주소 검색" autoComplete="off" aria-expanded={isExpanded && results.length > 0} aria-controls="place-search-results" />
+        <input id="search" value={query} onFocus={() => { setExpanded(true); onSearchFocus?.(); }} onBlur={() => { if (!query.trim()) clearSearch(); }} onChange={(event) => { setQuery(event.target.value); setExpanded(true); }} placeholder="장소, 주소 검색" autoComplete="off" aria-expanded={isExpanded && results.length > 0} aria-controls="place-search-results" />
         {(query || showClearAction) && <button className="search-clear" type="button" aria-label="검색 결과 닫기" onClick={clearSearch}><X size={16} /></button>}
         <button className="search-submit" type="submit" aria-label="전체 검색 결과 보기" disabled={query.trim().length < 2 || loading}><Search size={18} /></button>
       </div>
