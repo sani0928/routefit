@@ -861,16 +861,6 @@
     --mobile-sheet-visible-handle: 44px;
   }
 
-  /* iOS moves fixed sheets above its software keyboard. Keep a peek sheet
-     within the remaining visual viewport so its search field cannot be
-     pushed above the screen before any focus correction is needed. */
-  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-peek .planner-panel.mobile-sheet-panel,
-  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-peek .result-panel.mobile-sheet-panel,
-  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-peek .map-list-manager {
-    height: max(var(--mobile-sheet-visible-handle), min(var(--mobile-sheet-peek), calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height))));
-  }
-
-
   .mobile-sheet-chrome {
     height: var(--mobile-sheet-visible-handle);
     flex-basis: var(--mobile-sheet-visible-handle);

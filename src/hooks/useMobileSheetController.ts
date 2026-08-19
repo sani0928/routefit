@@ -30,6 +30,12 @@ const DRAG_COMMIT_DISTANCE = 42;
 const HANDLE_TAP_DISTANCE = 18;
 const KEYBOARD_OPEN_THRESHOLD = 120;
 
+function isIosTouchDevice() {
+  const userAgent = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 function getIosStandaloneScreenHeight() {
   const iosNavigator = navigator as Navigator & { standalone?: boolean };
   if (iosNavigator.standalone !== true) return 0;
@@ -89,6 +95,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const dragPreviewClearFrameRef = useRef<number | null>(null);
   const stableViewportRef = useRef({ width: 0, height: 0 });
   const pendingSearchFocusRef = useRef(false);
+  const pendingNativeInputFocusRef = useRef<HTMLElement | null>(null);
   const searchFocusCheckTimerRef = useRef<number | null>(null);
   const searchFocusScrollTimerRef = useRef<number | null>(null);
 
@@ -162,6 +169,56 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   }, [keepFocusedInputVisible]);
 
   useEffect(() => () => clearSearchFocusCheck(), [clearSearchFocusCheck]);
+
+  useEffect(() => {
+    if (mobileSheetState !== "expanded") return;
+
+    const target = pendingNativeInputFocusRef.current;
+    if (!target) return;
+
+    const focusTarget = () => {
+      if (pendingNativeInputFocusRef.current !== target) return;
+      pendingNativeInputFocusRef.current = null;
+      if (!target.isConnected) return;
+      target.focus({ preventScroll: true });
+    };
+    const sheet = target.closest<HTMLElement>(".planner-panel.mobile-sheet-panel, .result-panel.mobile-sheet-panel, .map-list-manager");
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target === sheet && event.propertyName === "height") focusTarget();
+    };
+
+    sheet?.addEventListener("transitionend", onTransitionEnd);
+    const fallbackDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 300;
+    const fallbackTimer = window.setTimeout(focusTarget, fallbackDelay);
+
+    return () => {
+      sheet?.removeEventListener("transitionend", onTransitionEnd);
+      window.clearTimeout(fallbackTimer);
+    };
+  }, [mobileSheetState]);
+
+  useEffect(() => {
+    const deferPeekInputFocus = (event: TouchEvent) => {
+      if (!isMobileViewport() || !isIosTouchDevice() || mobileSheetState !== "peek") return;
+
+      const target = event.target;
+      if (!isTextInputTarget(target) || !(target instanceof HTMLElement)) return;
+      const input = target.closest<HTMLElement>("input:not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable=true]");
+      const sheet = input?.closest(".planner-panel.mobile-sheet-panel, .result-panel.mobile-sheet-panel, .map-list-manager");
+      if (!input || !sheet) return;
+
+      // Do not let iOS focus the field while it is still moving the peek sheet.
+      // Consuming this touch also prevents its synthetic click from landing on a
+      // button exposed underneath the panel during the height transition.
+      event.preventDefault();
+      event.stopPropagation();
+      pendingNativeInputFocusRef.current = input;
+      setMobileSheetState("expanded");
+    };
+
+    document.addEventListener("touchstart", deferPeekInputFocus, { capture: true, passive: false });
+    return () => document.removeEventListener("touchstart", deferPeekInputFocus, { capture: true });
+  }, [mobileSheetState]);
 
   const cancelDeferredPreviewClear = useCallback(() => {
     if (dragPreviewClearFrameRef.current !== null) {

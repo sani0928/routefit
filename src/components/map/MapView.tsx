@@ -15,6 +15,9 @@ interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: bool
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 const MOBILE_SHEET_SETTLE_DURATION_MS = 380;
+// `.map-marker` is 24px including its white border. Keep the whole visual marker
+// inside fitted bounds instead of fitting only its geographic center point.
+const MAP_MARKER_FIT_OUTSET = 16;
 const markerPopupKey = (scope: string, place: MarkerPopupPlace) => `${scope}:${place.id ?? place.providerId ?? place.name}:${place.latitude}:${place.longitude}`;
 
 function getMobileMapInsets(mapNode: HTMLElement | null, preferredSheetId?: string) {
@@ -55,10 +58,10 @@ function getMobilePeekMapInsets(mapNode: HTMLElement | null) {
   const coveredHeight = Math.min(mapRect.height, Math.round(peek + navigationHeight));
 
   return {
-    top: 34,
-    right: 30,
-    bottom: Math.max(32, coveredHeight + 28),
-    left: 30,
+    top: 34 + MAP_MARKER_FIT_OUTSET,
+    right: 30 + MAP_MARKER_FIT_OUTSET,
+    bottom: Math.max(32, coveredHeight + 28) + MAP_MARKER_FIT_OUTSET,
+    left: 30 + MAP_MARKER_FIT_OUTSET,
     coveredHeight,
   };
 }
@@ -586,10 +589,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       popupOpenRef.current = false;
       popupMarkerKeyRef.current = null;
     }
-    const first = fitPlaces[0] ?? { latitude: CENTER.latitude, longitude: CENTER.longitude };
-    const initial = new window.naver.maps.LatLng(first.latitude, first.longitude);
-    const bounds = new window.naver.maps.LatLngBounds(initial, initial);
-    fitPlaces.forEach((place) => bounds.extend(new window.naver.maps.LatLng(place.latitude, place.longitude)));
     markerPlaces.forEach((place, index) => {
       const position = new window.naver.maps.LatLng(place.latitude, place.longitude);
       const visitOrder = isSearchResults || listPlaces || !("id" in place)
@@ -610,7 +609,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       const markerContent = isOverviewListMarker
         ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.1 7-12a7 7 0 1 0-14 0c0 6.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>'
         : label;
-      const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}${isOverviewListMarker ? " list-place" : ""}"${markerStyle}>${markerContent}</div>`, anchor: new window.naver.maps.Point(15, 15) } });
+      const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}${isOverviewListMarker ? " list-place" : ""}"${markerStyle}>${markerContent}</div>`, anchor: new window.naver.maps.Point(12, 12) } });
       window.naver.maps.Event.addListener(marker, "click", () => {
         requestIdRef.current += 1;
         const popupPlace = { name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude };
@@ -670,14 +669,34 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     const placesKey = fitPlaces.map((place) => `${"id" in place ? place.id : place.providerId ?? place.name}:${place.latitude}:${place.longitude}`).join("|");
     const fitKey = `${isOptimized ? "route-result" : "planner"}:${placesKey}`;
     if (!listPlaces && !isSearchResults && fitPlaces.length > 1 && fittedPlacesKeyRef.current !== fitKey) {
-      const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
-      const mobileInsets = isOptimized
-        ? getMobilePeekMapInsets(nodeRef.current)
-        : getMobileMapInsets(nodeRef.current);
-      map.fitBounds(bounds, isMobileMap
-        ? { top: mobileInsets.top, right: mobileInsets.right, bottom: mobileInsets.bottom, left: mobileInsets.left }
-        : { top: 48, right: 48, bottom: 48, left: 48 });
-      fittedPlacesKeyRef.current = fitKey;
+      const fitRouteBounds = () => {
+        const isMobileMap = window.matchMedia("(max-width: 700px)").matches;
+        const mobileInsets = isOptimized
+          ? getMobilePeekMapInsets(nodeRef.current)
+          : getMobileMapInsets(nodeRef.current);
+        const target = getPathFocusTarget(
+          map,
+          fitPlaces.map((place) => [place.longitude, place.latitude]),
+          isMobileMap
+            ? getFocusMargin(mobileInsets)
+            : { top: 48 + MAP_MARKER_FIT_OUTSET, right: 48 + MAP_MARKER_FIT_OUTSET, bottom: 48 + MAP_MARKER_FIT_OUTSET, left: 48 + MAP_MARKER_FIT_OUTSET },
+        );
+        const transition = { duration: 420, easing: "easeOutCubic" } as naver.maps.TransitionOptions;
+        if (map.getZoom() === target.zoom) map.panTo(target.center, transition);
+        else map.morph(target.center, target.zoom, transition);
+        fittedPlacesKeyRef.current = fitKey;
+      };
+
+      if (!window.matchMedia("(max-width: 700px)").matches) {
+        const frame = window.requestAnimationFrame(fitRouteBounds);
+        return () => window.cancelAnimationFrame(frame);
+      }
+
+      // The results panel is moving to peek at the same time as the route is
+      // rendered. Measure after it settles, just as the working list viewport
+      // fitting path does, so the lower markers are centered above the sheet.
+      const settleTimer = window.setTimeout(fitRouteBounds, MOBILE_SHEET_SETTLE_DURATION_MS);
+      return () => window.clearTimeout(settleTimer);
     }
   }, [places, segments, highlightedSegmentIndex, listPlaces, searchResults, mapInitialized]);
 
