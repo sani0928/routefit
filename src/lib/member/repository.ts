@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { memberWorkspaces, placeLists, routePlanPlaces, routePlans, savedPlaces } from "@/lib/db/schema";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
@@ -43,6 +43,52 @@ export async function getSavedPlaces(userId: string, listId: string): Promise<Sa
   if (!owned[0]) return null;
   const rows = await db.select().from(savedPlaces).where(eq(savedPlaces.placeListId, listId)).orderBy(desc(savedPlaces.updatedAt));
   return rows.map((row) => ({ id: row.id, placeListId: row.placeListId, name: row.name, address: row.address ?? undefined, latitude: asNumber(row.latitude), longitude: asNumber(row.longitude), providerId: row.providerId, createdAt: row.createdAt.toISOString() }));
+}
+
+export async function getPlaceListMatches(userId: string, providerIds: string[]): Promise<Record<string, string[]>> {
+  const uniqueProviderIds = [...new Set(providerIds)];
+  if (uniqueProviderIds.length === 0) return {};
+
+  const rows = await db.select({ providerId: savedPlaces.providerId, listId: placeLists.id })
+    .from(savedPlaces)
+    .innerJoin(placeLists, eq(savedPlaces.placeListId, placeLists.id))
+    .where(and(eq(placeLists.userId, userId), inArray(savedPlaces.providerId, uniqueProviderIds)));
+
+  return rows.reduce<Record<string, string[]>>((matches, row) => {
+    (matches[row.providerId] ??= []).push(row.listId);
+    return matches;
+  }, {});
+}
+
+type PlaceListMatchTarget = Pick<Place, "id" | "name" | "latitude" | "longitude" | "providerId">;
+
+export async function getPlaceListMatchesForRoutePlaces(userId: string, targets: PlaceListMatchTarget[]) {
+  const providerIds = [...new Set(targets.flatMap((place) => place.providerId ? [place.providerId] : []))];
+  const legacyTargets = targets.filter((place) => !place.providerId);
+  const matchConditions = [
+    providerIds.length > 0 ? inArray(savedPlaces.providerId, providerIds) : undefined,
+    ...legacyTargets.map((place) => and(
+      eq(savedPlaces.name, place.name),
+      eq(savedPlaces.latitude, String(place.latitude)),
+      eq(savedPlaces.longitude, String(place.longitude)),
+    )),
+  ].filter((condition): condition is NonNullable<typeof condition> => Boolean(condition));
+  if (matchConditions.length === 0) return {};
+
+  const rows = await db.select({ providerId: savedPlaces.providerId, name: savedPlaces.name, latitude: savedPlaces.latitude, longitude: savedPlaces.longitude, listId: placeLists.id })
+    .from(savedPlaces)
+    .innerJoin(placeLists, eq(savedPlaces.placeListId, placeLists.id))
+    .where(and(eq(placeLists.userId, userId), or(...matchConditions)));
+
+  const matches = new Map<string, { providerId: string; listIds: string[] }>();
+  for (const target of targets) {
+    const matchedRows = rows.filter((row) => target.providerId
+      ? row.providerId === target.providerId
+      : row.name === target.name && row.latitude === String(target.latitude) && row.longitude === String(target.longitude));
+    if (!matchedRows.length) continue;
+    matches.set(target.id, { providerId: matchedRows[0]!.providerId, listIds: [...new Set(matchedRows.map((row) => row.listId))] });
+  }
+  return Object.fromEntries(matches);
 }
 
 export async function createRoutePlan(userId: string, name: string, copyFrom?: MemberRoutePlan): Promise<MemberRoutePlan> {

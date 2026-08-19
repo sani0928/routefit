@@ -9,6 +9,8 @@ const placeSchema = z.object({
   address: z.string().max(500).optional(),
   latitude: z.number().finite(),
   longitude: z.number().finite(),
+  providerId: z.string().min(1).max(200).optional(),
+  savedListIds: z.array(z.string().min(1).max(120)).max(50).optional(),
   type: z.enum(["START", "WAYPOINT", "DESTINATION"]),
   stayDurationMinutes: z.number().int().min(0).max(1440).optional(),
   isCurrentLocation: z.boolean().optional(),

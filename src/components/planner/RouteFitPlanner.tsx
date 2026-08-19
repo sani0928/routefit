@@ -14,7 +14,7 @@ import type { MemberPlaceList, MemberState, SavedPlace } from "@/features/member
 import type { FixedVisitOrder, OptimizationResponse, Place } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
 import { useMobileSheetController } from "@/hooks/useMobileSheetController";
-import { usePlaceLists } from "@/hooks/usePlaceLists";
+import { usePlaceLists, type SavePlaceInput } from "@/hooks/usePlaceLists";
 import { usePlaceSearch, type SearchResultSort } from "@/hooks/usePlaceSearch";
 import { useRoutePlanner, type RouteResultSnapshot } from "@/hooks/useRoutePlanner";
 import { useRouteSharing } from "@/hooks/useRouteSharing";
@@ -130,6 +130,7 @@ export function RouteFitPlanner() {
   const { searchQuery, setSearchQuery, searchMapResults, setSearchMapResults, searchResultSort, setSearchResultSort, searchCurrentLocation, setSearchCurrentLocation, searchCurrentLocationLocating, setSearchCurrentLocationLocating, mapCenter, setMapCenter, searchMapCenter, setSearchMapCenter, searchMapCenterRequest, setSearchMapCenterRequest, hasVisibleSearchResult, setHasVisibleSearchResult, isSearchResultsLoading, setSearchResultsLoading, isSearchViewportSettling, setSearchViewportSettling, searchResultsFocusRequest, setSearchResultsFocusRequest, focusedSearchResult, setFocusedSearchResult, focusedSearchResultRequest, setFocusedSearchResultRequest, searchCurrentLocationRequestRef } = usePlaceSearch();
   const [currentLocationLocating, setCurrentLocationLocating] = useState(false);
   const [currentLocationRequestId, setCurrentLocationRequestId] = useState(0);
+  const [savedListIdsByProviderId, setSavedListIdsByProviderId] = useState<Record<string, string[]>>({});
   const workspaceRestoredRef = useRef(false);
   const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
   const routeInputVersionRef = useRef(0);
@@ -141,6 +142,7 @@ export function RouteFitPlanner() {
     setMobileSheetState,
     selectMobileTab,
     prepareSearchFocus,
+    prepareSheetInputFocus,
     stepMobileSheet,
     sheetGestureHandlers,
     handlePointerHandlers,
@@ -164,9 +166,9 @@ export function RouteFitPlanner() {
   const resultFixedVisitOrders = resultSnapshot?.fixedVisitOrders ?? fixedVisitOrders;
   const savedListIdsForSaveTarget = useMemo(() => {
     if (!saveTarget) return [];
+    if (saveTarget.savedListIds) return saveTarget.savedListIds;
     return member.placeLists.filter((list) => (savedPlacesByListId[list.id] ?? []).some((place) => place.providerId === saveTarget.providerId)).map((list) => list.id);
   }, [member.placeLists, saveTarget, savedPlacesByListId]);
-
   const triggerMobileNavigationHaptic = useCallback(() => {
     navigator.vibrate?.(65);
   }, []);
@@ -247,6 +249,54 @@ export function RouteFitPlanner() {
     const timer = window.setTimeout(() => { void persistWorkspace(workspace); }, 700);
     return () => window.clearTimeout(timer);
   }, [memberStateReady, member.authenticated, workspaceRestored, returnToStart, places, fixedVisitOrders, persistWorkspace]);
+  useEffect(() => {
+    if (!memberStateReady || !member.authenticated || !workspaceRestored) return;
+    const matchPlaces = places.filter((place) => !place.isCurrentLocation).map(({ id, providerId, name, latitude, longitude }) => ({ id, providerId, name, latitude, longitude }));
+    if (matchPlaces.length === 0) {
+      setSavedListIdsByProviderId({});
+      return;
+    }
+
+    const controller = new AbortController();
+    void fetch("/api/place-lists/matches", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ places: matchPlaces }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("place-list-match-failed");
+        return (await response.json() as { matches?: Record<string, { providerId: string; listIds: string[] }> }).matches ?? {};
+      })
+      .then((matches) => {
+        if (controller.signal.aborted) return;
+        const nextMatchesByProviderId = Object.values(matches).reduce<Record<string, string[]>>((current, match) => {
+          current[match.providerId] = [...new Set([...(current[match.providerId] ?? []), ...match.listIds])];
+          return current;
+        }, {});
+        setSavedListIdsByProviderId(nextMatchesByProviderId);
+        setPlaces((current) => {
+          let changed = false;
+          const next = current.map((place) => {
+            const match = matches[place.id];
+            if (!match) {
+              if (!place.providerId || (place.savedListIds?.length ?? 0) === 0) return place;
+              changed = true;
+              return { ...place, savedListIds: [] };
+            }
+            const savedListIds = match.listIds;
+            if (place.providerId === match.providerId && JSON.stringify(place.savedListIds ?? []) === JSON.stringify(savedListIds)) return place;
+            changed = true;
+            return { ...place, providerId: match.providerId, savedListIds };
+          });
+          return changed ? next : current;
+        });
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+    return () => controller.abort();
+  }, [memberStateReady, member.authenticated, workspaceRestored, places]);
   useEffect(() => {
     if (!memberStateReady || !member.authenticated || !workspaceRestored) return;
     const workspace = { returnToStart, places, fixedVisitOrders };
@@ -635,6 +685,21 @@ export function RouteFitPlanner() {
     setMember((current) => ({ ...current, placeLists: current.placeLists.map((list) => list.id === listId ? { ...list, placeCount: Math.max(0, list.placeCount + delta), updatedAt: new Date().toISOString() } : list) }));
   }
 
+  function updateVisitPlaceListMembership(providerId: string, listId: string, included: boolean) {
+    const existingIds = savedListIdsByProviderId[providerId]
+      ?? places.find((place) => place.providerId === providerId)?.savedListIds
+      ?? [];
+    const nextIds = included
+      ? [...new Set([...existingIds, listId])]
+      : existingIds.filter((id) => id !== listId);
+    setSavedListIdsByProviderId((current) => ({ ...current, [providerId]: nextIds }));
+    setPlaces((current) => current.map((place) => place.providerId === providerId ? { ...place, savedListIds: nextIds } : place));
+  }
+
+  function openSavePlaceDialog(place: SavePlaceInput) {
+    setSaveTarget({ ...place, savedListIds: savedListIdsByProviderId[place.providerId] ?? place.savedListIds });
+  }
+
   async function createList(name: string, color: string) {
     const optimisticId = `optimistic-${newId()}`;
     const now = new Date().toISOString();
@@ -673,7 +738,10 @@ export function RouteFitPlanner() {
       setMember((current) => ({ ...current, placeLists: [...current.placeLists, previous] }));
       if (previousPlaces) setSavedPlacesByListId((current) => ({ ...current, [id]: previousPlaces }));
       notify.error("장소 리스트를 삭제하지 못했습니다.");
+      return;
     }
+    setSavedListIdsByProviderId((current) => Object.fromEntries(Object.entries(current).map(([providerId, listIds]) => [providerId, listIds.filter((listId) => listId !== id)])));
+    setPlaces((current) => current.map((place) => place.savedListIds?.includes(id) ? { ...place, savedListIds: place.savedListIds.filter((listId) => listId !== id) } : place));
   }
 
   async function deleteSavedPlace(id: string) {
@@ -688,7 +756,9 @@ export function RouteFitPlanner() {
       updateCachedPlaces(listId, (current) => [...current, removed]);
       updateListCount(listId, 1);
       notify.error("저장한 장소를 삭제하지 못했습니다.");
+      return;
     }
+    updateVisitPlaceListMembership(removed.providerId, listId, false);
   }
 
   async function savePlace(selectedListIds: string[], initiallySelectedListIds: string[]) {
@@ -747,12 +817,23 @@ export function RouteFitPlanner() {
     const duplicateCount = outcomes.filter((outcome) => outcome === "duplicate").length;
     const failure = outcomes.find((outcome) => outcome !== "created" && outcome !== "removed" && outcome !== "duplicate");
     const completedActions = [createdCount > 0 && `${createdCount}개 장소 리스트에 저장`, removedCount > 0 && `${removedCount}개 장소 리스트에서 제거`].filter(Boolean).join("하고 ");
+    const confirmedCreatedListIds = listIdsToCreate.filter((_, index) => createOutcomes[index] === "created" || createOutcomes[index] === "duplicate");
+    const confirmedRemovedListIds = listIdsToRemove.filter((_, index) => removeOutcomes[index] === "removed");
+    if (confirmedCreatedListIds.length > 0 || confirmedRemovedListIds.length > 0) {
+      const existingIds = savedListIdsByProviderId[target.providerId] ?? target.savedListIds ?? initiallySelectedListIds;
+      const nextIds = new Set(existingIds);
+      confirmedCreatedListIds.forEach((listId) => nextIds.add(listId));
+      confirmedRemovedListIds.forEach((listId) => nextIds.delete(listId));
+      const nextSavedListIds = member.placeLists.filter((list) => nextIds.has(list.id)).map((list) => list.id);
+      setSavedListIdsByProviderId((current) => ({ ...current, [target.providerId]: nextSavedListIds }));
+      setPlaces((current) => current.map((place) => place.providerId === target.providerId ? { ...place, savedListIds: nextSavedListIds } : place));
+    }
     if (failure) return notify.error(completedActions ? `${completedActions}했지만 일부는 반영하지 못했습니다.` : failure);
     if (completedActions) return notify.success(`${completedActions}했습니다.`);
     if (duplicateCount > 0) notify.info("선택한 장소 리스트에 이미 저장되어 있습니다.");
   }
   function addSavedPlaceToRoute(place: SavedPlace): AddPlaceResult {
-    const addResult = addPlace(place);
+    const addResult = addPlace({ ...place, savedListIds: [place.placeListId] });
     if (addResult.added) notify.success("\uBC29\uBB38 \uC7A5\uC18C\uC5D0 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
     return addResult;
   }
@@ -1015,9 +1096,9 @@ export function RouteFitPlanner() {
             </div>
           )
         ) : <>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? setSaveTarget : undefined} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
-        {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addSearchResultToRoute} onRemove={removeSearchResultFromRoute} onSave={member.authenticated ? setSaveTarget : undefined} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
-        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? setSaveTarget : undefined} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSearchFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} isSaveDialogOpen={Boolean(saveTarget)} onSearchSubmit={openSearchResults} onSearchPointerDown={prepareSearchFocus} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
+        {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addSearchResultToRoute} onRemove={removeSearchResultFromRoute} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
+        <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSheetInputFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
           <div className="planner-footer">
             <div className="route-primary-group">
               <div className="route-calculate-control optimize-action">

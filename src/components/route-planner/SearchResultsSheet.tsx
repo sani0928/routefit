@@ -1,8 +1,9 @@
 "use client";
 
-import { ListPlus, LoaderCircle, MapPin, MapPinPlus, MapPinX, Search, SlidersHorizontal } from "lucide-react";
+import { List, ListPlus, LoaderCircle, MapPin, MapPinPlus, MapPinX, Search, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PlaceSearchResponse, PlaceSearchResult } from "@/features/place-search/types";
+import type { MemberPlaceList } from "@/features/member/types";
 import { PlaceCategoryIcon } from "./PlaceCategoryIcon";
 import { formatSearchDistance } from "./place-search-format";
 
@@ -10,7 +11,6 @@ type Coordinates = { latitude: number; longitude: number };
 type SearchSort = "accuracy" | "current-distance" | "map-center-distance";
 type AddPlaceResult = { added: boolean; message?: string };
 type SaveableSearchResult = PlaceSearchResult & { providerId: string };
-
 type Props = {
   query: string | null;
   currentLocation?: Coordinates | null;
@@ -22,6 +22,8 @@ type Props = {
   onAdd: (place: PlaceSearchResult) => AddPlaceResult;
   onRemove: (place: PlaceSearchResult) => void;
   onSave?: (place: SaveableSearchResult) => void;
+  placeLists: MemberPlaceList[];
+  savedListIdsByProviderId: Record<string, string[]>;
   onResultsChange?: (results: PlaceSearchResult[]) => void;
   onLoadingChange?: (isLoading: boolean) => void;
   onResultFocus?: (place: PlaceSearchResult) => void;
@@ -41,7 +43,7 @@ function resultKey(place: PlaceSearchResult) {
   return place.providerId ?? `${place.name}:${place.latitude.toFixed(6)}:${place.longitude.toFixed(6)}`;
 }
 
-export function SearchResultsSheet({ query, currentLocation, mapCenter, mapCenterFilter, mapCenterRequestId = 0, isCurrentLocationLocating, isPlaceAdded, onAdd, onRemove, onSave, onResultsChange, onLoadingChange, onResultFocus, onSearchContextChange, onSortChange, onRequestCurrentLocation }: Props) {
+export function SearchResultsSheet({ query, currentLocation, mapCenter, mapCenterFilter, mapCenterRequestId = 0, isCurrentLocationLocating, isPlaceAdded, onAdd, onRemove, onSave, placeLists, savedListIdsByProviderId, onResultsChange, onLoadingChange, onResultFocus, onSearchContextChange, onSortChange, onRequestCurrentLocation }: Props) {
   const [sort, setSort] = useState<SearchSort>("accuracy");
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [isInitialLoading, setInitialLoading] = useState(false);
@@ -186,6 +188,10 @@ export function SearchResultsSheet({ query, currentLocation, mapCenter, mapCente
       {results.map((place) => {
         const added = isPlaceAdded(place);
         const distance = isDistanceSort ? formatSearchDistance(place.distanceMeters) : null;
+        const savedListIds = place.providerId ? savedListIdsByProviderId[place.providerId] ?? place.savedListIds : place.savedListIds;
+        const placeListMatch = savedListIds?.length
+          ? placeLists.find((list) => savedListIds.includes(list.id))
+          : undefined;
         return <article className="search-results-sheet-item" key={resultKey(place)} role={onResultFocus ? "button" : undefined} tabIndex={onResultFocus ? 0 : undefined} onClick={() => onResultFocus?.(place)} onKeyDown={(event) => {
           if (onResultFocus && (event.key === "Enter" || event.key === " ")) {
             event.preventDefault();
@@ -193,7 +199,7 @@ export function SearchResultsSheet({ query, currentLocation, mapCenter, mapCente
           }
         }}>
           <PlaceCategoryIcon code={place.categoryGroupCode} className="search-results-sheet-icon" />
-          <div className="search-results-sheet-copy"><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>{distance && <span><MapPin size={13} /> {distance}</span>}</div>
+          <div className="search-results-sheet-copy"><strong><b className="search-result-place-name">{place.name}</b>{placeListMatch && <i className="search-result-list-badge" style={{ "--list-color": placeListMatch.color } as React.CSSProperties}><List size={10} aria-hidden="true" /><span>{placeListMatch.name}</span></i>}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>{distance && <span><MapPin size={13} /> {distance}</span>}</div>
           <div className="search-results-sheet-actions">
             <button type="button" className={`search-results-route-action${added ? " is-on-route" : ""}`} onClick={(event) => { event.stopPropagation(); if (added) onRemove(place); else onAdd(place); }} title={added ? "방문 장소 제거" : "방문 장소 추가"} aria-label={`${place.name} ${added ? "방문 장소 제거" : "방문 장소 추가"}`}>{added ? <MapPinX size={16} /> : <MapPinPlus size={16} />}</button>
             {onSave && place.providerId && <button type="button" className="save" onClick={(event) => { event.stopPropagation(); onSave({ ...place, providerId: place.providerId! }); }} aria-label={`${place.name} 장소 리스트에 저장`}><ListPlus size={17} /></button>}

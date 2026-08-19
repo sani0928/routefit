@@ -122,7 +122,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
       : isCalculationTakingLong ? "최적의 동선을 열심히 찾고 있어요!" : "실시간 교통정보를 반영하는 중이에요.";
     return (
       <section className="route-summary-panel route-summary-empty route-summary-ready route-summary-calculating">
-        {renderReadyStatusHeader(isLocatingCurrentLocation ? "위치 확인 중" : "계산 중", "calculating")}
+        {renderReadyStatusHeader(isLocatingCurrentLocation ? "위치 확인 중" : "동선 계산중", "calculating")}
         <div className="route-ready-card route-ready-calculating-card">
           <div className="route-ready-icon">{isLocatingCurrentLocation ? <LocateFixed aria-hidden="true" /> : <Route aria-hidden="true" />}</div>
           <div>
@@ -159,7 +159,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   if (!result) {
     return (
       <section className="route-summary-panel route-summary-empty route-summary-ready">
-        {renderReadyStatusHeader("계산 전")}
+        {renderReadyStatusHeader("계산 준비중")}
         <div className="route-ready-card">
           <div className="route-ready-icon"><Route aria-hidden="true" /></div>
           <div>
@@ -227,21 +227,16 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
       input.scrollIntoView({ block: "nearest", inline: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     }, 260);
   };
-  const handleDepartureTimePointerDown = (event: ReactPointerEvent<HTMLInputElement>) => {
-    if (!window.matchMedia("(max-width: 700px)").matches) return;
-    event.stopPropagation();
-    event.preventDefault();
-    const input = event.currentTarget;
-    window.requestAnimationFrame(() => input.focus({ preventScroll: true }));
-  };
   const handleDepartureTimeFocus = (event: ReactFocusEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
-    input.select();
+    const isMobile = window.matchMedia("(max-width: 700px)").matches;
+    if (isMobile) moveDepartureTimeCaretToEnd(input);
+    else input.select();
     if (selectedSegmentIndex !== null || expandedSegmentIndex !== null) {
       setExpandedSegmentIndex(null);
       onSegmentSelect(null);
     }
-    if (!window.matchMedia("(max-width: 700px)").matches) return;
+    if (!isMobile) return;
     onResultTabOpen?.();
     scrollDepartureInputIntoView(input);
   };
@@ -324,7 +319,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
         </article>
         {activeSegmentIndex < result.segments.length - 1 && renderSegmentPreview(activeSegmentIndex + 1, "next")}
       </section>}
-<div className="route-hero"><img className="route-hero-logo" src="/icons/logo.png" alt="RouteFit" /><div className="route-hero-heading"><p>예상 소요 시간</p></div><div className="route-hero-overview"><div className={`route-hero-duration${totalDurationMilliseconds >= 60 * 60_000 ? " duration-long" : ""}`}><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">머무는 시간 {formatTime(totalStayDurationMinutes * 60_000)} 포함</span>}</div><div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div><div className="route-hero-times"><span><small>출발</small><div className="route-hero-time-control"><div className={`route-hero-time-editor${hasEditedDepartureTime ? " is-edited" : ""}`}><input aria-label="출발 시각, 시와 분을 네 자리로 입력" inputMode="numeric" enterKeyHint="done" maxLength={9} value={formatDepartureTimeInput(editedDepartureTime ?? `${calculatedDepartureTime.hour}${calculatedDepartureTime.minute}`)} onPointerDown={handleDepartureTimePointerDown} onChange={handleDepartureTimeChange} onBlur={normalizeDepartureTime} onFocus={handleDepartureTimeFocus} onKeyDown={handleDepartureTimeKeyDown} /></div>{hasEditedDepartureTime && <button type="button" className="route-hero-time-reset" aria-label="수정한 출발 시간 초기화" title="계산 시각으로 되돌리기" onClick={() => setEditedDepartureTime(null)}><RotateCcw aria-hidden="true" /></button>}</div></span><i aria-hidden="true">→</i><span><small>도착 예정</small><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></span></div></div>
+<div className="route-hero"><img className="route-hero-logo" src="/icons/logo.png" alt="RouteFit" /><div className="route-hero-heading"><p>예상 소요 시간</p></div><div className="route-hero-overview"><div className={`route-hero-duration${totalDurationMilliseconds >= 60 * 60_000 ? " duration-long" : ""}`}><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">머무는 시간 {formatTime(totalStayDurationMinutes * 60_000)} 포함</span>}</div><div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div><div className="route-hero-times"><span><small>출발</small><div className="route-hero-time-control"><div className={`route-hero-time-editor${hasEditedDepartureTime ? " is-edited" : ""}`}><input aria-label="출발 시각, 시와 분을 네 자리로 입력" inputMode="numeric" enterKeyHint="done" maxLength={9} value={formatDepartureTimeInput(editedDepartureTime ?? `${calculatedDepartureTime.hour}${calculatedDepartureTime.minute}`)} onChange={handleDepartureTimeChange} onBlur={normalizeDepartureTime} onFocus={handleDepartureTimeFocus} onKeyDown={handleDepartureTimeKeyDown} /></div>{hasEditedDepartureTime && <button type="button" className="route-hero-time-reset" aria-label="수정한 출발 시간 초기화" title="계산 시각으로 되돌리기" onClick={() => setEditedDepartureTime(null)}><RotateCcw aria-hidden="true" /></button>}</div></span><i aria-hidden="true">→</i><span><small>도착 예정</small><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></span></div></div>
 
     {onShare && <button type="button" className="route-share-action" disabled={isRouteStale || isSharing} onClick={onShare} title={isRouteStale ? "최신 계산 결과에서만 공유할 수 있습니다." : undefined}>
       <ExternalLink aria-hidden="true" />{isSharing ? "공유 링크 생성 중" : "내 동선 공유하기"}

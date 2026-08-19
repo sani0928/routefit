@@ -88,10 +88,80 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   const dragRef = useRef<MobileSheetDrag | null>(null);
   const dragPreviewClearFrameRef = useRef<number | null>(null);
   const stableViewportRef = useRef({ width: 0, height: 0 });
+  const pendingSearchFocusRef = useRef(false);
+  const searchFocusCheckTimerRef = useRef<number | null>(null);
+  const searchFocusScrollTimerRef = useRef<number | null>(null);
 
   const dragPreviewFrameRef = useRef<number | null>(null);
   const pendingDragPreviewHeightRef = useRef<number | null>(null);
   const dragPreviewActiveRef = useRef(false);
+
+  const clearSearchFocusCheck = useCallback(() => {
+    if (searchFocusCheckTimerRef.current !== null) {
+      window.clearTimeout(searchFocusCheckTimerRef.current);
+      searchFocusCheckTimerRef.current = null;
+    }
+    if (searchFocusScrollTimerRef.current !== null) {
+      window.clearTimeout(searchFocusScrollTimerRef.current);
+      searchFocusScrollTimerRef.current = null;
+    }
+  }, []);
+
+  const keepFocusedInputVisible = useCallback(() => {
+    if (!pendingSearchFocusRef.current || !isMobileViewport()) return;
+
+    const root = document.documentElement;
+    if (!root.hasAttribute("data-mobile-keyboard-open")) return;
+
+    const activeElement = document.activeElement;
+    if (!isTextInputTarget(activeElement) || !(activeElement instanceof HTMLElement)) {
+      pendingSearchFocusRef.current = false;
+      return;
+    }
+
+    const sheet = activeElement.closest<HTMLElement>(".planner-panel.mobile-sheet-panel, .result-panel.mobile-sheet-panel, .map-list-manager");
+    if (!sheet) {
+      pendingSearchFocusRef.current = false;
+      return;
+    }
+
+    const visualViewport = window.visualViewport;
+    const viewportTop = Math.round(visualViewport?.offsetTop ?? 0) + 12;
+    const viewportBottom = Math.round((visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight)) - 12;
+    const inputRect = activeElement.getBoundingClientRect();
+    const isInputVisible = inputRect.top >= viewportTop && inputRect.bottom <= viewportBottom;
+    pendingSearchFocusRef.current = false;
+
+    if (isInputVisible) return;
+
+    // Safari has completed its native focus scroll at this point. Only expand
+    // when the focused input is still covered, instead of competing on tap.
+    setMobileSheetState("expanded");
+    searchFocusScrollTimerRef.current = window.setTimeout(() => {
+      searchFocusScrollTimerRef.current = null;
+      if (document.activeElement !== activeElement) return;
+
+      const content = sheet.querySelector<HTMLElement>(".mobile-sheet-content");
+      if (!content) return;
+
+      const nextInputRect = activeElement.getBoundingClientRect();
+      const nextViewportBottom = Math.round((window.visualViewport?.offsetTop ?? 0) + (window.visualViewport?.height ?? window.innerHeight)) - 12;
+      if (nextInputRect.bottom > nextViewportBottom) {
+        content.scrollBy({ top: nextInputRect.bottom - nextViewportBottom, behavior: "auto" });
+      }
+    }, 260);
+  }, []);
+
+  const scheduleFocusedInputVisibilityCheck = useCallback(() => {
+    if (!pendingSearchFocusRef.current || searchFocusCheckTimerRef.current !== null) return;
+
+    searchFocusCheckTimerRef.current = window.setTimeout(() => {
+      searchFocusCheckTimerRef.current = null;
+      keepFocusedInputVisible();
+    }, 32);
+  }, [keepFocusedInputVisible]);
+
+  useEffect(() => () => clearSearchFocusCheck(), [clearSearchFocusCheck]);
 
   const cancelDeferredPreviewClear = useCallback(() => {
     if (dragPreviewClearFrameRef.current !== null) {
@@ -227,6 +297,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       root.style.setProperty("--mobile-visual-viewport-height", `${visibleHeight}px`);
       root.style.setProperty("--mobile-layout-viewport-height", `${layoutHeight}px`);
       root.toggleAttribute("data-mobile-keyboard-open", keyboardOpen);
+      if (keyboardOpen) scheduleFocusedInputVisibilityCheck();
     };
 
     syncVisibleViewport();
@@ -248,7 +319,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
       root.style.removeProperty("--mobile-layout-viewport-height");
       root.removeAttribute("data-mobile-keyboard-open");
     };
-  }, []);
+  }, [scheduleFocusedInputVisibilityCheck]);
 
   const stepMobileSheet = useCallback((direction: "up" | "down") => {
     setMobileSheetState((current) => stepMobileSheetState(current, direction));
@@ -268,6 +339,12 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
   }, [mobileTab]);
 
   const prepareSearchFocus = useCallback(() => {
+    if (!isMobileViewport()) return;
+    pendingSearchFocusRef.current = true;
+    scheduleFocusedInputVisibilityCheck();
+  }, [scheduleFocusedInputVisibilityCheck]);
+
+  const prepareSheetInputFocus = useCallback(() => {
     if (!isMobileViewport()) return;
     setMobileSheetState("expanded");
   }, []);
@@ -455,6 +532,7 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
     setMobileSheetState,
     selectMobileTab,
     prepareSearchFocus,
+    prepareSheetInputFocus,
     stepMobileSheet,
     cycleMobileSheet,
     sheetGestureHandlers,

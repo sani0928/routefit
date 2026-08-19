@@ -591,12 +591,16 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       const label = String(visitOrder);
       const listColor = listPlaces?.[index]?.color;
       const markerStyle = isOptimized ? ` style="--marker-color:${routeColor(index)}"` : listColor ? ` style="--marker-color:${listColor}"` : "";
-      const markerClass = isSearchResults ? "search-result" : isOptimized || listColor ? "optimized" : roleClass;
+      const markerClass = isSearchResults
+        ? "search-result"
+        : listPlaces
+          ? "optimized"
+          : `${!isOptimized && !isStart && !isDestination ? "route-place " : ""}${isOptimized ? "optimized" : roleClass}`;
       const isOverviewListMarker = listMarkerMode === "overview";
       const markerContent = isOverviewListMarker
         ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.1 7-12a7 7 0 1 0-14 0c0 6.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>'
         : label;
-      const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}${isOverviewListMarker ? " list-place" : ""}"${markerStyle}>${markerContent}</div>`, anchor: new window.naver.maps.Point(16, 16) } });
+      const marker = new window.naver.maps.Marker({ position, map, title: place.name, icon: { content: `<div class="map-marker ${markerClass}${isOverviewListMarker ? " list-place" : ""}"${markerStyle}>${markerContent}</div>`, anchor: new window.naver.maps.Point(15, 15) } });
       window.naver.maps.Event.addListener(marker, "click", () => {
         requestIdRef.current += 1;
         const popupPlace = { name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude };

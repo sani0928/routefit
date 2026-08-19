@@ -441,7 +441,8 @@
 .map-list-manager .place-list-overview .list-color-emblem svg { stroke-width: 2.2; }
 .map-list-manager .place-list-overview .place-list-collection .list-card-copy { min-width: 0; }
 .map-list-manager .place-list-overview .place-list-collection .list-card-copy strong { display: block; overflow: hidden; color: #26384f; font-size: .84rem; font-weight: 820; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
-.map-list-manager .place-list-overview .place-list-collection .list-card-copy small { display: block; margin-top: 4px; overflow: hidden; color: #8a9aaf; font-size: .66rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy small { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; overflow: hidden; color: #8a9aaf; font-size: .66rem; font-weight: 700; white-space: nowrap; }
+.map-list-manager .place-list-overview .place-list-collection .list-card-copy small > span:last-child { overflow: hidden; margin-left: auto; text-align: right; text-overflow: ellipsis; }
 .map-list-manager .place-list-overview .place-list-collection .list-card-copy small b { color: #526f91; font-weight: 850; }
 .map-list-manager .place-list-overview .place-list-collection .list-card-arrow { align-self: center; color: #9aabc0; }
 
@@ -786,4 +787,3 @@
   color:#078443;
   background:#f3fcf6;
 }
-

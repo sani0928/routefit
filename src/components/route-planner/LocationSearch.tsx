@@ -1,9 +1,10 @@
 "use client";
 
 import { List, ListPlus, Search, X } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { notify } from "@/lib/notify";
 import type { PlaceSearchResponse, PlaceSearchResult } from "@/features/place-search/types";
+import type { MemberPlaceList } from "@/features/member/types";
 import { PlaceCategoryIcon } from "./PlaceCategoryIcon";
 
 type Feedback = "idle" | "not-found" | "error";
@@ -13,6 +14,9 @@ type SaveableSearchResult = PlaceSearchResult & { providerId: string };
 type Props = {
   onAdd: (place: PlaceSearchResult) => AddPlaceResult;
   onSave?: (place: SaveableSearchResult) => void;
+  placeLists: MemberPlaceList[];
+  savedListIdsByProviderId: Record<string, string[]>;
+  isSaveDialogOpen?: boolean;
   onSearchSubmit: (query: string) => void;
   onSearchFocus?: () => void;
   onSearchPointerDown?: () => void;
@@ -22,7 +26,7 @@ type Props = {
   mobileAction?: ReactNode;
 };
 
-export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, onSearchPointerDown, onSavedPlacesOpen, onSearchClear, showClearAction = false, mobileAction }: Props) {
+export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProviderId, isSaveDialogOpen = false, onSearchSubmit, onSearchFocus, onSearchPointerDown, onSavedPlacesOpen, onSearchClear, showClearAction = false, mobileAction }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -102,12 +106,12 @@ export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, o
   useEffect(() => () => { if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current); }, []);
   useEffect(() => {
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!isExpanded || searchRootRef.current?.contains(event.target as Node)) return;
+      if (!isExpanded || isSaveDialogOpen || searchRootRef.current?.contains(event.target as Node)) return;
       setExpanded(false);
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer, true);
     return () => document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-  }, [isExpanded]);
+  }, [isExpanded, isSaveDialogOpen]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -133,10 +137,16 @@ export function LocationSearch({ onAdd, onSave, onSearchSubmit, onSearchFocus, o
         <button className="search-submit" type="submit" aria-label="전체 검색 결과 보기" disabled={query.trim().length < 2 || loading}><Search size={18} /></button>
       </div>
       {isExpanded && results.length > 0 && <ul id="place-search-results" className="search-results" role="listbox">
-        {results.map((place, index) => <li key={place.providerId ?? `${place.name}-${place.latitude}-${place.longitude}`} role="option" aria-selected={index === 0}>
-          <button type="button" className="search-result-add" onClick={() => choose(place)}><PlaceCategoryIcon code={place.categoryGroupCode} className="search-result-category-icon" /><span><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></span></button>
+        {results.map((place, index) => {
+          const savedListIds = place.providerId ? savedListIdsByProviderId[place.providerId] ?? place.savedListIds : place.savedListIds;
+          const placeListMatch = savedListIds?.length
+            ? placeLists.find((list) => savedListIds.includes(list.id))
+            : undefined;
+          return <li key={place.providerId ?? `${place.name}-${place.latitude}-${place.longitude}`} role="option" aria-selected={index === 0}>
+          <button type="button" className="search-result-add" onClick={() => choose(place)}><PlaceCategoryIcon code={place.categoryGroupCode} className="search-result-category-icon" /><span className="search-result-quick-copy"><strong><b className="search-result-place-name">{place.name}</b>{placeListMatch && <i className="search-result-list-badge" style={{ "--list-color": placeListMatch.color } as CSSProperties}><List size={10} aria-hidden="true" /><span>{placeListMatch.name}</span></i>}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></span></button>
           {onSave && place.providerId && <button className="search-result-save" type="button" onClick={() => onSave({ ...place, providerId: place.providerId! })} aria-label={`${place.name} 장소 리스트에 저장`}><ListPlus size={16} /></button>}
-        </li>)}
+        </li>;
+        })}
       </ul>}
     </div>
     {onSavedPlacesOpen && <button type="button" className="search-list-toggle" onClick={onSavedPlacesOpen} aria-label="장소 리스트 열기"><List size={18} aria-hidden="true" /><span>장소 리스트</span></button>}

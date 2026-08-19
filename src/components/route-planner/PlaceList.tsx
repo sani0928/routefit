@@ -6,6 +6,7 @@ import { useSortable } from "@dnd-kit/react/sortable";
 import { Clock3, List, ListPlus, LocateFixed, Lock, LockOpen, RotateCcw, Square, SquareCheck, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
+import type { MemberPlaceList } from "@/features/member/types";
 import { notify } from "@/lib/notify";
 import { ContentLoading } from "@/components/ui/ContentLoading";
 
@@ -20,6 +21,8 @@ interface Props {
   onStayDurationChange: (id: string, minutes: number) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
   onSavePlace?: (place: Omit<Place, "id" | "type"> & { providerId: string }) => void;
+  placeLists: MemberPlaceList[];
+  savedListIdsByProviderId: Record<string, string[]>;
   currentLocationActive: boolean;
   currentLocationLocating: boolean;
   onCurrentLocationToggle: () => void;
@@ -53,6 +56,7 @@ type SortablePlaceItemProps = {
   onDesktopCardLeave: (placeId: string) => void;
   onFixedVisitOrderChange: (placeId: string, visitOrder: number) => void;
   onSavePlace?: (place: Omit<Place, "id" | "type"> & { providerId: string }) => void;
+  placeListMatch?: Pick<MemberPlaceList, "name" | "color">;
   onRemove: (id: string) => void;
   onStayDurationChange: (id: string, delta: number) => void;
   onMobileInputFocus?: () => void;
@@ -73,6 +77,7 @@ function SortablePlaceItem({
   onDesktopCardLeave,
   onFixedVisitOrderChange,
   onSavePlace,
+  placeListMatch,
   onRemove,
   onStayDurationChange,
   onMobileInputFocus,
@@ -240,7 +245,7 @@ function SortablePlaceItem({
         <span ref={dragDisabled ? undefined : handleRef} className={`drag-handle${mobileReorderDisabled ? " disabled" : ""}`} aria-label="드래그하여 순서 변경" title="드래그하여 순서 변경">⠿</span>
         <div className={`place-badge${isStart ? " start" : isDestination ? " destination" : ""}`}>{index + 1}</div>
         <div className="place-main">
-          <strong>{place.name}</strong>
+          <strong style={placeListMatch ? { color: placeListMatch.color } : undefined}>{place.name}</strong>
           <small>{place.isCurrentLocation ? "계산 시 현재 위치로 갱신" : place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small>
         </div>
         <div className="place-mobile-status" aria-label="장소 상태">
@@ -279,6 +284,7 @@ function SortablePlaceItem({
                   latitude: place.latitude,
                   longitude: place.longitude,
                   providerId: place.providerId!,
+                  savedListIds: place.savedListIds,
                   stayDurationMinutes: 0,
                 });
               }}
@@ -451,7 +457,7 @@ function ReturnStop({ place, index, onReturnChange, onSavePlace }: {
           <span className="place-action-label">복귀 해제</span>
         </button>
         {onSavePlace && place.providerId && (
-          <button type="button" className="icon-action place-save-action" aria-label={`${place.name} 장소 리스트에 저장`} title="장소 리스트에 저장" onClick={() => onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, providerId: place.providerId!, stayDurationMinutes: 0 })}>
+          <button type="button" className="icon-action place-save-action" aria-label={`${place.name} 장소 리스트에 저장`} title="장소 리스트에 저장" onClick={() => onSavePlace({ name: place.name, address: place.address, latitude: place.latitude, longitude: place.longitude, providerId: place.providerId!, savedListIds: place.savedListIds, stayDurationMinutes: 0 })}>
             <ListPlus aria-hidden="true" />
             <span className="place-action-label">리스트 저장</span>
           </button>
@@ -472,6 +478,8 @@ export function PlaceList({
   onStayDurationChange,
   onFixedVisitOrderChange,
   onSavePlace,
+  placeLists,
+  savedListIdsByProviderId,
   currentLocationActive,
   currentLocationLocating,
   onCurrentLocationToggle,
@@ -618,6 +626,8 @@ export function PlaceList({
             const isStart = index === 0;
             const isDestination = !returnToStart && places.length > 1 && index === places.length - 1;
             const canSetStayDuration = !place.isCurrentLocation && !isStart;
+            const savedListIds = place.providerId ? savedListIdsByProviderId[place.providerId] ?? place.savedListIds : place.savedListIds;
+            const placeListMatch = savedListIds?.length ? placeLists.find((list) => savedListIds.includes(list.id)) : undefined;
 
             return (
               <SortablePlaceItem
@@ -636,6 +646,7 @@ export function PlaceList({
                 onDesktopCardLeave={handleDesktopCardLeave}
                 onFixedVisitOrderChange={onFixedVisitOrderChange}
                 onSavePlace={onSavePlace}
+                placeListMatch={placeListMatch}
                 onRemove={onRemove}
                 onStayDurationChange={adjustStayDuration}
                 onMobileInputFocus={onMobileInputFocus}

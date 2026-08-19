@@ -112,7 +112,6 @@
 .planner-panel .section-heading span { padding:0; color:#8593a6; background:transparent; font-size:.72rem; font-weight:800; }
 .segment-details li { position:relative; flex-wrap:wrap; }
 .segment-number { display:grid; width:19px; height:19px; flex:0 0 19px; place-items:center; padding:0; border:0; border-radius:5px; color:#fff; background:var(--route-color,#64748b); font-size:.62rem; font-weight:800; line-height:1; transition:transform .18s ease, box-shadow .18s ease; }
-.segment-number:hover,.segment-number[aria-expanded=true] { transform:scale(1.08); box-shadow:0 0 0 3px color-mix(in srgb,var(--route-color,#2563eb) 15%,transparent); }
 .segment-place-details { display:grid; width:calc(100% - 26px); grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:8px; margin:0 0 2px 26px; padding:9px 10px; border:1px solid color-mix(in srgb,var(--route-color,#2563eb) 20%,#e7edf5); border-radius:9px; background:color-mix(in srgb,var(--route-color,#2563eb) 6%,white); animation:segment-place-enter .2s cubic-bezier(.16,1,.3,1) both; }
 .segment-place-details div { min-width:0; }.segment-place-details span,.segment-place-details strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.segment-place-details span { margin-bottom:2px; color:#8391a4; font-size:.59rem; font-weight:800; }.segment-place-details strong { color:#344256; font-size:.68rem; }.segment-place-details i { color:var(--route-color,#2563eb); font-size:.82rem; font-style:normal; font-weight:800; }
 @keyframes segment-place-enter { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
@@ -860,6 +859,15 @@
     --mobile-visual-viewport-height: 100dvh;
     --mobile-layout-viewport-height: 100dvh;
     --mobile-sheet-visible-handle: 44px;
+  }
+
+  /* iOS moves fixed sheets above its software keyboard. Keep a peek sheet
+     within the remaining visual viewport so its search field cannot be
+     pushed above the screen before any focus correction is needed. */
+  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-peek .planner-panel.mobile-sheet-panel,
+  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-peek .result-panel.mobile-sheet-panel,
+  :root[data-mobile-keyboard-open] .app-shell.mobile-sheet-peek .map-list-manager {
+    height: max(var(--mobile-sheet-visible-handle), min(var(--mobile-sheet-peek), calc(var(--mobile-visual-viewport-height) - var(--mobile-nav-height))));
   }
 
 
@@ -2737,21 +2745,22 @@
 .segment-details.route-tab-panel li { display: block; padding-left: 0; border-left: 0; }
 .segment-row {
   display: grid;
-  width: 100%;
+  width: calc(100% - 16px);
   min-height: 48px;
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
+  margin-inline: 8px;
   padding: 8px 12px 8px 8px;
   overflow: hidden;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 10px;
   color: #31445d;
   background: linear-gradient(90deg, color-mix(in srgb, var(--route-color, #2563eb) 18%, #fff) 0%, color-mix(in srgb, var(--route-color, #2563eb) 7%, #fff) 45%, #fff 78%);
   text-align: left;
   transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.segment-row:hover:not([aria-expanded="true"]) { box-shadow: inset 0 0 0 1px var(--route-color, #2563eb); }
+.segment-row:hover:not([aria-expanded="true"]) { border-color:var(--route-color, #2563eb); box-shadow:none; }
 .segment-row[aria-expanded="true"] { color:#fff; background:var(--route-color, #2563eb); }
 .segment-row:active { transform: scale(.985); }
 .segment-row:focus-visible { outline: 2px solid var(--route-color, #2563eb); outline-offset: 2px; }
@@ -3251,4 +3260,97 @@
   font-weight:500;
   letter-spacing:-.025em;
   line-height:1.4;
+}
+
+/* Saved-place context supplements search results without changing their order. */
+.search-results-sheet-copy strong {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  overflow:visible;
+}
+
+.search-result-place-name {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.search-result-list-badge {
+  display:inline-flex;
+  align-items:center;
+  gap:2px;
+  max-width:92px;
+  flex:0 1 auto;
+  overflow:hidden;
+  color:var(--list-color);
+  font-size:.56rem;
+  font-style:normal;
+  font-weight:800;
+  line-height:1.2;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.search-result-list-badge span {
+  display:block;
+  margin-top:0;
+  color:inherit;
+  font-size:.6rem;
+  font-weight:inherit;
+  line-height:1;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.search-result-list-badge svg {
+  display:block;
+  flex:0 0 auto;
+  color:var(--list-color);
+  stroke:currentColor;
+}
+
+.search-results .search-result-quick-copy {
+  min-width:0;
+}
+
+.search-results .search-result-quick-copy strong {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+  overflow:visible;
+}
+
+.search-results .search-result-quick-copy .search-result-place-name {
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* Keep the compact quick-search row aligned with the full results treatment. */
+.search-results .search-result-list-badge {
+  color:var(--list-color);
+  background:none;
+  border:0;
+  padding:0;
+}
+
+.search-results .search-result-list-badge > span {
+  margin-top:0;
+  color:inherit;
+  font-size:.6rem;
+  line-height:1;
+}
+
+.search-results .search-result-list-badge svg {
+  width:10px;
+  height:10px;
+  flex:0 0 10px;
+  fill:none;
+  stroke:var(--list-color);
 }

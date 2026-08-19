@@ -8,6 +8,8 @@ export interface Place {
   longitude: number;
   /** 검색 제공자가 부여한 장소 식별자. 카카오 장소 검색 결과에서만 제공된다. */
   providerId?: string;
+  /** 현재 세션에서 확인한 장소 리스트 소속. 화면 보조 정보이며 경로 계산에는 사용하지 않는다. */
+  savedListIds?: string[];
   type: PlaceType;
   stayDurationMinutes?: number;
   isCurrentLocation?: boolean;

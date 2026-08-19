@@ -182,7 +182,7 @@ export function SharedRouteMap({ snapshot, highlightedSegmentIndex, focusedPlace
         title: isSharedCurrentLocation(place) ? "현재 위치" : place.name,
         icon: {
           content: `<div class="map-marker optimized" style="--marker-color:${markerColor}">${markerNumber}</div>`,
-          anchor: new window.naver.maps.Point(16, 16),
+          anchor: new window.naver.maps.Point(15, 15),
         },
       });
       window.naver.maps.Event.addListener(marker, "click", () => {
