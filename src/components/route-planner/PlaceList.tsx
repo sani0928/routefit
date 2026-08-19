@@ -145,11 +145,6 @@ function SortablePlaceItem({
   function focusAfterSheetExpansion(event: ReactPointerEvent<HTMLInputElement>) {
     event.stopPropagation();
     onMobileInputFocus?.();
-    if (!isMobileViewportActive) return;
-
-    event.preventDefault();
-    const input = event.currentTarget;
-    window.requestAnimationFrame(() => input.focus({ preventScroll: true }));
   }
 
   function clearStayStepHold() {

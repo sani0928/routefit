@@ -340,14 +340,19 @@ export function useMobileSheetController(initialTab: MobileTab = "places") {
 
   const prepareSearchFocus = useCallback(() => {
     if (!isMobileViewport()) return;
-    pendingSearchFocusRef.current = true;
-    scheduleFocusedInputVisibilityCheck();
-  }, [scheduleFocusedInputVisibilityCheck]);
+    // iOS에서는 키보드가 열린 뒤 시트를 확장하면 Safari의 포커스 스크롤과
+    // 충돌한다. 네이티브 포커스 직전에 expanded 상태만 먼저 요청한다.
+    pendingSearchFocusRef.current = false;
+    clearSearchFocusCheck();
+    setMobileSheetState("expanded");
+  }, [clearSearchFocusCheck]);
 
   const prepareSheetInputFocus = useCallback(() => {
     if (!isMobileViewport()) return;
+    pendingSearchFocusRef.current = false;
+    clearSearchFocusCheck();
     setMobileSheetState("expanded");
-  }, []);
+  }, [clearSearchFocusCheck]);
 
   const canClaimDrag = useCallback((drag: MobileSheetDrag, direction: "up" | "down") => {
     if (drag.fromHandle || drag.sheetState === "peek") return true;

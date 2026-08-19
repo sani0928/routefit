@@ -569,14 +569,12 @@ export function RouteFitPlanner() {
           address,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
-          type: "START",
-          stayDurationMinutes: 0,
+          stayDurationMinutes: currentLocation.stayDurationMinutes ?? 0,
           isCurrentLocation: true,
         };
-        calculationPlaces = normalizePlaceRoles([
-          refreshedCurrentLocation,
-          ...places.filter((place) => !place.isCurrentLocation),
-        ]);
+        calculationPlaces = normalizePlaceRoles(places.map((place) => (
+          place.isCurrentLocation ? refreshedCurrentLocation : place
+        )));
         calculatedCurrentLocationRef.current = coordinates;
         currentLocationWasRefreshed = true;
         setPlaces(calculationPlaces);
@@ -608,8 +606,9 @@ export function RouteFitPlanner() {
     setSelectedSegmentIndex(null);
     const destination = returnToStart ? null : calculationPlaces.at(-1) ?? null;
     const waypoints = returnToStart ? calculationPlaces.slice(1) : calculationPlaces.slice(1, -1);
-    const calculationCurrentLocation = calculationStart.isCurrentLocation
-      ? { latitude: calculationStart.latitude, longitude: calculationStart.longitude }
+    const calculationCurrentLocationPlace = calculationPlaces.find((place) => place.isCurrentLocation);
+    const calculationCurrentLocation = calculationCurrentLocationPlace
+      ? { latitude: calculationCurrentLocationPlace.latitude, longitude: calculationCurrentLocationPlace.longitude }
       : null;
     const calculationSnapshot: RouteResultSnapshot = {
       returnToStart,
