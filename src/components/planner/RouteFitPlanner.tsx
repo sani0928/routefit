@@ -131,6 +131,7 @@ export function RouteFitPlanner() {
   const [currentLocationLocating, setCurrentLocationLocating] = useState(false);
   const [currentLocationRequestId, setCurrentLocationRequestId] = useState(0);
   const [savedListIdsByProviderId, setSavedListIdsByProviderId] = useState<Record<string, string[]>>({});
+  const quickSearchMatchesAbortRef = useRef<AbortController | null>(null);
   const workspaceRestoredRef = useRef(false);
   const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
   const routeInputVersionRef = useRef(0);
@@ -274,7 +275,16 @@ export function RouteFitPlanner() {
           current[match.providerId] = [...new Set([...(current[match.providerId] ?? []), ...match.listIds])];
           return current;
         }, {});
-        setSavedListIdsByProviderId(nextMatchesByProviderId);
+        const requestedProviderIds = new Set(matchPlaces.flatMap((place) => place.providerId ? [place.providerId] : []));
+        setSavedListIdsByProviderId((current) => {
+          const next = { ...current };
+          requestedProviderIds.forEach((providerId) => {
+            const listIds = nextMatchesByProviderId[providerId] ?? [];
+            if (listIds.length > 0) next[providerId] = listIds;
+            else delete next[providerId];
+          });
+          return next;
+        });
         setPlaces((current) => {
           let changed = false;
           const next = current.map((place) => {
@@ -297,6 +307,50 @@ export function RouteFitPlanner() {
       });
     return () => controller.abort();
   }, [memberStateReady, member.authenticated, workspaceRestored, places]);
+  useEffect(() => () => quickSearchMatchesAbortRef.current?.abort(), []);
+
+  const refreshQuickSearchMembership = useCallback((quickResults: PlaceSearchResult[]) => {
+    quickSearchMatchesAbortRef.current?.abort();
+    if (!memberStateReady || !member.authenticated || !workspaceRestored) return;
+
+    const matchPlaces = quickResults
+      .filter((place): place is PlaceSearchResult & { providerId: string } => Boolean(place.providerId))
+      .slice(0, 15)
+      .map(({ providerId, name, latitude, longitude }) => ({ id: `quick:${providerId}`, providerId, name, latitude, longitude }));
+    if (matchPlaces.length === 0) return;
+
+    const controller = new AbortController();
+    quickSearchMatchesAbortRef.current = controller;
+    void fetch("/api/place-lists/matches", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ places: matchPlaces }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("place-list-match-failed");
+        return (await response.json() as { matches?: Record<string, { providerId: string; listIds: string[] }> }).matches ?? {};
+      })
+      .then((matches) => {
+        if (controller.signal.aborted) return;
+        const matchedListIdsByProviderId = Object.values(matches).reduce<Record<string, string[]>>((current, match) => {
+          current[match.providerId] = [...new Set([...(current[match.providerId] ?? []), ...match.listIds])];
+          return current;
+        }, {});
+        setSavedListIdsByProviderId((current) => {
+          const next = { ...current };
+          matchPlaces.forEach(({ providerId }) => {
+            const listIds = matchedListIdsByProviderId[providerId] ?? [];
+            if (listIds.length > 0) next[providerId] = listIds;
+            else delete next[providerId];
+          });
+          return next;
+        });
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+  }, [memberStateReady, member.authenticated, workspaceRestored]);
   useEffect(() => {
     if (!memberStateReady || !member.authenticated || !workspaceRestored) return;
     const workspace = { returnToStart, places, fixedVisitOrders };
@@ -1095,7 +1149,7 @@ export function RouteFitPlanner() {
             </div>
           )
         ) : <>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} isSaveDialogOpen={Boolean(saveTarget)} onSearchSubmit={openSearchResults} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} isSaveDialogOpen={Boolean(saveTarget)} onSearchSubmit={openSearchResults} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} onResultsLoaded={refreshQuickSearchMembership} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
         {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addSearchResultToRoute} onRemove={removeSearchResultFromRoute} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSheetInputFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
           <div className="planner-footer">

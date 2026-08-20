@@ -25,7 +25,7 @@ const notoSansKr = localFont({
 
 const siteUrl = new URL("https://www.routefit.co.kr");
 const siteTitle = "루트핏 (RouteFit)";
-const siteDescription = "루트핏(RouteFit) : 실시간 교통정보를 반영해 여러 방문 장소의 이동 경로를 쉽고 빠르게 최적화하는 서비스";
+const siteDescription = "실시간 교통정보를 반영해 여러 방문 장소의 이동 경로를 쉽고 빠르게 최적화하는 서비스";
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,

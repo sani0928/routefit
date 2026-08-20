@@ -21,11 +21,12 @@ type Props = {
   onSearchFocus?: () => void;
   onSavedPlacesOpen?: () => void;
   onSearchClear?: () => void;
+  onResultsLoaded?: (results: PlaceSearchResult[]) => void;
   showClearAction?: boolean;
   mobileAction?: ReactNode;
 };
 
-export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProviderId, isSaveDialogOpen = false, onSearchSubmit, onSearchFocus, onSavedPlacesOpen, onSearchClear, showClearAction = false, mobileAction }: Props) {
+export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProviderId, isSaveDialogOpen = false, onSearchSubmit, onSearchFocus, onSavedPlacesOpen, onSearchClear, onResultsLoaded, showClearAction = false, mobileAction }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,6 +87,7 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
         if (!response.ok) throw new Error(body.error?.message || "장소 검색에 실패했습니다.");
         const next = body.results ?? [];
         setResults(next);
+        onResultsLoaded?.(next);
         if (!next.length) showFeedback("not-found");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -100,7 +102,7 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [onResultsLoaded, query]);
 
   useEffect(() => () => { if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current); }, []);
   useEffect(() => {
