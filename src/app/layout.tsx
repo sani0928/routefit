@@ -24,7 +24,7 @@ const notoSansKr = localFont({
 });
 
 const siteUrl = new URL("https://www.routefit.co.kr");
-const siteTitle = "루트핏 (RouteFit)";
+const siteTitle = "루트핏 RouteFit | 여러 장소의 방문 순서와 이동 동선 계산";
 const siteDescription = "실시간 교통정보를 반영해 여러 방문 장소의 이동 경로를 쉽고 빠르게 최적화하는 서비스";
 
 export const metadata: Metadata = {

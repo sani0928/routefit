@@ -1116,7 +1116,7 @@ export function RouteFitPlanner() {
             <div><img className="routefit-logo" src="/icons/logo.png" alt="루트핏 RouteFit" /></div>
             <MemberHeader authConfigured={member.authConfigured} onBeforeLogin={() => undefined} onSessionChange={loadMember} />
           </div>
-          <p className="planner-desktop-tagline">여러 장소의 동선 최적화, 더 간편하게.</p>
+          <h1 className="planner-desktop-tagline">여러 장소의 동선 최적화, 더 간편하게.</h1>
         </header>
         <div key={listManagerOpen ? "saved-places" : "visit-places"} className={`planner-content-page${listManagerOpen ? " planner-content-page-lists map-list-manager" : ""}`}>
         {listManagerOpen ? (

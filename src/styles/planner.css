@@ -3243,7 +3243,7 @@
   .planner-panel .planner-footer .route-primary-group .primary.route-calculate-action { animation:none; }}
 
 /* Desktop home: concise visible service context beneath the RouteFit mark. */
-.planner-desktop-tagline {
+h1.planner-desktop-tagline {
   margin:6px 0 0;
   color:#6f829b;
   font-size:.71rem;
