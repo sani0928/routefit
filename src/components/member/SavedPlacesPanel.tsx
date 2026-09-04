@@ -37,8 +37,11 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
   const [listPage, setListPage] = useState(0);
   const [placePage, setPlacePage] = useState(0);
   const [placeQuery, setPlaceQuery] = useState("");
+  const [pendingPlaceDeleteId, setPendingPlaceDeleteId] = useState<string | null>(null);
   const isPlaceOnRoute = (place: SavedPlace) => routePlaces.some((routePlace) => Math.abs(routePlace.latitude - place.latitude) < 0.000001 && Math.abs(routePlace.longitude - place.longitude) < 0.000001);
   const deleteConfirmationExpiresAtRef = useRef(0);
+  const placeDeleteConfirmationRef = useRef<{ id: string; expiresAt: number } | null>(null);
+  const placeDeleteConfirmationTimeoutRef = useRef<number | null>(null);
   const totalListPages = Math.max(1, Math.ceil(lists.length / ITEMS_PER_PAGE));
   const normalizedPlaceQuery = placeQuery.trim().toLocaleLowerCase();
   const filteredPlaces = useMemo(() => places.filter((place) => {
@@ -57,9 +60,13 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
 
   useEffect(() => setListPage((page) => Math.min(page, totalListPages - 1)), [totalListPages]);
   useEffect(() => setPlacePage((page) => Math.min(page, totalPlacePages - 1)), [totalPlacePages]);
+  useEffect(() => () => {
+    if (placeDeleteConfirmationTimeoutRef.current !== null) window.clearTimeout(placeDeleteConfirmationTimeoutRef.current);
+  }, []);
   useEffect(() => {
     setPlacePage(0);
     setPlaceQuery("");
+    clearSavedPlaceDeletionConfirmation();
   }, [activeList?.id]);
 
   function openCreate() {
@@ -96,6 +103,32 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
     setEditorMode(null);
   }
 
+  function clearSavedPlaceDeletionConfirmation() {
+    if (placeDeleteConfirmationTimeoutRef.current !== null) window.clearTimeout(placeDeleteConfirmationTimeoutRef.current);
+    placeDeleteConfirmationTimeoutRef.current = null;
+    placeDeleteConfirmationRef.current = null;
+    setPendingPlaceDeleteId(null);
+  }
+
+  function requestSavedPlaceDeletion(place: SavedPlace) {
+    const confirmation = placeDeleteConfirmationRef.current;
+    if (!confirmation || confirmation.id !== place.id || Date.now() >= confirmation.expiresAt) {
+      if (placeDeleteConfirmationTimeoutRef.current !== null) window.clearTimeout(placeDeleteConfirmationTimeoutRef.current);
+      placeDeleteConfirmationRef.current = { id: place.id, expiresAt: Date.now() + 3_000 };
+      setPendingPlaceDeleteId(place.id);
+      placeDeleteConfirmationTimeoutRef.current = window.setTimeout(() => {
+        placeDeleteConfirmationRef.current = null;
+        placeDeleteConfirmationTimeoutRef.current = null;
+        setPendingPlaceDeleteId(null);
+      }, 3_000);
+      notify.info("한 번 더 누르면 리스트에서 제거됩니다.");
+      return;
+    }
+
+    clearSavedPlaceDeletionConfirmation();
+    onDeletePlace(place.id);
+  }
+
   if (editorMode) {
     const isCreate = editorMode === "create";
     return <section className="saved-places-panel place-list-editor-screen" style={{ "--list-color": color } as CSSProperties}>
@@ -110,7 +143,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
       <form id="place-list-editor-form" className="list-editor-screen-form" onSubmit={submit}>
         <label className="list-editor-name-field">
           <span>리스트 이름</span>
-          <div><input autoFocus value={name} maxLength={40} onFocus={() => onInputFocus?.()} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 40</small></div>
+          <div><input autoFocus value={name} maxLength={20} onFocus={() => onInputFocus?.()} onChange={(event) => setName(event.target.value)} placeholder="예: 주말 카페" aria-label="리스트 이름" /><small>{name.length} / 20</small></div>
         </label>
         <fieldset className="list-editor-colors">
           <legend>대표 색상</legend>
@@ -140,7 +173,7 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
       {isPlacesLoading && <ContentLoading variant="saved-places" />}
       {!isPlacesLoading && pagedPlaces.length > 0 && <ol className="saved-place-list saved-place-collection">{pagedPlaces.map((place, index) => {
         const isOnRoute = isPlaceOnRoute(place);
-        return <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><button type="button" className="saved-place-focus" onClick={() => onPlaceSelect?.(place)} aria-label={place.name}><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></button><div className="saved-place-actions"><button className={`saved-place-add-action${isOnRoute ? " is-on-route" : ""}`} type="button" onClick={(event) => { event.stopPropagation(); if (isOnRoute) onRemoveFromRoute(place); else onAddToRoute(place); }} title={isOnRoute ? "방문 장소 제거" : "방문 장소 추가"} aria-label={`${place.name} ${isOnRoute ? "방문 장소 제거" : "방문 장소 추가"}`}>{isOnRoute ? <MapPinX size={16} /> : <MapPinPlus size={16} />}</button><button type="button" onClick={(event) => { event.stopPropagation(); onDeletePlace(place.id); }} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>;
+        return <li key={place.id}><span className="saved-place-index">{String(placePage * ITEMS_PER_PAGE + index + 1).padStart(2, "0")}</span><button type="button" className="saved-place-focus" onClick={() => onPlaceSelect?.(place)} aria-label={place.name}><strong>{place.name}</strong><small>{place.address || `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`}</small></button><div className="saved-place-actions"><button className={`saved-place-add-action${isOnRoute ? " is-on-route" : ""}`} type="button" onClick={(event) => { event.stopPropagation(); if (isOnRoute) onRemoveFromRoute(place); else onAddToRoute(place); }} title={isOnRoute ? "방문 장소 제거" : "방문 장소 추가"} aria-label={`${place.name} ${isOnRoute ? "방문 장소 제거" : "방문 장소 추가"}`}>{isOnRoute ? <MapPinX size={16} /> : <MapPinPlus size={16} />}</button><button type="button" className={pendingPlaceDeleteId === place.id ? "is-pending-removal" : ""} onClick={(event) => { event.stopPropagation(); requestSavedPlaceDeletion(place); }} title="저장한 장소 삭제" aria-label={`${place.name} 삭제`}><Trash2 size={16} /></button></div></li>;
       })}</ol>}
       {!isPlacesLoading && places.length > 0 && pagedPlaces.length === 0 && <p className="list-empty-state search-empty-state">“{placeQuery}”에 맞는 저장한 장소가 없습니다.</p>}
       {!isPlacesLoading && places.length === 0 && <div className="list-empty-state list-empty-action-area"><p>아직 저장한 장소가 없습니다.</p><span>검색 결과의 저장 버튼으로 이 리스트에 장소를 모아보세요.</span><button type="button" onClick={onBrowsePlaces}><Search size={15} />장소 검색하기</button></div>}
@@ -151,9 +184,8 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
   if (isLoading) return <section className="saved-places-panel place-list-overview"><ContentLoading variant="collections" /></section>;
 
   return <section className="saved-places-panel place-list-overview">
-    <header className="list-overview-header"><div className="list-overview-heading"><h2>장소 리스트</h2><p>나만의 장소 관리 리스트</p></div><div><button className="list-icon-button list-create-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button list-close-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
-    <div className="list-overview-meta"><span><b>{lists.length}</b>개</span></div>
-    {pagedLists.length > 0 && <ol className="place-list-cards place-list-collection">{pagedLists.map((list) => <li key={list.id}><button type="button" className="place-list-card" onClick={() => onSelect(list.id)} title={list.name}><span className="list-color-emblem" style={{ backgroundColor: list.color }}><MapPinned size={18} aria-hidden="true" /></span><span className="list-card-copy"><strong>{list.name}</strong><small><span><b>{list.placeCount}</b>곳</span><span>마지막 업데이트 {formatUpdatedDate(list.updatedAt)}</span></small></span><ChevronRight className="list-card-arrow" size={18} aria-hidden="true" /></button></li>)}</ol>}
+    <header className="list-overview-header"><div className="list-overview-heading"><h2><span className="list-overview-count">{lists.length}</span>개의 장소 리스트</h2><p>나만의 장소 관리 리스트</p></div><div><button className="list-icon-button list-create-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button list-close-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
+    {pagedLists.length > 0 && <ol className="place-list-cards place-list-collection">{pagedLists.map((list) => <li key={list.id}><button type="button" className="place-list-card" onClick={() => onSelect(list.id)} title={list.name}><span className="list-color-emblem" style={{ backgroundColor: list.color }}><MapPinned size={18} aria-hidden="true" /></span><span className="list-card-copy"><strong>{list.name}</strong><small><span><b>{list.placeCount}</b>곳</span><span>최근 수정 {formatUpdatedDate(list.updatedAt)}</span></small></span><ChevronRight className="list-card-arrow" size={18} aria-hidden="true" /></button></li>)}</ol>}
     {lists.length > ITEMS_PER_PAGE && <Pagination page={listPage} totalPages={totalListPages} ariaLabel="장소 리스트 페이지" onPageChange={setListPage} />}
     {lists.length === 0 && <div className="list-empty-state list-empty-action-area"><p>첫 장소 리스트를 만들어 보세요.</p><span>자주 방문하는 장소를 주제별로 정리할 수 있어요.</span><button type="button" onClick={openCreate}><Plus size={15} />첫 리스트 만들기</button></div>}
   </section>;

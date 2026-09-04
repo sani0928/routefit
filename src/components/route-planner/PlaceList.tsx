@@ -91,6 +91,7 @@ function SortablePlaceItem({
     transition: { duration: 180, easing: "cubic-bezier(.2,.8,.2,1)", idle: true },
   });
   const stayDuration = place.stayDurationMinutes ?? 0;
+  const canSetVisitOrder = !isStart && !isDestination;
   const [stayInput, setStayInput] = useState(String(stayDuration));
   const [mobileSwipe, setMobileSwipe] = useState<"actions" | "stay" | null>(null);
   const itemRef = useRef<HTMLLIElement | null>(null);
@@ -242,7 +243,7 @@ function SortablePlaceItem({
           {canSetStayDuration && stayDuration > 0 && (
             <span className="place-stay-badge"><Clock3 aria-hidden="true" /> {stayDuration}분</span>
           )}
-          {canSetStayDuration && isOrderLocked && (
+          {canSetVisitOrder && isOrderLocked && (
             <span className="place-lock-badge" aria-label="순서 보장"><Lock aria-hidden="true" /></span>
           )}
         </div>
@@ -283,7 +284,7 @@ function SortablePlaceItem({
               <span className="place-action-label">리스트 저장</span>
             </button>
           )}
-          {canSetStayDuration && (
+          {canSetVisitOrder && (
             <button
               type="button"
               className={`place-order-lock icon-action${isOrderLocked ? " locked" : ""}`}
@@ -373,7 +374,7 @@ function SortablePlaceItem({
             <ListPlus aria-hidden="true" />
           </button>
         )}
-        {canSetStayDuration && (
+        {canSetVisitOrder && (
           <button type="button" className={`mobile-swipe-lock${isOrderLocked ? " locked" : ""}`} aria-label={isOrderLocked ? `${index + 1}번째 방문 순서 고정 해제` : `${index + 1}번째 방문 순서 고정`} title={isOrderLocked ? "순서 고정 해제" : "순서 보장"} aria-pressed={isOrderLocked} onClick={(event) => {
             stopCardToggle(event);
             onFixedVisitOrderChange(place.id, index + 1);
@@ -546,7 +547,7 @@ export function PlaceList({
   return (
     <section className="place-section">
       <div className="section-heading">
-        <h2>방문 장소</h2>
+        <h2 className="place-heading-title">방문 장소 {places.length}곳</h2>
         <div className="place-heading-actions">
           {onSavedPlacesOpen && (
             <button

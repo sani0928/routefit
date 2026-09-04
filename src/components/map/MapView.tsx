@@ -11,7 +11,7 @@ type MapPlace = Omit<Place, "id" | "type">;
 type NearbyCandidate = MapPlace & { distanceMeters: number };
 type MapFocusPlace = Pick<MapPlace, "latitude" | "longitude">;
 type MarkerPopupPlace = Pick<MapPlace, "name" | "latitude" | "longitude"> & { id?: string; providerId?: string };
-interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; searchResults?: PlaceSearchResult[]; temporaryCurrentLocation?: MapFocusPlace | null; searchResultsFocusRequestId?: number; searchViewportKey?: string; isSearchViewportAdjusting?: boolean; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocation?: MapFocusPlace | null; currentLocationRequestId?: number; onCurrentLocationUpdate: (place: MapPlace) => void; onCurrentLocationTrackingChange?: (locating: boolean) => void; onMapCenterChange?: (center: { latitude: number; longitude: number }) => void; onSearchResultsVisibilityChange?: (hasVisibleMarker: boolean) => void; onSearchViewportSettlingChange?: (isSettling: boolean) => void; showSearchMapRetry?: boolean; onSearchMapRetry?: () => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; listMarkerMode?: "overview" | "detail"; onListPlaceAdd?: (place: MapPlace) => void; onListPlaceRemove?: (place: MapPlace) => void; isListPlaceAdded?: (place: MapPlace) => boolean; }
+interface Props { places: Place[]; segments: RouteSegment[]; returnToStart: boolean; highlightedSegmentIndex: number | null; focusedSegmentIndex?: number | null; focusedPlace?: MapFocusPlace | null; focusedPlaceRequestId?: number; focusedPlaceSheetId?: string; searchResults?: PlaceSearchResult[]; temporaryCurrentLocation?: MapFocusPlace | null; searchResultsFocusRequestId?: number; searchViewportKey?: string; isSearchViewportAdjusting?: boolean; focusedSearchResult?: MapFocusPlace | null; focusedSearchResultRequestId?: number; onSegmentSelect?: (index: number) => void; onMapPlaceSelect: (place: MapPlace) => void; currentLocationActive: boolean; currentLocation?: MapFocusPlace | null; onCurrentLocationUpdate: (place: MapPlace) => void; onMapCenterChange?: (center: { latitude: number; longitude: number }) => void; onSearchResultsVisibilityChange?: (hasVisibleMarker: boolean) => void; onSearchViewportSettlingChange?: (isSettling: boolean) => void; showSearchMapRetry?: boolean; onSearchMapRetry?: () => void; onMapError: (message: string) => void; listPlaces?: (SavedPlace & { color: string })[]; listMarkerMode?: "overview" | "detail"; onListPlaceAdd?: (place: MapPlace) => void; onListPlaceRemove?: (place: MapPlace) => void; isListPlaceAdded?: (place: MapPlace) => boolean; }
 
 const CENTER = { latitude: 36.3504, longitude: 127.3845 };
 const MOBILE_SHEET_SETTLE_DURATION_MS = 380;
@@ -159,7 +159,7 @@ function createCurrentLocationPopupContent(address?: string) {
   return container;
 }
 
-export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, searchResults, temporaryCurrentLocation, searchResultsFocusRequestId, searchViewportKey, isSearchViewportAdjusting = false, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocation, currentLocationRequestId, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, showSearchMapRetry = false, onSearchMapRetry, onMapError, listPlaces, listMarkerMode, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded }: Props) {
+export function MapView({ places, segments, returnToStart, highlightedSegmentIndex, focusedSegmentIndex, focusedPlace, focusedPlaceRequestId, focusedPlaceSheetId = "mobile-lists-panel", searchResults, temporaryCurrentLocation, searchResultsFocusRequestId, searchViewportKey, isSearchViewportAdjusting = false, focusedSearchResult, focusedSearchResultRequestId, onSegmentSelect, onMapPlaceSelect, currentLocationActive, currentLocation, onCurrentLocationUpdate, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, showSearchMapRetry = false, onSearchMapRetry, onMapError, listPlaces, listMarkerMode, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
@@ -177,7 +177,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   const selectRef = useRef(onMapPlaceSelect);
   const segmentSelectRef = useRef(onSegmentSelect);
   const currentLocationUpdateRef = useRef(onCurrentLocationUpdate);
-  const trackingChangeRef = useRef(onCurrentLocationTrackingChange);
   const mapCenterChangeRef = useRef(onMapCenterChange);
   const searchResultsVisibilityChangeRef = useRef(onSearchResultsVisibilityChange);
   const searchViewportSettlingChangeRef = useRef(onSearchViewportSettlingChange);
@@ -305,7 +304,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     selectRef.current = onMapPlaceSelect;
     segmentSelectRef.current = onSegmentSelect;
     currentLocationUpdateRef.current = onCurrentLocationUpdate;
-    trackingChangeRef.current = onCurrentLocationTrackingChange;
     mapCenterChangeRef.current = onMapCenterChange;
     searchResultsVisibilityChangeRef.current = onSearchResultsVisibilityChange;
     searchViewportSettlingChangeRef.current = onSearchViewportSettlingChange;
@@ -313,7 +311,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
     listAddRef.current = onListPlaceAdd;
     listRemoveRef.current = onListPlaceRemove;
     isListPlaceAddedRef.current = isListPlaceAdded;
-  }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onCurrentLocationTrackingChange, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, onMapError, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded]);
+  }, [onMapPlaceSelect, onSegmentSelect, onCurrentLocationUpdate, onMapCenterChange, onSearchResultsVisibilityChange, onSearchViewportSettlingChange, onMapError, onListPlaceAdd, onListPlaceRemove, isListPlaceAdded]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -414,26 +412,6 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
   }, [showSearchMapRetry]);
 
   useEffect(() => {
-    if (!mapInitialized || !currentLocationRequestId) return;
-    if (!navigator.geolocation) {
-      errorRef.current("브라우저에서 현재 위치를 지원하지 않습니다.");
-      trackingChangeRef.current?.(false);
-      return;
-    }
-
-    trackingChangeRef.current?.(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        renderCurrentLocationMarker(coords.latitude, coords.longitude);
-        trackingChangeRef.current?.(false);
-      },
-      () => {
-        errorRef.current("위치 권한을 확인해 주세요.");
-        trackingChangeRef.current?.(false);
-      },
-      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
-    );
-  }, [currentLocationRequestId, mapInitialized, renderCurrentLocationMarker]);  useEffect(() => {
     if (!clientId || !nodeRef.current || mapRef.current) return;
     const createPopupContent = (candidates?: NearbyCandidate[], addressFallback?: MapPlace) => {
       const container = document.createElement("div");
@@ -865,7 +843,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
       if (!mapRect) return;
 
       const insets = isMobileMap
-        ? getMobileMapInsets(nodeRef.current, "mobile-lists-panel")
+        ? getMobileMapInsets(nodeRef.current, focusedPlaceSheetId)
         : { top: 0, right: 0, bottom: 0, left: 0 };
       const desiredX = mapRect.width / 2;
       const visibleHeight = Math.max(1, mapRect.height - insets.top - insets.bottom);
@@ -897,7 +875,7 @@ export function MapView({ places, segments, returnToStart, highlightedSegmentInd
 
     const settleTimer = window.setTimeout(() => moveToFocusedPlace(), MOBILE_SHEET_SETTLE_DURATION_MS);
     return () => window.clearTimeout(settleTimer);
-  }, [focusedPlace?.latitude, focusedPlace?.longitude, focusedPlaceRequestId, mapInitialized]);
+  }, [focusedPlace?.latitude, focusedPlace?.longitude, focusedPlaceRequestId, focusedPlaceSheetId, mapInitialized]);
 
   if (!clientId) {
     return (

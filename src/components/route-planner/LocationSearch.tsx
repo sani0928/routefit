@@ -11,6 +11,10 @@ type Feedback = "idle" | "not-found" | "error";
 type AddPlaceResult = { added: boolean; message?: string };
 type SaveableSearchResult = PlaceSearchResult & { providerId: string };
 
+const RECENT_SEARCHES_STORAGE_KEY = "routefit-recent-searches";
+const MAX_RECENT_SEARCHES = 10;
+const MAX_VISIBLE_RECENT_SEARCHES = 5;
+
 type Props = {
   onAdd: (place: PlaceSearchResult) => AddPlaceResult;
   onSave?: (place: SaveableSearchResult) => void;
@@ -33,6 +37,7 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
   const [feedback, setFeedback] = useState<Feedback>("idle");
   const [isExpanded, setExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
   const searchRootRef = useRef<HTMLFormElement>(null);
@@ -54,6 +59,46 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
     onSearchClear?.();
   }
 
+  function rememberSearch(term: string) {
+    const keyword = term.trim();
+    if (keyword.length < 2) return;
+
+    setRecentSearches((current) => {
+      const normalizedKeyword = keyword.toLowerCase();
+      const next = [keyword, ...current.filter((item) => item.toLowerCase() !== normalizedKeyword)].slice(0, MAX_RECENT_SEARCHES);
+      try {
+        window.localStorage.setItem(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Recent searches are a convenience only; continue when storage is unavailable.
+      }
+      return next;
+    });
+  }
+
+  function removeRecentSearch(keyword: string) {
+    setRecentSearches((current) => {
+      const next = current.filter((item) => item !== keyword);
+      try {
+        if (next.length) window.localStorage.setItem(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(next));
+        else window.localStorage.removeItem(RECENT_SEARCHES_STORAGE_KEY);
+      } catch {
+        // Recent searches are a convenience only; continue when storage is unavailable.
+      }
+      return next;
+    });
+  }
+
+  function submitSearch(term: string) {
+    const keyword = term.trim();
+    if (keyword.length < 2) return;
+    rememberSearch(keyword);
+    setExpanded(false);
+    // A mobile results view uses the compact sheet, so keep the software keyboard
+    // from covering it after the search form submits.
+    if (isMobile) searchRootRef.current?.querySelector<HTMLInputElement>("#search")?.blur();
+    onSearchSubmit(keyword);
+  }
+
   function choose(place: PlaceSearchResult) {
     const outcome = onAdd(place);
     if (outcome.added) setExpanded(false);
@@ -65,6 +110,19 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
     syncMobileState();
     mediaQuery.addEventListener("change", syncMobileState);
     return () => mediaQuery.removeEventListener("change", syncMobileState);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY) ?? "[]") as unknown;
+      if (!Array.isArray(stored)) return;
+      setRecentSearches(stored
+        .filter((item): item is string => typeof item === "string" && item.trim().length >= 2)
+        .map((item) => item.trim())
+        .slice(0, MAX_RECENT_SEARCHES));
+    } catch {
+      // Ignore malformed or unavailable browser storage.
+    }
   }, []);
 
   useEffect(() => {
@@ -116,24 +174,21 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    const term = query.trim();
-    if (term.length < 2) return;
-    setExpanded(false);
-    // A mobile results view uses the compact sheet, so keep the software keyboard
-    // from covering it after the search form submits.
-    if (isMobile) searchRootRef.current?.querySelector<HTMLInputElement>("#search")?.blur();
-    onSearchSubmit(term);
+    submitSearch(query);
   }
+
+  const isShowingRecentSearches = isExpanded && !query.trim() && recentSearches.length > 0;
+  const isShowingQuickResults = isExpanded && query.trim().length >= 2 && results.length > 0;
 
   return <form ref={searchRootRef} onSubmit={submit} className={`search-form naver-search-form${isExpanded || query ? " search-expanded" : ""}`}>
     <label className="sr-only" htmlFor="search">장소 또는 주소 검색</label>
     <div className="search-control">
       <div className={`search-input-row ${feedback !== "idle" ? `search-feedback ${feedback}` : ""}`}>
-        <input id="search" value={query} onFocus={() => { setExpanded(true); onSearchFocus?.(); }} onBlur={() => { if (!query.trim()) clearSearch(); }} onChange={(event) => { setQuery(event.target.value); setExpanded(true); }} placeholder="장소, 주소 검색" autoComplete="off" aria-expanded={isExpanded && results.length > 0} aria-controls="place-search-results" />
+        <input id="search" value={query} onFocus={() => { setExpanded(true); onSearchFocus?.(); }} onBlur={() => { if (!query.trim()) clearSearch(); }} onChange={(event) => { setQuery(event.target.value); setExpanded(true); }} placeholder="장소, 주소 검색" autoComplete="off" aria-expanded={isShowingQuickResults || isShowingRecentSearches} aria-controls={isShowingRecentSearches ? "recent-search-keywords" : "place-search-results"} />
         {(query || showClearAction) && <button className="search-clear" type="button" aria-label="검색 결과 닫기" onClick={clearSearch}><X size={16} /></button>}
         <button className="search-submit" type="submit" aria-label="전체 검색 결과 보기" disabled={query.trim().length < 2 || loading}><Search size={18} /></button>
       </div>
-      {isExpanded && results.length > 0 && <ul id="place-search-results" className="search-results" role="listbox">
+      {isShowingQuickResults && <ul id="place-search-results" className="search-results" role="listbox">
         {results.map((place, index) => {
           const savedListIds = place.providerId ? savedListIdsByProviderId[place.providerId] ?? place.savedListIds : place.savedListIds;
           const placeListMatch = savedListIds?.length
@@ -144,6 +199,13 @@ export function LocationSearch({ onAdd, onSave, placeLists, savedListIdsByProvid
           {onSave && place.providerId && <button className="search-result-save" type="button" onClick={() => onSave({ ...place, providerId: place.providerId! })} aria-label={`${place.name} 장소 리스트에 저장`}><ListPlus size={16} /></button>}
         </li>;
         })}
+      </ul>}
+      {isShowingRecentSearches && <ul id="recent-search-keywords" className="recent-searches" aria-label="최근 검색어">
+        <li className="recent-searches-heading"><span>최근 검색어</span></li>
+        {recentSearches.slice(0, MAX_VISIBLE_RECENT_SEARCHES).map((keyword) => <li className="recent-searches-item" key={keyword}>
+          <button className="recent-search-select" type="button" onPointerDown={(event) => event.preventDefault()} onClick={() => { setQuery(keyword); submitSearch(keyword); }}><Search size={18} aria-hidden="true" /><span>{keyword}</span></button>
+          <button className="recent-search-remove" type="button" onPointerDown={(event) => event.preventDefault()} onClick={() => removeRecentSearch(keyword)} aria-label={`${keyword} 최근 검색어 삭제`}><X size={16} aria-hidden="true" /></button>
+        </li>)}
       </ul>}
     </div>
     {onSavedPlacesOpen && <button type="button" className="search-list-toggle" onClick={onSavedPlacesOpen} aria-label="장소 리스트 열기"><List size={18} aria-hidden="true" /><span>장소 리스트</span></button>}

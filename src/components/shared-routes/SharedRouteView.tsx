@@ -70,7 +70,7 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
         </div>
 
         {activeTab === "stops" && <section id="shared-route-stops-panel" role="tabpanel" aria-labelledby="shared-route-stops-tab" className="shared-route-stops shared-route-tab-panel">
-          <div className="shared-route-section-heading"><div><small>방문 순서</small><h2>추천 방문 동선</h2></div></div>
+          <div className="shared-route-section-heading"><div><small>방문 순서</small></div></div>
           <ol>
             {snapshot.result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`}>
               <button type="button" onClick={() => { setSelectedSegmentIndex(null); setFocusedPlaceIndex(index); }} aria-label={`${isSharedCurrentLocation(place) ? "현재 위치" : place.name} 중심으로 지도 보기`}>
@@ -83,16 +83,15 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
         </section>}
 
         {activeTab === "segments" && <section id="shared-route-segments-panel" role="tabpanel" aria-labelledby="shared-route-segments-tab" className="shared-route-segments shared-route-tab-panel">
-          <div className="shared-route-section-heading"><div><small>구간 정보</small><h2>구간 별 상세</h2></div></div>
+          <div className="shared-route-section-heading"><div><small>구간 별 상세</small></div></div>
           <ol>
             {snapshot.result.segments.map((segment, index) => {
               const selected = selectedSegmentIndex === index;
-              const from = placesById.get(segment.fromId);
               const to = placesById.get(segment.toId);
               return <li key={`${segment.fromId}-${segment.toId}-${index}`} className={selected ? "is-selected" : ""} style={{ "--route-color": routeColor(index) } as React.CSSProperties}>
                 <button type="button" aria-pressed={selected} onClick={() => { setFocusedPlaceIndex(null); setSelectedSegmentIndex(index); }}>
                   <span className="shared-route-segment-label">{String.fromCharCode(65 + index)}</span>
-                  <span className="shared-route-segment-places"><strong>{from && isSharedCurrentLocation(from) ? "현재 위치" : from?.name ?? "출발 장소"}<i>→</i>{to && isSharedCurrentLocation(to) ? "현재 위치" : to?.name ?? "도착 장소"}</strong></span>
+                  <span className="shared-route-segment-places"><strong><i>→</i>{to && isSharedCurrentLocation(to) ? "현재 위치" : to?.name ?? "다음 장소"}</strong></span>
                   <span className="shared-route-segment-metrics"><strong>{formatDistance(segment.distanceMeters)}</strong><small><span className="shared-route-segment-duration"><Clock3 aria-hidden="true" /><b>{formatTime(segment.durationMilliseconds)}</b></span><em className={`traffic-status ${trafficTone(segment.trafficSections)}`}>{trafficLabel(segment.trafficSections)}</em></small></span>
                 </button>
               </li>;

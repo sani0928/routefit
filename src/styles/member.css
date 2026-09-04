@@ -365,6 +365,10 @@
   letter-spacing: -.045em;
 }
 
+.map-list-manager .place-list-overview .list-overview-heading .list-overview-count {
+  color: var(--routefit-blue, #2563eb);
+}
+
 .map-list-manager .place-list-overview .list-overview-heading p {
   margin: 4px 0 0;
   color: #8192a7;
@@ -376,19 +380,6 @@
 .map-list-manager .place-list-overview .list-overview-header > div:last-child { gap: 6px; }
 .map-list-manager .place-list-overview .list-create-button { color: #fff; border-color: #2563eb; background: #2563eb; box-shadow: 0 5px 12px rgb(37 99 235 / .2); }
 .map-list-manager .place-list-overview .list-create-button:hover { color: #fff; border-color: #1d4ed8; background: #1d4ed8; }
-
-.map-list-manager .place-list-overview .list-overview-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 10px 2px 8px;
-  color: #8494a8;
-  font-size: .66rem;
-  font-weight: 700;
-}
-
-.map-list-manager .place-list-overview .list-overview-meta b { color: #2563eb; font-size: .78rem; }
-.map-list-manager .place-list-overview .list-overview-meta span:last-child { color: #9aa8ba; }
 
 .map-list-manager .place-list-overview .place-list-cards.place-list-collection {
   display: grid;
@@ -550,6 +541,9 @@
 .map-list-manager .place-list-detail .saved-place-collection .saved-place-add-action.is-on-route:hover { background: #fff1f2; }
 .map-list-manager .place-list-detail .saved-place-collection .saved-place-actions > button:last-child { color: #8b9caf; }
 .map-list-manager .place-list-detail .saved-place-collection .saved-place-actions > button:last-child:hover { color: #d24d58; }
+.map-list-manager .place-list-detail .saved-place-collection .saved-place-actions > button.is-pending-removal {
+  color: #dc2626;
+}
 
 @media (max-width: 700px) {
   .map-list-manager .place-list-detail .saved-place-collection > li,

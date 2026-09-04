@@ -13,6 +13,7 @@ import { RouteSummary } from "@/components/route-planner/RouteSummary";
 import type { MemberPlaceList, MemberState, SavedPlace } from "@/features/member/types";
 import type { FixedVisitOrder, OptimizationResponse, Place } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
+import { requestCurrentLocationCoordinates } from "@/lib/current-location";
 import { useMobileSheetController } from "@/hooks/useMobileSheetController";
 import { usePlaceLists, type SavePlaceInput } from "@/hooks/usePlaceLists";
 import { usePlaceSearch, type SearchResultSort } from "@/hooks/usePlaceSearch";
@@ -63,18 +64,6 @@ function distanceInMeters(first: LocationCoordinates, second: LocationCoordinate
     + Math.cos(toRadians(first.latitude)) * Math.cos(toRadians(second.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
 
   return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function requestCurrentLocationCoordinates(): Promise<LocationCoordinates> {
-  if (!navigator.geolocation) return Promise.reject(new Error("CURRENT_LOCATION_UNAVAILABLE"));
-
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
-      () => reject(new Error("CURRENT_LOCATION_UNAVAILABLE")),
-      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
-    );
-  });
 }
 
 async function resolveCurrentLocationAddress({ latitude, longitude }: LocationCoordinates) {
@@ -129,7 +118,8 @@ export function RouteFitPlanner() {
   const { member, setMember, memberStateReady, setMemberStateReady, workspaceRestored, setWorkspaceRestored, listManagerOpen, setListManagerOpen, selectedListId, setSelectedListId, focusedSavedPlace, setFocusedSavedPlace, focusedSavedPlaceRequest, setFocusedSavedPlaceRequest, savedPlacesByListId, setSavedPlacesByListId, saveTarget, setSaveTarget } = usePlaceLists();
   const { searchQuery, setSearchQuery, searchMapResults, setSearchMapResults, searchResultSort, setSearchResultSort, searchCurrentLocation, setSearchCurrentLocation, searchCurrentLocationLocating, setSearchCurrentLocationLocating, mapCenter, setMapCenter, searchMapCenter, setSearchMapCenter, searchMapCenterRequest, setSearchMapCenterRequest, hasVisibleSearchResult, setHasVisibleSearchResult, isSearchResultsLoading, setSearchResultsLoading, isSearchViewportSettling, setSearchViewportSettling, searchResultsFocusRequest, setSearchResultsFocusRequest, focusedSearchResult, setFocusedSearchResult, focusedSearchResultRequest, setFocusedSearchResultRequest, searchCurrentLocationRequestRef } = usePlaceSearch();
   const [currentLocationLocating, setCurrentLocationLocating] = useState(false);
-  const [currentLocationRequestId, setCurrentLocationRequestId] = useState(0);
+  const [focusedRoutePlace, setFocusedRoutePlace] = useState<LocationCoordinates | null>(null);
+  const [focusedRoutePlaceRequest, setFocusedRoutePlaceRequest] = useState(0);
   const [savedListIdsByProviderId, setSavedListIdsByProviderId] = useState<Record<string, string[]>>({});
   const quickSearchMatchesAbortRef = useRef<AbortController | null>(null);
   const workspaceRestoredRef = useRef(false);
@@ -428,6 +418,7 @@ export function RouteFitPlanner() {
   useEffect(() => {
     if (result) return;
     calculatedCurrentLocationRef.current = null;
+    setFocusedRoutePlace(null);
     setResultSnapshot(null);
     setRouteNeedsRecalculation(false);
   }, [result]);
@@ -445,6 +436,9 @@ export function RouteFitPlanner() {
     const ordered = result.orderedPlaces;
     return ordered.length > 1 && ordered[0].id === ordered.at(-1)?.id ? ordered.slice(0, -1) : ordered;
   }, [places, result]);
+  const focusedMapPlace = listManagerOpen ? focusedSavedPlace : focusedRoutePlace;
+  const focusedMapPlaceRequest = listManagerOpen ? focusedSavedPlaceRequest : focusedRoutePlaceRequest;
+  const focusedMapSheetId = listManagerOpen ? "mobile-lists-panel" : "mobile-results-panel";
   const markRouteStale = useCallback(() => {
     routeInputVersionRef.current += 1;
     if (!result) return;
@@ -519,9 +513,21 @@ export function RouteFitPlanner() {
     }
 
     setCurrentLocationLocating(true);
-    setCurrentLocationRequestId((current) => current + 1);
+    void requestCurrentLocationCoordinates()
+      .then((coordinates) => {
+        updateCurrentLocation({
+          name: "현재 위치",
+          address: "현재 위치",
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          stayDurationMinutes: 0,
+          isCurrentLocation: true,
+        });
+      })
+      .catch(() => notify.error("위치 권한을 확인해 주세요."))
+      .finally(() => setCurrentLocationLocating(false));
     return true;
-  }, [currentLocationLocating, places]);
+  }, [currentLocationLocating, places, updateCurrentLocation]);
   const requestSearchCurrentLocation = useCallback((): boolean => {
     if (searchCurrentLocationLocating) return false;
     if (!navigator.geolocation) {
@@ -531,19 +537,17 @@ export function RouteFitPlanner() {
 
     const requestId = ++searchCurrentLocationRequestRef.current;
     setSearchCurrentLocationLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
+    void requestCurrentLocationCoordinates()
+      .then((coordinates) => {
         if (requestId !== searchCurrentLocationRequestRef.current) return;
-        setSearchCurrentLocation({ latitude: coords.latitude, longitude: coords.longitude });
+        setSearchCurrentLocation(coordinates);
         setSearchCurrentLocationLocating(false);
-      },
-      () => {
+      })
+      .catch(() => {
         if (requestId !== searchCurrentLocationRequestRef.current) return;
         notify.error("위치 권한을 확인해 주세요.");
         setSearchCurrentLocationLocating(false);
-      },
-      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 10_000 },
-    );
+      });
     return true;
   }, [searchCurrentLocationLocating]);
   const handleSearchSortChange = useCallback((sort: SearchResultSort, center?: LocationCoordinates | null) => {
@@ -987,6 +991,15 @@ export function RouteFitPlanner() {
     if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("peek");
   }
 
+  function focusRoutePlaceOnMap(place: OptimizationResponse["orderedPlaces"][number]) {
+    setFocusedRoutePlace({ latitude: place.latitude, longitude: place.longitude });
+    setFocusedRoutePlaceRequest((current) => current + 1);
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      setMobileTab("results");
+      setMobileSheetState("peek");
+    }
+  }
+
   function closeMobileSheet() {
     setMobileSheetState("collapsed");
     setListManagerOpen(false);
@@ -1042,6 +1055,7 @@ export function RouteFitPlanner() {
   function clearRouteResult() {
     setHoveredSegmentIndex(null);
     setSelectedSegmentIndex(null);
+    setFocusedRoutePlace(null);
     setResult(null);
     setResultSnapshot(null);
     setRouteNeedsRecalculation(false);
@@ -1178,17 +1192,16 @@ export function RouteFitPlanner() {
           onMapPlaceSelect={addPlace}
           currentLocationActive={currentLocationActive}
           currentLocation={currentLocation}
-          currentLocationRequestId={currentLocationRequestId}
           onCurrentLocationUpdate={updateCurrentLocation}
-          onCurrentLocationTrackingChange={handleCurrentLocationTrackingChange}
           onMapError={notify.error}
           listPlaces={mapListPlaces}
           listMarkerMode={listManagerOpen ? activeList ? "detail" : "overview" : undefined}
           onListPlaceAdd={addPlace}
           onListPlaceRemove={removeListPlaceFromRoute}
           isListPlaceAdded={isListPlaceAddedToRoute}
-          focusedPlace={focusedSavedPlace}
-          focusedPlaceRequestId={focusedSavedPlaceRequest}
+          focusedPlace={focusedMapPlace}
+          focusedPlaceRequestId={focusedMapPlaceRequest}
+          focusedPlaceSheetId={focusedMapSheetId}
           searchResults={showSearchResultMarkers ? searchMapResults : undefined}
           temporaryCurrentLocation={showSearchResultMarkers && searchResultSort === "current-distance" ? searchCurrentLocation : null}
           searchResultsFocusRequestId={searchResultsFocusRequest}
@@ -1234,7 +1247,7 @@ export function RouteFitPlanner() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={isRouteCalculationInProgress} isLocatingCurrentLocation={status === "LOCATING_CURRENT_LOCATION"} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onClearResult={clearRouteResult} onShare={() => void shareRoute()} isSharing={isSharingRoute} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
+            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={isRouteCalculationInProgress} isLocatingCurrentLocation={status === "LOCATING_CURRENT_LOCATION"} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onPlaceSelect={focusRoutePlaceOnMap} onClearResult={clearRouteResult} onShare={() => void shareRoute()} isSharing={isSharingRoute} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />

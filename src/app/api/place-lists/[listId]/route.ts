@@ -4,7 +4,7 @@ import { getSessionUser, unauthenticated, badRequest } from "@/lib/member/api";
 import { deletePlaceList, getSavedPlaces, updatePlaceList } from "@/lib/member/repository";
 import { LIST_COLORS } from "@/features/member/types";
 
-const bodySchema = z.object({ name: z.string().trim().min(1).max(60).optional(), color: z.enum(LIST_COLORS).optional() });
+const bodySchema = z.object({ name: z.string().trim().min(1).max(20).optional(), color: z.enum(LIST_COLORS).optional() });
 
 export async function GET(_: Request, context: { params: Promise<{ listId: string }> }) {
   const user = await getSessionUser();
