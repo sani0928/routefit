@@ -1359,6 +1359,17 @@
 .route-hero-times span { display:flex; align-items:baseline; gap:5px; }.route-hero-times small { color:#c9ddff; font-size:.62rem; font-weight:700; }.route-hero-times i { color:#c9ddff; font-style:normal; }
 .route-result-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:14px; padding:4px; border:1px solid #e0e8f3; border-radius:13px; background:#f6f8fc; }
 .route-result-tabs button { display:flex; min-width:0; align-items:center; justify-content:center; gap:6px; min-height:38px; padding:7px 8px; border-radius:9px; color:#718096; background:transparent; font-size:.73rem; font-weight:800; transition:color .18s ease,background .18s ease,box-shadow .18s ease; }
+.route-result-tabs button:hover,
+.route-result-tabs button:focus-visible { color:var(--routefit-blue,#2563eb); }
+.route-result-tabs button:hover span,
+.route-result-tabs button:focus-visible span,
+.route-result-tabs button.is-active span {
+  color:transparent;
+  background-image:var(--routefit-gradient);
+  background-clip:text;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
 .route-result-tabs button svg { width:16px; height:16px; flex:0 0 auto; }.route-result-tabs button small { display:grid; min-width:17px; height:17px; place-items:center; border-radius:999px; color:#8a9ab0; background:#e8eef6; font-size:.58rem; font-weight:900; }.route-result-tabs button.is-active { color:#2563eb; background:#fff; box-shadow:0 2px 7px #0f172a12; }.route-result-tabs button.is-active small { color:#fff; background:#2563eb; }
 .route-tab-panel { margin-top:12px; }.route-stops-card.route-tab-panel { margin-top:12px; }
 .modern-route-order li { padding:4px 0; }.route-stop-row { display:flex; width:100%; min-width:0; align-items:flex-start; gap:11px; padding:8px 7px; border:1px solid transparent; border-radius:11px; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer; transition:border-color .18s ease,background .18s ease,transform .18s ease; }.route-stop-row:hover { border-color:color-mix(in srgb,var(--route-color,#2563eb) 24%,#dbe7f2); background:color-mix(in srgb,var(--route-color,#2563eb) 4%,white); }.route-stop-row:focus-visible { outline:2px solid color-mix(in srgb,var(--route-color,#2563eb) 54%,#fff); outline-offset:1px; }.modern-route-order li.stop-selected .route-stop-row { border-color:color-mix(in srgb,var(--route-color,#2563eb) 35%,#dbe7f2); background:color-mix(in srgb,var(--route-color,#2563eb) 7%,white); }.route-stop-copy { display:block; min-width:0; flex:1 1 auto; }.route-stop-copy .route-stop-name { display:flex; min-width:0; align-items:center; gap:5px; }.route-stop-copy strong,.route-stop-copy small { max-width:none; }.route-stop-copy strong { min-width:0; flex:0 1 auto; }.route-stop-copy small { width:100%; }
@@ -2920,6 +2931,18 @@
     margin: -8px -11px;
     place-items: center;
     border-radius: 10px;
+  }
+
+  /* Keep the return card's hidden grip footprint identical to draggable cards. */
+  .planner-panel.mobile-sheet-panel .place-item.return-stop .drag-handle.placeholder {
+    display: grid;
+    width: 40px;
+    height: 44px;
+    flex: 0 0 40px;
+    margin: -8px -11px;
+    place-items: center;
+    border-radius: 10px;
+    visibility: hidden;
   }
 
   .planner-panel.mobile-sheet-panel .place-item.draggable .drag-handle.disabled {

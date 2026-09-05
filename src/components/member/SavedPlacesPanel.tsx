@@ -184,10 +184,10 @@ export function SavedPlacesPanel({ lists, activeList, places, routePlaces, onBac
   if (isLoading) return <section className="saved-places-panel place-list-overview"><ContentLoading variant="collections" /></section>;
 
   return <section className="saved-places-panel place-list-overview">
-    <header className="list-overview-header"><div className="list-overview-heading"><h2><span className="list-overview-count">{lists.length}</span>개의 장소 리스트</h2><p>나만의 장소 관리 리스트</p></div><div><button className="list-icon-button list-create-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button list-close-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
+    <header className="list-overview-header"><div className="list-overview-heading"><h2><span className="list-overview-count">{lists.length}</span>개의 장소 리스트</h2><p>장소를 모아 나만의 동선을 만들어 보세요.</p></div><div><button className="list-icon-button list-create-button" type="button" onClick={openCreate} aria-label="새 리스트 추가"><Plus size={18} /></button><button className="list-icon-button list-close-button" type="button" onClick={onBack} aria-label="리스트 관리 닫기"><X size={18} /></button></div></header>
     {pagedLists.length > 0 && <ol className="place-list-cards place-list-collection">{pagedLists.map((list) => <li key={list.id}><button type="button" className="place-list-card" onClick={() => onSelect(list.id)} title={list.name}><span className="list-color-emblem" style={{ backgroundColor: list.color }}><MapPinned size={18} aria-hidden="true" /></span><span className="list-card-copy"><strong>{list.name}</strong><small><span><b>{list.placeCount}</b>곳</span><span>최근 수정 {formatUpdatedDate(list.updatedAt)}</span></small></span><ChevronRight className="list-card-arrow" size={18} aria-hidden="true" /></button></li>)}</ol>}
     {lists.length > ITEMS_PER_PAGE && <Pagination page={listPage} totalPages={totalListPages} ariaLabel="장소 리스트 페이지" onPageChange={setListPage} />}
-    {lists.length === 0 && <div className="list-empty-state list-empty-action-area"><p>첫 장소 리스트를 만들어 보세요.</p><span>자주 방문하는 장소를 주제별로 정리할 수 있어요.</span><button type="button" onClick={openCreate}><Plus size={15} />첫 리스트 만들기</button></div>}
+    {lists.length === 0 && <div className="list-empty-state list-empty-action-area"><p>첫 장소 리스트를 만들어 보세요.</p><span>장소를 모아 나만의 동선을 만들어 보세요.</span><button type="button" onClick={openCreate}><Plus size={15} />첫 리스트 만들기</button></div>}
   </section>;
 }
 

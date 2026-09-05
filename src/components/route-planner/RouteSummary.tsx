@@ -46,11 +46,12 @@ type ResultTab = "stops" | "segments";
 
 type SegmentSwipeFeedback = { direction: "next" | "previous" | "start" | "end"; sequence: number };
 
-export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isLocatingCurrentLocation = false, isRouteStale = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onPlaceSelect, onClearResult, onResultTabOpen, onShare, isSharing = false }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isLocatingCurrentLocation?: boolean; isRouteStale?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onPlaceSelect: (place: OptimizationResponse["orderedPlaces"][number]) => void; onClearResult?: () => void; onResultTabOpen?: () => void; onShare?: () => void; isSharing?: boolean }) {
+export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isLocatingCurrentLocation = false, isRouteStale = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onPlaceSelect, onFitRoute, onClearResult, onResultTabOpen, onShare, isSharing = false }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isLocatingCurrentLocation?: boolean; isRouteStale?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onPlaceSelect: (place: OptimizationResponse["orderedPlaces"][number]) => void; onFitRoute: () => void; onClearResult?: () => void; onResultTabOpen?: () => void; onShare?: () => void; isSharing?: boolean }) {
   const [activeTab, setActiveTab] = useState<ResultTab>("stops");
   const [expandedSegmentIndex, setExpandedSegmentIndex] = useState<number | null>(null);
   const segmentFocusPointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const segmentSwipeFeedbackTimerRef = useRef<number | null>(null);
+  const routeStopScrollTimerRef = useRef<number | null>(null);
   const clearResultConfirmationTimerRef = useRef<number | null>(null);
   const departureInputScrollTimerRef = useRef<number | null>(null);
   const completionTransitionTimerRef = useRef<number | null>(null);
@@ -62,11 +63,13 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   const [isCompletionTransitioning, setIsCompletionTransitioning] = useState(false);
   const [hasCompletedTransition, setHasCompletedTransition] = useState(false);
   const [editedDepartureTime, setEditedDepartureTime] = useState<string | null>(null);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
 
   const fixedPlaceIds = new Set(fixedVisitOrders.map(({ placeId }) => placeId));
 
   useEffect(() => () => {
     if (segmentSwipeFeedbackTimerRef.current !== null) window.clearTimeout(segmentSwipeFeedbackTimerRef.current);
+    if (routeStopScrollTimerRef.current !== null) window.clearTimeout(routeStopScrollTimerRef.current);
     if (clearResultConfirmationTimerRef.current !== null) window.clearTimeout(clearResultConfirmationTimerRef.current);
     if (departureInputScrollTimerRef.current !== null) window.clearTimeout(departureInputScrollTimerRef.current);
     if (completionTransitionTimerRef.current !== null) window.clearTimeout(completionTransitionTimerRef.current);
@@ -76,8 +79,20 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     clearResultConfirmationRef.current = false;
     setIsClearResultPending(false);
     setEditedDepartureTime(null);
+    setSelectedStopId(null);
     if (clearResultConfirmationTimerRef.current !== null) window.clearTimeout(clearResultConfirmationTimerRef.current);
   }, [result]);
+
+  function selectRouteStop(place: OptimizationResponse["orderedPlaces"][number], target: HTMLButtonElement) {
+    setSelectedStopId(place.id);
+    onPlaceSelect(place);
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+    if (routeStopScrollTimerRef.current !== null) window.clearTimeout(routeStopScrollTimerRef.current);
+    routeStopScrollTimerRef.current = window.setTimeout(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      routeStopScrollTimerRef.current = null;
+    }, 420);
+  }
 
   useEffect(() => {
     setExpandedSegmentIndex(selectedSegmentIndex);
@@ -331,11 +346,11 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     </button>}
 
     <div className="route-result-tabs" role="tablist" aria-label="계산 결과 보기">
-      <button type="button" role="tab" id="route-stops-tab" aria-controls="route-stops-panel" aria-selected={activeTab === "stops"} className={activeTab === "stops" ? "is-active" : ""} onClick={() => { setActiveTab("stops"); onSegmentSelect(null); onResultTabOpen?.(); }}><ListOrdered aria-hidden="true" />방문 순서</button>
-      <button type="button" role="tab" id="route-segments-tab" aria-controls="route-segments-panel" aria-selected={activeTab === "segments"} className={activeTab === "segments" ? "is-active" : ""} onClick={() => { setActiveTab("segments"); onResultTabOpen?.(); }}><Route aria-hidden="true" />구간 상세</button>
+      <button type="button" role="tab" id="route-stops-tab" aria-controls="route-stops-panel" aria-selected={activeTab === "stops"} className={activeTab === "stops" ? "is-active" : ""} onClick={() => { setActiveTab("stops"); onSegmentSelect(null); onResultTabOpen?.(); }}><ListOrdered aria-hidden="true" /><span>방문 순서</span></button>
+      <button type="button" role="tab" id="route-segments-tab" aria-controls="route-segments-panel" aria-selected={activeTab === "segments"} className={activeTab === "segments" ? "is-active" : ""} onClick={() => { setActiveTab("segments"); onResultTabOpen?.(); }}><Route aria-hidden="true" /><span>구간 상세</span></button>
     </div>
 
-    {activeTab === "stops" && <section id="route-stops-panel" role="tabpanel" aria-labelledby="route-stops-tab" className="route-stops-card route-tab-panel"><div className="stops-heading"><div><small>방문 순서</small><strong>{result.orderedPlaces.length}개 지점</strong></div><span>ROUTE</span></div><ol className="modern-route-order">{result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`} style={{ "--route-color": routeColor(index) } as CSSProperties}><button type="button" className="route-stop-row" onClick={() => onPlaceSelect(place)} aria-label={`${place.name} 중심으로 지도 보기`}><span className="stop-number">{String(index + 1).padStart(2, "0")}</span><span className="route-stop-copy"><span className="route-stop-name"><strong>{place.name}</strong>{fixedPlaceIds.has(place.id) && <Lock className="route-stop-lock" size={13} strokeWidth={2.6} aria-label="방문 순서 고정" />}</span><small>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}</small></span></button></li>)}</ol></section>}
+    {activeTab === "stops" && <section id="route-stops-panel" role="tabpanel" aria-labelledby="route-stops-tab" className="route-stops-card route-tab-panel"><div className="stops-heading"><div><small>방문 순서</small><strong>{result.orderedPlaces.length}개 지점</strong></div><button type="button" onClick={() => { setSelectedStopId(null); onFitRoute(); }} aria-label="전체 구간 지도에서 한 눈에 보기">한 눈에 보기</button></div><ol className="modern-route-order">{result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`} className={selectedStopId === place.id ? "stop-selected" : undefined} style={{ "--route-color": routeColor(index) } as CSSProperties}><button type="button" className="route-stop-row" onClick={(event) => selectRouteStop(place, event.currentTarget)} aria-label={`${place.name} 중심으로 지도 보기`}><span className="stop-number">{String(index + 1).padStart(2, "0")}</span><span className="route-stop-copy"><span className="route-stop-name"><strong>{place.name}</strong>{fixedPlaceIds.has(place.id) && <Lock className="route-stop-lock" size={13} strokeWidth={2.6} aria-label="방문 순서 고정" />}</span><small>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}</small></span></button></li>)}</ol></section>}
 
     {activeTab === "segments" && <section id="route-segments-panel" role="tabpanel" aria-labelledby="route-segments-tab" className="segment-details route-tab-panel">
        <div className="segment-panel-heading"><div><small>구간별 상세</small><strong>실시간 교통정보 기준</strong></div><span className="segment-panel-hint">각 구간 클릭 시 상세 정보 표시</span></div>
