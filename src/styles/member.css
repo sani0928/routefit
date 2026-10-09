@@ -41,8 +41,14 @@
 .member-avatar { width:25px; height:25px; color:#fff; }
 .member-avatar img { width:100%; height:100%; object-fit:cover; }
 /* A deliberate, informative stop before leaving RouteFit for Google OAuth. */
-.login-intro-backdrop { position:fixed; z-index:200; inset:0; display:grid; place-items:center; padding:24px; background:rgb(15 31 53 / .48); backdrop-filter:blur(7px); }
-.login-intro-dialog { position:relative; width:min(100%,440px); padding:30px; border:1px solid #d8e5f2; border-radius:22px; background:#fff; box-shadow:0 24px 64px rgb(15 31 53 / .28); }
+.login-intro-backdrop { position:fixed; z-index:200; inset:0; display:grid; place-items:center; padding:24px; background:rgb(15 31 53 / .48); backdrop-filter:blur(7px); animation:login-intro-backdrop-in .18s ease-out both; }
+.login-intro-dialog { position:relative; width:min(100%,440px); padding:30px; border:1px solid #d8e5f2; border-radius:22px; background:#fff; box-shadow:0 24px 64px rgb(15 31 53 / .28); animation:login-intro-dialog-in .22s cubic-bezier(.22,.9,.3,1) both; }
+.login-intro-backdrop.is-exiting { animation:login-intro-backdrop-out .18s ease-in both; }
+.login-intro-dialog.is-exiting { animation:login-intro-dialog-out .18s ease-in both; }
+@keyframes login-intro-backdrop-in { from { opacity:0; } to { opacity:1; } }
+@keyframes login-intro-backdrop-out { from { opacity:1; } to { opacity:0; } }
+@keyframes login-intro-dialog-in { from { opacity:0; transform:translateY(14px) scale(.975); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes login-intro-dialog-out { from { opacity:1; transform:translateY(0) scale(1); } to { opacity:0; transform:translateY(8px) scale(.985); } }
 .login-intro-close { position:absolute; top:16px; right:16px; display:grid; width:32px; height:32px; place-items:center; padding:0; border-radius:50%; color:#72859b; background:#f3f7fb; }
 .login-intro-close:hover { color:#3c526d; background:#e7f0f8; }
 .login-intro-eyebrow { display:block; margin-bottom:8px; color:#2d80d6; font-size:.66rem; font-weight:900; letter-spacing:.12em; }
@@ -70,14 +76,17 @@
 .login-intro-primary img { width:17px; height:17px; padding:2px; border-radius:50%; background:#fff; object-fit:contain; }
 @media (max-width:700px) {
   .login-intro-backdrop { align-items:end; padding:0; }
-  .login-intro-dialog { width:100%; max-height:calc(100dvh - 18px); overflow-y:auto; padding:25px 20px max(26px,calc(env(safe-area-inset-bottom) + 18px)); border-right:0; border-bottom:0; border-left:0; border-radius:22px 22px 0 0; }
+  .login-intro-dialog { width:100%; max-height:calc(100dvh - 18px); overflow-y:auto; padding:25px 20px max(26px,calc(env(safe-area-inset-bottom) + 18px)); border-right:0; border-bottom:0; border-left:0; border-radius:22px 22px 0 0; animation-name:login-intro-sheet-in; }
+  .login-intro-dialog.is-exiting { animation-name:login-intro-sheet-out; }
   .login-intro-dialog h2 { max-width:calc(100% - 36px); font-size:1.27rem; }
   .login-intro-description { margin-bottom:17px; }
   .login-intro-benefits li { padding:11px; }
   .login-intro-actions { grid-template-columns:1fr; gap:7px; margin-top:17px; }
   .login-intro-primary { grid-row:1; }
 }
-@media (prefers-reduced-motion: reduce) { .login-intro-backdrop { backdrop-filter:none; } }
+@keyframes login-intro-sheet-in { from { opacity:0; transform:translateY(100%); } to { opacity:1; transform:translateY(0); } }
+@keyframes login-intro-sheet-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .login-intro-backdrop { backdrop-filter:none; animation:none; } .login-intro-dialog { animation:none; } }
 /* Compact place-list manager: browsing is primary, editing lives in a focused dialog. */
 .map-list-manager { padding:16px; overflow:hidden; }
 .map-list-manager .saved-places-panel { min-height:170px; }

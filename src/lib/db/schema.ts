@@ -104,6 +104,7 @@ export const savedPlaces = pgTable("saved_place", {
 export const sharedRoutes = pgTable("shared_route", {
   id: text("id").primaryKey(),
   shareId: text("share_id").notNull(),
+  createdByUserId: text("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
   snapshotFingerprint: text("snapshot_fingerprint").notNull(),
   state: text("state").notNull().default("active"),
   snapshot: jsonb("snapshot").$type<SharedRouteSnapshot | null>(),
@@ -112,9 +113,9 @@ export const sharedRoutes = pgTable("shared_route", {
   purgedAt: timestamp("purged_at", { withTimezone: true }),
 }, (table) => [
   uniqueIndex("shared_route_share_id_idx").on(table.shareId),
-  uniqueIndex("shared_route_active_snapshot_fingerprint_idx")
-    .on(table.snapshotFingerprint)
-    .where(sql`${table.state} = 'active'`),
+  uniqueIndex("shared_route_active_user_snapshot_fingerprint_idx")
+    .on(table.createdByUserId, table.snapshotFingerprint)
+    .where(sql`${table.state} = 'active' and ${table.createdByUserId} is not null`),
 ]);
 // Better Auth's Drizzle adapter resolves its core tables by these singular model names.
 // The plural exports above remain for the rest of the application.

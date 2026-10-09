@@ -8,7 +8,7 @@ const SHARE_ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq
 const SHARE_ID_LENGTH = 12;
 const SHARE_DURATION_MILLISECONDS = 30 * 24 * 60 * 60 * 1_000;
 const SHARE_ID_UNIQUE_INDEX = "shared_route_share_id_idx";
-const ACTIVE_FINGERPRINT_UNIQUE_INDEX = "shared_route_active_snapshot_fingerprint_idx";
+const ACTIVE_FINGERPRINT_UNIQUE_INDEX = "shared_route_active_user_snapshot_fingerprint_idx";
 
 function createShareId() {
   const bytes = randomBytes(SHARE_ID_LENGTH);
@@ -52,6 +52,7 @@ function asRecord(row: typeof sharedRoutes.$inferSelect): SharedRouteRecord {
   return {
     id: row.id,
     shareId: row.shareId,
+    createdByUserId: row.createdByUserId,
     state: row.state as SharedRouteState,
     snapshot: row.snapshot,
     createdAt: row.createdAt,
@@ -60,7 +61,7 @@ function asRecord(row: typeof sharedRoutes.$inferSelect): SharedRouteRecord {
   };
 }
 
-export async function createSharedRoute(snapshot: SharedRouteSnapshot) {
+export async function createSharedRoute(snapshot: SharedRouteSnapshot, createdByUserId: string) {
   const createdAt = new Date();
   const expiresAt = new Date(createdAt.getTime() + SHARE_DURATION_MILLISECONDS);
   const snapshotFingerprint = createSnapshotFingerprint(snapshot);
@@ -71,12 +72,14 @@ export async function createSharedRoute(snapshot: SharedRouteSnapshot) {
     .where(and(
       eq(sharedRoutes.snapshotFingerprint, snapshotFingerprint),
       eq(sharedRoutes.state, "active"),
+      eq(sharedRoutes.createdByUserId, createdByUserId),
       lte(sharedRoutes.expiresAt, createdAt),
     ));
 
   const activeRows = await db.select().from(sharedRoutes).where(and(
     eq(sharedRoutes.snapshotFingerprint, snapshotFingerprint),
     eq(sharedRoutes.state, "active"),
+    eq(sharedRoutes.createdByUserId, createdByUserId),
   )).limit(1);
   if (activeRows[0]) return { sharedRoute: asRecord(activeRows[0]), reused: true };
 
@@ -86,6 +89,7 @@ export async function createSharedRoute(snapshot: SharedRouteSnapshot) {
       const rows = await db.insert(sharedRoutes).values({
         id: randomUUID(),
         shareId,
+        createdByUserId,
         snapshotFingerprint,
         state: "active",
         snapshot,
@@ -98,6 +102,7 @@ export async function createSharedRoute(snapshot: SharedRouteSnapshot) {
         const existingRows = await db.select().from(sharedRoutes).where(and(
           eq(sharedRoutes.snapshotFingerprint, snapshotFingerprint),
           eq(sharedRoutes.state, "active"),
+          eq(sharedRoutes.createdByUserId, createdByUserId),
         )).limit(1);
         if (existingRows[0]) return { sharedRoute: asRecord(existingRows[0]), reused: true };
       }

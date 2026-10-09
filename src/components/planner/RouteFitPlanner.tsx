@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { ChevronDown, List, MapPin, Waypoints } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
 import { MemberHeader } from "@/components/member/MemberHeader";
+import { LoginIntroDialog } from "@/components/member/LoginIntroDialog";
 import { SavePlaceDialog } from "@/components/member/SavePlaceDialog";
 import { SavedPlacesPanel } from "@/components/member/SavedPlacesPanel";
 import { LocationSearch } from "@/components/route-planner/LocationSearch";
@@ -122,6 +123,7 @@ export function RouteFitPlanner() {
   const [focusedRoutePlaceRequest, setFocusedRoutePlaceRequest] = useState(0);
   const [fitRouteRequest, setFitRouteRequest] = useState(0);
   const [savedListIdsByProviderId, setSavedListIdsByProviderId] = useState<Record<string, string[]>>({});
+  const [isLoginIntroOpen, setIsLoginIntroOpen] = useState(false);
   const quickSearchMatchesAbortRef = useRef<AbortController | null>(null);
   const workspaceRestoredRef = useRef(false);
   const calculatedCurrentLocationRef = useRef<LocationCoordinates | null>(null);
@@ -714,6 +716,10 @@ export function RouteFitPlanner() {
 
   async function shareRoute() {
     if (!result || routeNeedsRecalculation || isSharingRoute) return;
+    if (!member.authenticated) {
+      setIsLoginIntroOpen(true);
+      return;
+    }
     setIsSharingRoute(true);
     try {
       const response = await fetch("/api/shared-routes", {
@@ -722,6 +728,10 @@ export function RouteFitPlanner() {
         body: JSON.stringify({ version: 1, returnToStart: resultReturnToStart, result }),
       });
       const body = await response.json() as { url?: string; reused?: boolean; error?: { message?: string } };
+      if (response.status === 401) {
+        setIsLoginIntroOpen(true);
+        return;
+      }
       if (!response.ok || !body.url) throw new Error(body.error?.message || "공유 링크를 만들지 못했습니다.");
 
       await copySharedRouteLink(
@@ -1138,7 +1148,7 @@ export function RouteFitPlanner() {
           <header className="planner-header">
           <div className="planner-title-row">
             <div><img className="routefit-logo" src="/icons/logo.png" alt="루트핏 RouteFit" /></div>
-            <MemberHeader authConfigured={member.authConfigured} onBeforeLogin={() => undefined} onSessionChange={loadMember} />
+            <MemberHeader authConfigured={member.authConfigured} onLoginIntroOpen={() => setIsLoginIntroOpen(true)} onSessionChange={loadMember} />
           </div>
           <h1 className="planner-desktop-tagline">여러 장소의 동선 최적화, 더 간편하게.</h1>
         </header>
@@ -1190,7 +1200,7 @@ export function RouteFitPlanner() {
       </aside>
       <section id="mobile-map-focus" className="map-panel" tabIndex={-1}>
         <div className="mobile-member-overlay">
-          <MemberHeader authConfigured={member.authConfigured} onBeforeLogin={() => undefined} onSessionChange={loadMember} />
+          <MemberHeader authConfigured={member.authConfigured} onLoginIntroOpen={() => setIsLoginIntroOpen(true)} onSessionChange={loadMember} />
         </div>
         <MapView
           places={mapPlaces}
@@ -1262,6 +1272,7 @@ export function RouteFitPlanner() {
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
+      <LoginIntroDialog open={isLoginIntroOpen} onClose={() => setIsLoginIntroOpen(false)} />
       {shareDialogUrl && <div className="route-share-dialog-backdrop" role="presentation"><section className="route-share-dialog" role="dialog" aria-modal="true" aria-label="공유 링크 복사"><strong>공유 링크를 복사하였습니다.</strong><p>링크를 직접 복사할 수 있습니다.</p><input value={shareDialogUrl} readOnly onFocus={(event) => event.currentTarget.select()} aria-label="공유 링크" /><div><button type="button" onClick={() => void copySharedRouteLink(shareDialogUrl)}>링크 다시 복사</button><button type="button" onClick={() => setShareDialogUrl(null)}>닫기</button></div></section></div>}
     </main>
     </>

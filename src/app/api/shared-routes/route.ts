@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { AppError, apiError } from "@/lib/errors";
 import { incrementRateLimit } from "@/lib/cache/route-cache";
+import { getSessionUser, unauthenticated } from "@/lib/member/api";
 import { createSharedRoute } from "@/lib/shared-routes/repository";
 import { sanitizeSharedRouteSnapshot, type SharedRouteSnapshot } from "@/features/shared-routes/types";
 import { sharedRouteCreateSchema } from "@/lib/validation/shared-route.schema";
@@ -13,16 +14,10 @@ const globalForSharedRouteRateLimit = globalThis as typeof globalThis & {
 };
 const rateLimits = globalForSharedRouteRateLimit.routeFitSharedRouteRateLimits ??= new Map();
 
-function clientIp(request: NextRequest) {
-  return request.headers.get("x-real-ip")?.trim()
-    || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || "unknown";
-}
-
-async function assertRateLimit(request: NextRequest) {
+async function assertRateLimit(userId: string) {
   const now = Date.now();
-  const key = clientIp(request);
-  const redisCount = await incrementRateLimit(`routefit:shared-route:create:${createHash("sha256").update(key).digest("hex")}`, RATE_LIMIT_WINDOW_MS / 1_000);
+  const key = createHash("sha256").update(userId).digest("hex");
+  const redisCount = await incrementRateLimit(`routefit:shared-route:create:user:${key}`, RATE_LIMIT_WINDOW_MS / 1_000);
   if (redisCount !== undefined) {
     if (redisCount > RATE_LIMIT_MAXIMUM) throw new AppError("공유 링크는 잠시 후 다시 만들어 주세요.", 429, "SHARED_ROUTE_RATE_LIMIT");
     return;
@@ -38,9 +33,11 @@ async function assertRateLimit(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await assertRateLimit(request);
+    const user = await getSessionUser();
+    if (!user) return unauthenticated();
+    await assertRateLimit(user.id);
     const input = sharedRouteCreateSchema.parse(await request.json()) as SharedRouteSnapshot;
-    const { sharedRoute, reused } = await createSharedRoute(sanitizeSharedRouteSnapshot(input));
+    const { sharedRoute, reused } = await createSharedRoute(sanitizeSharedRouteSnapshot(input), user.id);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.routefit.co.kr";
     return NextResponse.json({
       shareId: sharedRoute.shareId,

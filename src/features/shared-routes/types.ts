@@ -11,6 +11,7 @@ export type SharedRouteState = "active" | "expired";
 export type SharedRouteRecord = {
   id: string;
   shareId: string;
+  createdByUserId: string | null;
   state: SharedRouteState;
   snapshot: SharedRouteSnapshot | null;
   createdAt: Date;
