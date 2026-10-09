@@ -40,6 +40,44 @@
 .member-profile summary:hover { border-color:#bcd2ef; box-shadow:0 5px 12px #0f172a18; }
 .member-avatar { width:25px; height:25px; color:#fff; }
 .member-avatar img { width:100%; height:100%; object-fit:cover; }
+/* A deliberate, informative stop before leaving RouteFit for Google OAuth. */
+.login-intro-backdrop { position:fixed; z-index:200; inset:0; display:grid; place-items:center; padding:24px; background:rgb(15 31 53 / .48); backdrop-filter:blur(7px); }
+.login-intro-dialog { position:relative; width:min(100%,440px); padding:30px; border:1px solid #d8e5f2; border-radius:22px; background:#fff; box-shadow:0 24px 64px rgb(15 31 53 / .28); }
+.login-intro-close { position:absolute; top:16px; right:16px; display:grid; width:32px; height:32px; place-items:center; padding:0; border-radius:50%; color:#72859b; background:#f3f7fb; }
+.login-intro-close:hover { color:#3c526d; background:#e7f0f8; }
+.login-intro-eyebrow { display:block; margin-bottom:8px; color:#2d80d6; font-size:.66rem; font-weight:900; letter-spacing:.12em; }
+.login-intro-dialog h2 { max-width:310px; margin:0; color:#213751; font-size:1.38rem; letter-spacing:-.055em; line-height:1.3; }
+.login-intro-description { margin:10px 0 20px; color:#718299; font-size:.82rem; line-height:1.65; }
+.login-intro-benefits { display:grid; gap:10px; margin:0; padding:0; list-style:none; }
+.login-intro-benefits li { display:flex; align-items:flex-start; gap:11px; padding:12px; border:1px solid #e1ebf5; border-radius:13px; background:#fbfdff; }
+.login-intro-benefits li > span { display:grid; width:32px; height:32px; flex:0 0 32px; place-items:center; border-radius:10px; color:#246dcc; background:#eaf3ff; }
+.login-intro-benefits strong,.login-intro-benefits small { display:block; }
+.login-intro-benefits strong { color:#344b67; font-size:.78rem; }
+.login-intro-benefits small { margin-top:3px; color:#7c8da1; font-size:.67rem; line-height:1.5; }
+.login-intro-security { display:flex; align-items:flex-start; gap:9px; margin-top:14px; padding:12px; border-radius:12px; color:#39705f; background:#effaf5; }
+.login-intro-security > svg { flex:0 0 auto; margin-top:1px; color:#17825d; }
+.login-intro-security p { margin:0; }
+.login-intro-security strong,.login-intro-security span { display:block; }
+.login-intro-security strong { font-size:.72rem; }
+.login-intro-security span { margin-top:3px; color:#5d7d72; font-size:.63rem; line-height:1.5; }
+.login-intro-actions { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr); gap:8px; margin-top:20px; }
+.login-intro-actions button { min-height:43px; border-radius:11px; font-size:.74rem; font-weight:850; }
+.login-intro-secondary { color:#63758c; background:#f1f5f9; }
+.login-intro-secondary:hover { color:#455b74; background:#e6edf4; }
+.login-intro-primary { display:flex; align-items:center; justify-content:center; gap:7px; color:#fff; background:#2563eb; box-shadow:0 7px 16px #2563eb38; }
+.login-intro-primary:hover { background:#1d56d4; }
+.login-intro-primary:focus-visible,.login-intro-close:focus-visible,.login-intro-secondary:focus-visible { outline:3px solid #8db8ff; outline-offset:2px; }
+.login-intro-primary img { width:17px; height:17px; padding:2px; border-radius:50%; background:#fff; object-fit:contain; }
+@media (max-width:700px) {
+  .login-intro-backdrop { align-items:end; padding:0; }
+  .login-intro-dialog { width:100%; max-height:calc(100dvh - 18px); overflow-y:auto; padding:25px 20px max(26px,calc(env(safe-area-inset-bottom) + 18px)); border-right:0; border-bottom:0; border-left:0; border-radius:22px 22px 0 0; }
+  .login-intro-dialog h2 { max-width:calc(100% - 36px); font-size:1.27rem; }
+  .login-intro-description { margin-bottom:17px; }
+  .login-intro-benefits li { padding:11px; }
+  .login-intro-actions { grid-template-columns:1fr; gap:7px; margin-top:17px; }
+  .login-intro-primary { grid-row:1; }
+}
+@media (prefers-reduced-motion: reduce) { .login-intro-backdrop { backdrop-filter:none; } }
 /* Compact place-list manager: browsing is primary, editing lives in a focused dialog. */
 .map-list-manager { padding:16px; overflow:hidden; }
 .map-list-manager .saved-places-panel { min-height:170px; }
