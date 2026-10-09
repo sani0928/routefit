@@ -496,3 +496,5 @@
   50% { background-position:100% 50%; }
 }
 .stops-heading > button { border:0; border-radius:6px; padding:4px 6px; color:#2563eb; background:#eef4ff; font:inherit; font-size:.61rem; font-weight:900; letter-spacing:.08em; cursor:pointer; }.stops-heading > button:hover,.stops-heading > button:focus-visible { background:#e1ebff; }
+.route-ai-summary-action { display:inline-flex; align-items:center; gap:3px; padding:4px 6px; border:0; border-radius:6px; color:#2563eb; background:#eef4ff; font:inherit; font-size:.61rem; font-weight:900; letter-spacing:.08em; white-space:nowrap; cursor:pointer; }
+.route-ai-summary-action:hover,.route-ai-summary-action:focus-visible { background:#e1ebff; }

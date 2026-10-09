@@ -1011,15 +1011,6 @@ export function RouteFitPlanner() {
     }
   }
 
-  function fitRouteOnMap() {
-    setFocusedRoutePlace(null);
-    setFitRouteRequest((current) => current + 1);
-    if (window.matchMedia("(max-width: 700px)").matches) {
-      setMobileTab("results");
-      setMobileSheetState("peek");
-    }
-  }
-
   function closeMobileSheet() {
     setMobileSheetState("collapsed");
     setListManagerOpen(false);
@@ -1268,7 +1259,7 @@ export function RouteFitPlanner() {
           />
         </div>
         <div className="mobile-sheet-content">
-            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={isRouteCalculationInProgress} isLocatingCurrentLocation={status === "LOCATING_CURRENT_LOCATION"} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onPlaceSelect={focusRoutePlaceOnMap} onFitRoute={fitRouteOnMap} onClearResult={clearRouteResult} onShare={() => void shareRoute()} isSharing={isSharingRoute} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
+            <RouteSummary result={result} placeCount={places.length} fixedVisitOrders={result ? resultFixedVisitOrders : fixedVisitOrders} isCalculating={isRouteCalculationInProgress} isLocatingCurrentLocation={status === "LOCATING_CURRENT_LOCATION"} isRouteStale={routeNeedsRecalculation} selectedSegmentIndex={selectedSegmentIndex} onSegmentHover={setHoveredSegmentIndex} onSegmentSelect={handleResultSegmentSelect} onPlaceSelect={focusRoutePlaceOnMap} onClearResult={clearRouteResult} onShare={() => void shareRoute()} isSharing={isSharingRoute} onResultTabOpen={() => { if (window.matchMedia("(max-width: 700px)").matches) setMobileSheetState("expanded"); }} />
         </div>
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
