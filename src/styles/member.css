@@ -42,7 +42,8 @@
 .member-avatar img { width:100%; height:100%; object-fit:cover; }
 /* A deliberate, informative stop before leaving RouteFit for Google OAuth. */
 .login-intro-backdrop { position:fixed; z-index:200; inset:0; display:grid; place-items:center; padding:24px; background:rgb(15 31 53 / .48); backdrop-filter:blur(7px); animation:login-intro-backdrop-in .18s ease-out both; }
-.login-intro-dialog { position:relative; width:min(100%,440px); padding:30px; border:1px solid #d8e5f2; border-radius:22px; background:#fff; box-shadow:0 24px 64px rgb(15 31 53 / .28); animation:login-intro-dialog-in .22s cubic-bezier(.22,.9,.3,1) both; }
+.login-intro-dialog { position:relative; width:min(100%,440px); padding:30px; border:1px solid #d8e5f2; border-radius:22px; background:#fff; box-shadow:0 24px 64px rgb(15 31 53 / .28); animation:login-intro-dialog-in .22s cubic-bezier(.22,.9,.3,1) both; user-select:none; -webkit-user-select:none; }
+.login-intro-dialog img { -webkit-user-drag:none; user-drag:none; }
 .login-intro-backdrop.is-exiting { animation:login-intro-backdrop-out .18s ease-in both; }
 .login-intro-dialog.is-exiting { animation:login-intro-dialog-out .18s ease-in both; }
 @keyframes login-intro-backdrop-in { from { opacity:0; } to { opacity:1; } }

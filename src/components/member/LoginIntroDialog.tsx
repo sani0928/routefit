@@ -59,7 +59,7 @@ export function LoginIntroDialog({ open, onClose }: Props) {
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section className={`login-intro-dialog${isExiting ? " is-exiting" : ""}`} role="dialog" aria-modal="true" aria-labelledby="login-intro-title">
+      <section className={`login-intro-dialog${isExiting ? " is-exiting" : ""}`} role="dialog" aria-modal="true" aria-labelledby="login-intro-title" onDragStart={(event) => event.preventDefault()}>
         <button className="login-intro-close" type="button" onClick={onClose} aria-label="로그인 안내 닫기">
           <X size={20} aria-hidden="true" />
         </button>
@@ -78,7 +78,7 @@ export function LoginIntroDialog({ open, onClose }: Props) {
         </div>
         <div className="login-intro-actions">
           <button className="login-intro-secondary" type="button" onClick={onClose}>나중에 할게요</button>
-          <button className="login-intro-primary" type="button" ref={loginContinueButtonRef} onClick={() => void continueWithGoogle()}><img src="/icons/google.png" alt="" />Google로 계속하기</button>
+          <button className="login-intro-primary" type="button" ref={loginContinueButtonRef} onClick={() => void continueWithGoogle()}><img src="/icons/google.png" alt="" draggable={false} />Google로 계속하기</button>
         </div>
       </section>
     </div>,

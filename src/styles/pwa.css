@@ -41,6 +41,10 @@
 .pwa-update-notice > div:first-child,.pwa-install-notice > div:first-child { display:grid; gap:4px; }
 .pwa-update-notice strong,.pwa-install-notice strong { color:#253b57; font-size:.84rem; }
 .pwa-update-notice span,.pwa-install-notice span { color:#7387a0; font-size:.7rem; font-weight:500; line-height:1.45; }
+.pwa-update-notice .pwa-update-contact { margin-top:2px; font-size:.65rem; }
+.pwa-update-notice .pwa-update-contact a { color:#2563eb; font-weight:750; text-underline-offset:2px; }
+.pwa-update-notice .pwa-update-contact a:hover { color:#1d4ed8; }
+.pwa-update-notice .pwa-update-contact a:focus-visible { outline:2px solid #8db8ff; outline-offset:2px; border-radius:2px; }
 .pwa-notice-actions { display:flex; justify-content:flex-end; gap:7px; }
 .pwa-notice-actions button { min-height:32px; padding:6px 10px; border:1px solid #d9e4f1; border-radius:8px; color:#637b98; background:#fff; font-size:.68rem; }
 .pwa-notice-actions .primary { border-color:#2563eb; color:#fff; background:#2563eb; }
@@ -87,5 +91,4 @@
 @media (max-width:700px) {
   .offline-status-banner { top:10px; max-width:calc(100% - 24px); font-size:.7rem; }
   .pwa-update-notice,.pwa-install-notice { right:12px; bottom:calc(var(--mobile-nav-height,64px) + 12px); width:calc(100% - 24px); }}
-
 

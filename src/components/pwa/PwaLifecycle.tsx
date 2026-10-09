@@ -139,7 +139,7 @@ export function PwaLifecycle() {
 
   return <>
     {updateReady && <aside className="pwa-update-notice" role="status" aria-live="polite">
-      <div><strong>새 버전이 준비되었습니다.</strong><span>새로고침하면 최신 RouteFit를 사용할 수 있어요.</span></div>
+      <div><strong>새 버전이 준비되었습니다.</strong><span>새로고침하면 최신 RouteFit를 사용할 수 있어요.</span><span className="pwa-update-contact">버그 문의 : 김강산 (<a href="mailto:kksan12@gmail.com?subject=RouteFit%20%EB%B2%84%EA%B7%B8%20%EB%AC%B8%EC%9D%98">kksan12@gmail.com</a>)</span></div>
       <div className="pwa-notice-actions"><button type="button" onClick={() => setUpdateReady(false)}>나중에</button><button type="button" className="primary" onClick={applyUpdate}>새로고침</button></div>
     </aside>}
     {showInstall && installEvent && <aside className="pwa-install-notice" role="dialog" aria-label="RouteFit 설치">
