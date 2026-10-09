@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 import "./globals.css";
 import { AppLaunchScreen } from "@/components/pwa/AppLaunchScreen";
 import { OnlineStatusBanner } from "@/components/pwa/OnlineStatusBanner";
@@ -24,6 +25,7 @@ const notoSansKr = localFont({
 });
 
 const siteUrl = new URL("https://www.routefit.co.kr");
+const googleTagManagerId = "GTM-P64CX9JG";
 const siteTitle = "루트핏 RouteFit | 여러 장소의 방문 순서와 이동 동선 계산";
 const siteDescription = "실시간 교통정보를 반영해 여러 방문 장소의 이동 경로를 쉽고 빠르게 최적화하는 서비스";
 
@@ -77,5 +79,31 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body className={notoSansKr.variable}><AppLaunchScreen />{children}<DesktopQrToggle /><OnlineStatusBanner /><PwaLifecycle /><ToastProvider /></body></html>;
+  return <html lang="ko">
+    <head>
+      <Script id="google-tag-manager" strategy="beforeInteractive">
+        {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','${googleTagManagerId}');`}
+      </Script>
+    </head>
+    <body className={notoSansKr.variable}>
+      <noscript>
+        <iframe
+          src={`https://www.googletagmanager.com/ns.html?id=${googleTagManagerId}`}
+          height="0"
+          width="0"
+          style={{ display: "none", visibility: "hidden" }}
+        />
+      </noscript>
+      <AppLaunchScreen />
+      {children}
+      <DesktopQrToggle />
+      <OnlineStatusBanner />
+      <PwaLifecycle />
+      <ToastProvider />
+    </body>
+  </html>;
 }
