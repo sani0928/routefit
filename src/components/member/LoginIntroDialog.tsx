@@ -63,9 +63,10 @@ export function LoginIntroDialog({ open, onClose }: Props) {
         <button className="login-intro-close" type="button" onClick={onClose} aria-label="로그인 안내 닫기">
           <X size={20} aria-hidden="true" />
         </button>
-        <span className="login-intro-eyebrow">ROUTEFIT MEMBER</span>
-        <h2 id="login-intro-title">로그인하면 동선 관리가 더 편해져요</h2>
-        <p className="login-intro-description">나만의 방문 장소를 더욱 편리하게 관리할 수 있습니다.</p>
+        <span className="login-intro-eyebrow">ROUTEFIT LOGIN</span>
+        {/* <h2 id="login-intro-title">로그인하면 동선 관리가 더 편해져요</h2> */}
+        {/* <p className="login-intro-description">나만의 방문 장소를 더욱 편리하게 관리할 수 있습니다.</p> */}
+        <p className="login-intro-description"></p>
         <ul className="login-intro-benefits">
           <li><span><BookmarkCheck size={19} aria-hidden="true" /></span><div><strong>장소 리스트 저장</strong><small>자주 가는 장소를 리스트로 모아 편하게 관리할 수 있어요.</small></div></li>
           <li><span><UserRound size={19} aria-hidden="true" /></span><div><strong>방문 장소와 설정 유지</strong><small>다시 접속해도 저장한 방문 장소를 이어서 사용할 수 있어요.</small></div></li>
