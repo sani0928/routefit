@@ -157,7 +157,7 @@
 .map-list-control { top:calc(var(--map-control-top) + 81px); }
 @media (max-width:700px) {
   /* Keep map controls below the translucent iOS status area. */
-  .map-panel .map-view { --map-control-top:calc(max(12px, env(safe-area-inset-top)) + 10px); }}
+  .map-panel .map-view { --map-control-top:calc(max(12px, env(safe-area-inset-top)) + 20px); }}
 .map-list-manager .list-detail-context {
   display:flex;
   align-items:center;
