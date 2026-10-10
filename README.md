@@ -4,7 +4,9 @@
 
 [RouteFit 바로가기](https://www.routefit.co.kr)
 
-**현재 버전: v1.1.0 (2026.10.10)**
+[RouteFit 1분 체험 가이드](https://www.routefit.co.kr/guide)
+
+**현재 버전: v1.2.0 (2026.10.10)**
 
 RouteFit은 장소·주소 검색 또는 지도 선택으로 방문 목록을 만들고, 빠른 방문 순서 추천과 NAVER Directions 5의 실제 주행 구간 정보를 결합해 동선을 보여 줍니다. 데스크톱·태블릿에서는 지도와 작업 패널을 함께, 모바일에서는 지도 위 하단 시트 형태로 이용할 수 있습니다.
 
@@ -12,7 +14,8 @@ RouteFit은 장소·주소 검색 또는 지도 선택으로 방문 목록을 �
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
-| v1.1.0 | 2026.10.10 | 관리자 콘솔 추가 — NAVER Directions API 호출량, 회원·비회원별 사용량, 활성 공유 링크를 최근 7일·한 달·1년 범위로 조회할 수 있습니다. |
+| v1.2.0 | 2026.10.10 | 관리자 콘솔 추가 — NAVER Directions API 호출량, 회원·비회원별 사용량, 활성 공유 링크를 최근 7일·한 달·1년 범위로 조회할 수 있습니다. |
+| v1.1.0 | 2026.08.19 | 장소 리스트, 공유 페이지, 가이드 페이지 UI 개선 |
 | v1.0.0 | 2026.08.07 | RouteFit 서비스 시작 |
 
 ## 주요 기능
@@ -24,7 +27,7 @@ RouteFit은 장소·주소 검색 또는 지도 선택으로 방문 목록을 �
 - **회원 작업 공간** — Google 로그인 후 방문 장소, 복귀 설정, 고정 방문 순서를 서버에 저장하고 다음 접속 시 복원합니다.
 - **장소 리스트** — 색상별 장소 리스트를 만들고, 하나의 장소를 여러 리스트에 저장하거나 동선에 바로 추가할 수 있습니다.
 - **동선 공유** — 로그인 회원은 계산 완료한 동선의 공유 링크를 만들 수 있습니다. 생성된 링크는 로그인 없이 열 수 있으며, 30일 뒤 만료됩니다. 공유 링크 생성은 사용자별 시간당 10회로 제한합니다.
-- **PWA·오프라인 안내** — 프로덕션 환경에서 설치 가능한 웹 앱으로 동작하며, 네트워크를 사용할 수 없을 때 오프라인 안내 화면을 제공합니다.
+- **PWA** — 프로덕션 환경에서 설치 가능한 웹 앱으로 동작합니다.
 - **관리자 콘솔** — 허용된 관리자 계정만 API 호출량, 캐시 적중률, 호출 실패, 회원별 사용량, 활성 공유 링크를 확인할 수 있습니다.
 
 ## 사용 방법
@@ -110,23 +113,6 @@ npm run dev
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 엽니다. 개발 서버는 Webpack 모드로 실행됩니다.
-
-### 환경 변수
-
-`.env.example`을 복사한 뒤 아래 값을 설정합니다. 비밀 값은 저장소에 커밋하지 않습니다.
-
-| 변수 | 용도 |
-| --- | --- |
-| `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | NAVER Maps JavaScript API 클라이언트 ID |
-| `NAVER_MAP_API_KEY_ID`, `NAVER_MAP_API_KEY_SECRET` | NAVER Directions·Geocoding 서버 API 인증 |
-| `KAKAO_REST_API_KEY` | Kakao Local 장소 검색 인증 |
-| `DATABASE_URL` | PostgreSQL 연결 문자열 |
-| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Better Auth 세션 설정 |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth 설정 |
-| `NEXT_PUBLIC_APP_URL` | 공유 링크 생성에 사용할 서비스 기본 URL |
-| `REDIS_URL`, `ROUTE_CACHE_TTL_SECONDS` | 경로 캐시와 공유 링크 요청 제한 설정 |
-| `ADMIN_EMAILS` | 쉼표로 구분한 관리자 이메일 허용 목록 |
-| `CRON_SECRET` | 만료 공유 링크 정리 API 인증 비밀 값 |
 
 ### 주요 명령어
 
