@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { FixedVisitOrder, Place } from "@/features/route-optimization/types/route.types";
 import type { SharedRouteSnapshot } from "@/features/shared-routes/types";
 
@@ -116,6 +116,30 @@ export const sharedRoutes = pgTable("shared_route", {
   uniqueIndex("shared_route_active_user_snapshot_fingerprint_idx")
     .on(table.createdByUserId, table.snapshotFingerprint)
     .where(sql`${table.state} = 'active' and ${table.createdByUserId} is not null`),
+]);
+
+export const apiUsageDaily = pgTable("api_usage_daily", {
+  day: text("day").primaryKey(),
+  routeCalculations: integer("route_calculations").notNull().default(0),
+  externalDirectionsRequests: integer("external_directions_requests").notNull().default(0),
+  cacheHits: integer("cache_hits").notNull().default(0),
+  failedRequests: integer("failed_requests").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const apiUsageByActorDaily = pgTable("api_usage_by_actor_daily", {
+  day: text("day").notNull(),
+  // "anonymous" or "user:<user id>". It keeps anonymous requests conflict-safe.
+  actorKey: text("actor_key").notNull(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  routeCalculations: integer("route_calculations").notNull().default(0),
+  externalDirectionsRequests: integer("external_directions_requests").notNull().default(0),
+  cacheHits: integer("cache_hits").notNull().default(0),
+  failedRequests: integer("failed_requests").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.actorKey] }),
+  index("api_usage_by_actor_daily_user_day_idx").on(table.userId, table.day),
 ]);
 // Better Auth's Drizzle adapter resolves its core tables by these singular model names.
 // The plural exports above remain for the rest of the application.

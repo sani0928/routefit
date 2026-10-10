@@ -5,7 +5,7 @@ import type { MemberState, SavedPlace } from "@/features/member/types";
 import type { Place } from "@/features/route-optimization/types/route.types";
 
 export type SavePlaceInput = Omit<Place, "id" | "type"> & { providerId: string; categoryGroupCode?: string; savedListIds?: string[] };
-const EMPTY_MEMBER: MemberState = { authenticated: false, authConfigured: false, placeLists: [] };
+const EMPTY_MEMBER: MemberState = { authenticated: false, authConfigured: false, isAdmin: false, placeLists: [] };
 
 export function usePlaceLists() {
   const [member, setMember] = useState<MemberState>(EMPTY_MEMBER);

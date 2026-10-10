@@ -43,6 +43,7 @@ export interface MemberWorkspace {
 export interface MemberState {
   authenticated: boolean;
   authConfigured: boolean;
+  isAdmin: boolean;
   user?: { id: string; name: string; email: string; image?: string | null };
   workspace?: MemberWorkspace | null;
   placeLists: MemberPlaceList[];

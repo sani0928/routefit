@@ -343,7 +343,7 @@
   .mobile-member-overlay {
     position: fixed;
     z-index: 10;
-    top: max(12px, env(safe-area-inset-top));
+    top: calc(max(12px, env(safe-area-inset-top)) + 10px);
     right: 14px;
     display: block;
   }

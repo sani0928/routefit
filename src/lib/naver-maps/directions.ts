@@ -7,14 +7,18 @@ const DIRECTIONS_OPTION = "traoptimal";
 interface DirectionsSection { pointIndex?: number; pointCount?: number; distance?: number; congestion?: number; speed?: number; }
 interface DirectionsRoute { summary?: { distance?: number; duration?: number; tollFare?: number }; path?: [number, number][]; section?: DirectionsSection[]; }
 interface DirectionsPayload { code: number; message?: string; route?: { traoptimal?: DirectionsRoute[] }; }
+export type DirectionsRequestSource = "cache" | "external";
 
-export async function drivingRoute(from: Place, to: Place, onExternalRequest?: () => void): Promise<RouteSegment> {
+export async function drivingRoute(from: Place, to: Place, onRequest?: (source: DirectionsRequestSource) => void): Promise<RouteSegment> {
   const key = routeCacheKey(from, to);
   const cached = await getCachedRoute(key);
-  if (cached) return { ...cached, fromId: from.id, toId: to.id, trafficSections: cached.trafficSections ?? [] };
+  if (cached) {
+    onRequest?.("cache");
+    return { ...cached, fromId: from.id, toId: to.id, trafficSections: cached.trafficSections ?? [] };
+  }
   const start = `${from.longitude},${from.latitude}`;
   const goal = `${to.longitude},${to.latitude}`;
-  onExternalRequest?.();
+  onRequest?.("external");
   const payload = await naverFetch(`/map-direction/v1/driving?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}&option=${DIRECTIONS_OPTION}&cartype=1`) as DirectionsPayload;
   if (payload.code !== 0) {
     const code = payload.code === 1 ? "SAME_LOCATION" : "ROUTE_NOT_FOUND";

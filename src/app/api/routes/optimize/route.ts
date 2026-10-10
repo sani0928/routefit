@@ -3,20 +3,31 @@ import { apiError, AppError } from "@/lib/errors";
 import { optimizeSchema } from "@/lib/validation/route.schema";
 import { optimizeHaversineRoute } from "@/features/route-optimization/algorithms/haversine-heuristic";
 import { drivingRoute } from "@/lib/naver-maps/directions";
+import { recordDirectionsUsage } from "@/lib/admin/repository";
+import { getSessionUser } from "@/lib/member/api";
 import type { Place, RouteSegment } from "@/features/route-optimization/types/route.types";
 
 export async function POST(request: NextRequest) {
-  let directionsRequests = 0;
+  let directionsExternalRequests = 0;
+  let directionsCacheHits = 0;
   let debugNodeCount = 0;
+  let calculationStarted = false;
+  let calculationFailed = false;
+  let userId: string | null = null;
   try {
     const input = optimizeSchema.parse(await request.json());
+    userId = (await getSessionUser().catch(() => null))?.id ?? null;
+    calculationStarted = true;
     const calculationStartedAt = Date.now();
     const start: Place = { ...input.start, type: "START" };
     const waypoints: Place[] = input.waypoints.map((place) => ({ ...place, type: "WAYPOINT" }));
     const destination: Place | null = input.destination ? { ...input.destination, type: "DESTINATION" } : null;
     const nodes = [start, ...waypoints, ...(destination ? [destination] : [])];
     debugNodeCount = nodes.length;
-    const getRoute = (from: Place, to: Place) => drivingRoute(from, to, () => { directionsRequests += 1; });
+    const getRoute = (from: Place, to: Place) => drivingRoute(from, to, (source) => {
+      if (source === "external") directionsExternalRequests += 1;
+      else directionsCacheHits += 1;
+    });
     const optimized = optimizeHaversineRoute({ start, waypoints, destination, returnToStart: input.returnToStart, fixedVisitOrders: input.fixedVisitOrders });
     const byId = new Map(nodes.map((place) => [place.id, place]));
     const segments: RouteSegment[] = [];
@@ -43,12 +54,29 @@ export async function POST(request: NextRequest) {
       },
       path: segments.flatMap((segment, index) => index === 0 ? segment.path : segment.path.slice(1)),
     });
-  } catch (error) { return apiError(error); }
+  } catch (error) {
+    calculationFailed = calculationStarted;
+    return apiError(error);
+  }
   finally {
+    if (calculationStarted) {
+      try {
+        await recordDirectionsUsage({
+          userId,
+          routeCalculations: 1,
+          externalDirectionsRequests: directionsExternalRequests,
+          cacheHits: directionsCacheHits,
+          failedRequests: calculationFailed ? 1 : 0,
+        });
+      } catch (error) {
+        console.error("[RouteFit] Directions usage could not be recorded", error);
+      }
+    }
     console.info("[RouteFit] Directions API requests", {
       strategy: "haversine-single",
       nodeCount: debugNodeCount,
-      requests: directionsRequests,
+      requests: directionsExternalRequests,
+      cacheHits: directionsCacheHits,
     });
   }
 }

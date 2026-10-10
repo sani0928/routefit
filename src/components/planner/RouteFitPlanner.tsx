@@ -1139,7 +1139,7 @@ export function RouteFitPlanner() {
           <header className="planner-header">
           <div className="planner-title-row">
             <div><img className="routefit-logo" src="/icons/logo.png" alt="루트핏 RouteFit" /></div>
-            <MemberHeader authConfigured={member.authConfigured} onLoginIntroOpen={() => setIsLoginIntroOpen(true)} onSessionChange={loadMember} />
+            <MemberHeader authConfigured={member.authConfigured} isAdmin={member.isAdmin} onLoginIntroOpen={() => setIsLoginIntroOpen(true)} onSessionChange={loadMember} />
           </div>
           <h1 className="planner-desktop-tagline">여러 장소의 동선 최적화, 더 간편하게.</h1>
         </header>
@@ -1191,7 +1191,7 @@ export function RouteFitPlanner() {
       </aside>
       <section id="mobile-map-focus" className="map-panel" tabIndex={-1}>
         <div className="mobile-member-overlay">
-          <MemberHeader authConfigured={member.authConfigured} onLoginIntroOpen={() => setIsLoginIntroOpen(true)} onSessionChange={loadMember} />
+          <MemberHeader authConfigured={member.authConfigured} isAdmin={member.isAdmin} onLoginIntroOpen={() => setIsLoginIntroOpen(true)} onSessionChange={loadMember} />
         </div>
         <MapView
           places={mapPlaces}

@@ -156,8 +156,8 @@
 .map-location-control { top:calc(var(--map-control-top) + 81px); }
 .map-list-control { top:calc(var(--map-control-top) + 81px); }
 @media (max-width:700px) {
-  /* Keep map zoom aligned with the account entry on the transparent iOS status bar. */
-  .map-panel .map-view { --map-control-top:max(12px, env(safe-area-inset-top)); }}
+  /* Keep map controls below the translucent iOS status area. */
+  .map-panel .map-view { --map-control-top:calc(max(12px, env(safe-area-inset-top)) + 10px); }}
 .map-list-manager .list-detail-context {
   display:flex;
   align-items:center;
