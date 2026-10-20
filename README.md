@@ -127,6 +127,9 @@ npm run dev
 | `REDIS_URL`, `ROUTE_CACHE_TTL_SECONDS` | 경로 캐시와 공유 링크 요청 제한 설정 |
 | `ADMIN_EMAILS` | 쉼표로 구분한 관리자 이메일 허용 목록 |
 | `CRON_SECRET` | 만료 공유 링크 정리 API 인증 비밀 값 |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | 문의 메일 발송용 Resend API 키와 인증된 발신자 주소 |
+
+`RESEND_FROM_EMAIL`에는 Resend에서 도메인 인증을 마친 발신자 주소를 설정해야 합니다.
 
 ### 주요 명령어
 
