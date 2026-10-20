@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent as ReactChangeEvent, type CSSProperties, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { Clock, ListOrdered, Lock, RotateCcw, Route, LocateFixed, ExternalLink, WandSparkles, X } from "lucide-react";
+import { Clock, ListOrdered, Lock, RotateCcw, Route, LocateFixed, ExternalLink, WandSparkles, MessageCircleQuestion, X } from "lucide-react";
+import { InquiryDialog } from "@/components/route-planner/InquiryDialog";
 import type { OptimizationResponse, TrafficCongestion } from "@/features/route-optimization/types/route.types";
 import { notify } from "@/lib/notify";
 import { routeColor } from "@/lib/route-colors";
@@ -46,7 +47,7 @@ type ResultTab = "stops" | "segments";
 
 type SegmentSwipeFeedback = { direction: "next" | "previous" | "start" | "end"; sequence: number };
 
-export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isLocatingCurrentLocation = false, isRouteStale = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onPlaceSelect, onClearResult, onResultTabOpen, onShare, isSharing = false }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isLocatingCurrentLocation?: boolean; isRouteStale?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onPlaceSelect: (place: OptimizationResponse["orderedPlaces"][number]) => void; onClearResult?: () => void; onResultTabOpen?: () => void; onShare?: () => void; isSharing?: boolean }) {
+export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculating, isLocatingCurrentLocation = false, isRouteStale = false, isAuthenticated = false, selectedSegmentIndex, onSegmentHover, onSegmentSelect, onPlaceSelect, onClearResult, onResultTabOpen, onShare, isSharing = false }: { result: OptimizationResponse | null; placeCount: number; fixedVisitOrders: { placeId: string }[]; isCalculating: boolean; isLocatingCurrentLocation?: boolean; isRouteStale?: boolean; isAuthenticated?: boolean; selectedSegmentIndex: number | null; onSegmentHover: (index: number | null) => void; onSegmentSelect: (index: number | null) => void; onPlaceSelect: (place: OptimizationResponse["orderedPlaces"][number]) => void; onClearResult?: () => void; onResultTabOpen?: () => void; onShare?: () => void; isSharing?: boolean }) {
   const [activeTab, setActiveTab] = useState<ResultTab>("stops");
   const [expandedSegmentIndex, setExpandedSegmentIndex] = useState<number | null>(null);
   const segmentFocusPointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
@@ -64,6 +65,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   const [hasCompletedTransition, setHasCompletedTransition] = useState(false);
   const [editedDepartureTime, setEditedDepartureTime] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
 
   const fixedPlaceIds = new Set(fixedVisitOrders.map(({ placeId }) => placeId));
 
@@ -350,7 +352,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
       <button type="button" role="tab" id="route-segments-tab" aria-controls="route-segments-panel" aria-selected={activeTab === "segments"} className={activeTab === "segments" ? "is-active" : ""} onClick={() => { setActiveTab("segments"); onResultTabOpen?.(); }}><Route aria-hidden="true" /><span>구간 상세</span></button>
     </div>
 
-    {activeTab === "stops" && <section id="route-stops-panel" role="tabpanel" aria-labelledby="route-stops-tab" className="route-stops-card route-tab-panel"><div className="stops-heading"><div><small>방문 순서</small><strong>{result.orderedPlaces.length}개 지점</strong></div><button className="route-ai-summary-action" type="button" onClick={() => notify.info("AI 요약 기능은 현재 구현 중입니다.")}><WandSparkles size={13} aria-hidden="true" />AI 요약</button></div><ol className="modern-route-order">{result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`} className={selectedStopId === place.id ? "stop-selected" : undefined} style={{ "--route-color": routeColor(index) } as CSSProperties}><button type="button" className="route-stop-row" onClick={(event) => selectRouteStop(place, event.currentTarget)} aria-label={`${place.name} 중심으로 지도 보기`}><span className="stop-number">{String(index + 1).padStart(2, "0")}</span><span className="route-stop-copy"><span className="route-stop-name"><strong>{place.name}</strong>{fixedPlaceIds.has(place.id) && <Lock className="route-stop-lock" size={13} strokeWidth={2.6} aria-label="방문 순서 고정" />}</span><small>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}</small></span></button></li>)}</ol></section>}
+    {activeTab === "stops" && <section id="route-stops-panel" role="tabpanel" aria-labelledby="route-stops-tab" className="route-stops-card route-tab-panel"><div className="stops-heading"><div><small>방문 순서</small><strong>{result.orderedPlaces.length}개 지점</strong></div><div className="route-stops-actions"><button className="route-ai-summary-action" type="button" onClick={() => notify.info("AI 요약 기능은 현재 구현 중입니다.")}><WandSparkles size={13} aria-hidden="true" />AI 요약</button><button className="route-inquiry-action" type="button" onClick={() => setIsInquiryOpen(true)}><MessageCircleQuestion size={13} aria-hidden="true" />문의하기</button></div></div><ol className="modern-route-order">{result.orderedPlaces.map((place, index) => <li key={`${place.id}-${index}`} className={selectedStopId === place.id ? "stop-selected" : undefined} style={{ "--route-color": routeColor(index) } as CSSProperties}><button type="button" className="route-stop-row" onClick={(event) => selectRouteStop(place, event.currentTarget)} aria-label={`${place.name} 중심으로 지도 보기`}><span className="stop-number">{String(index + 1).padStart(2, "0")}</span><span className="route-stop-copy"><span className="route-stop-name"><strong>{place.name}</strong>{fixedPlaceIds.has(place.id) && <Lock className="route-stop-lock" size={13} strokeWidth={2.6} aria-label="방문 순서 고정" />}</span><small>{place.address || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`}</small></span></button></li>)}</ol></section>}
 
     {activeTab === "segments" && <section id="route-segments-panel" role="tabpanel" aria-labelledby="route-segments-tab" className="segment-details route-tab-panel">
        <div className="segment-panel-heading"><div><small>구간별 상세</small><strong>실시간 교통정보 기준</strong></div><span className="segment-panel-hint">각 구간 클릭 시 상세 정보 표시</span></div>
@@ -360,5 +362,6 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
         return <li key={`${segment.fromId}-${segment.toId}-${index}`} className={isExpanded ? "segment-expanded" : ""} style={{ "--route-color": routeColor(index) } as CSSProperties}><button type="button" className="segment-row" aria-label={`${segmentLabel(index)} 구간 ${isExpanded ? "접기" : "도착 장소 보기"}`} aria-expanded={isExpanded} onMouseEnter={() => onSegmentHover(index)} onMouseLeave={() => onSegmentHover(null)} onFocus={() => onSegmentHover(index)} onBlur={() => onSegmentHover(null)} onClick={() => { const nextIndex = isExpanded ? null : index; setExpandedSegmentIndex(nextIndex); onSegmentSelect(nextIndex); }}><span className="segment-number">{segmentLabel(index)}</span><p className="segment-destination"><i aria-hidden="true">→</i><strong>{destination?.name ?? "도착 장소"}</strong></p><span className="segment-row-metrics"><strong>{formatDistance(segment.distanceMeters)}</strong><small className="segment-duration"><Clock aria-hidden="true" /><b>{formatTime(segment.durationMilliseconds)}</b></small></span></button></li>;
       })}</ol>
     </section>}
+    <InquiryDialog open={isInquiryOpen} isAuthenticated={isAuthenticated} summary={{ placeCount: result.orderedPlaces.length, totalDistanceMeters: result.summary.totalDistanceMeters, totalDurationMilliseconds: result.summary.totalDurationMilliseconds, totalTollFare: result.summary.totalTollFare }} onClose={() => setIsInquiryOpen(false)} />
   </section>;
 }
