@@ -114,6 +114,24 @@ npm run dev
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 엽니다. 개발 서버는 Webpack 모드로 실행됩니다.
 
+### 환경 변수
+
+`.env.example`을 복사한 뒤 아래 값을 설정합니다. 비밀 값은 저장소에 커밋하지 않습니다.
+
+| 변수 | 용도 |
+| --- | --- |
+| `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | NAVER Maps JavaScript API 클라이언트 ID |
+| `NAVER_MAP_API_KEY_ID`, `NAVER_MAP_API_KEY_SECRET` | NAVER Directions·Geocoding 서버 API 인증 |
+| `KAKAO_REST_API_KEY` | Kakao Local 장소 검색 인증 |
+| `DATABASE_URL` | PostgreSQL 연결 문자열 |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Better Auth 세션 설정 |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth 설정 |
+| `NEXT_PUBLIC_APP_URL` | 공유 링크 생성에 사용할 서비스 기본 URL |
+| `REDIS_URL`, `ROUTE_CACHE_TTL_SECONDS` | 경로 캐시와 공유 링크 요청 제한 설정 |
+| `ADMIN_EMAILS` | 쉼표로 구분한 관리자 이메일 허용 목록 |
+| `CRON_SECRET` | 만료 공유 링크 정리 API 인증 비밀 값 |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | 문의 메일 발송용 Resend API 키와 인증된 발신자 주소 |
+
 ### 주요 명령어
 
 ```powershell
