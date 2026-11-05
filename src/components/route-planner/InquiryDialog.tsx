@@ -102,11 +102,11 @@ export function InquiryDialog({ open, isAuthenticated, summary, onClose }: Props
       <section className={`inquiry-dialog${isExiting ? " is-exiting" : ""}`} role="dialog" aria-modal="true" aria-label="문의하기" onDragStart={(event) => event.preventDefault()}>
         <button className="inquiry-dialog-close" type="button" onClick={close} aria-label="문의하기 닫기"><X size={20} aria-hidden="true" /></button>
         <span className="inquiry-dialog-eyebrow"><MessageCircleQuestion size={15} aria-hidden="true" />ROUTEFIT CONTACT</span>
-        <p>문의 주실 내용 혹은 개선점이 있으시면 자유롭게 작성해 주세요.<br />확인 후에 빠르게 답변 드리겠습니다.</p>
+        <p>문의 내용이나 개선점을 적어 주세요.<br />확인 후 답변 드리겠습니다.</p>
         <form onSubmit={(event) => void submit(event)}>
           <label className="inquiry-field">
             <span>문의 내용</span>
-            <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} minLength={10} maxLength={2_000} placeholder="문의하실 내용 혹은 불편했던 점, 개선이 필요한 내용을 알려주세요." disabled={isSubmitting} required />
+            <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} minLength={10} maxLength={2_000} placeholder="불편했던 점이나 개선이 필요한 내용을 적어 주세요." disabled={isSubmitting} required />
             <small>{message.length.toLocaleString()} / 2,000</small>
           </label>
           {isAuthenticated ? <p className="inquiry-reply-note">로그인한 계정의 이메일로 답변을 보내드릴게요.</p> : <>

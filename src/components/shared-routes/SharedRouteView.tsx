@@ -44,7 +44,7 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
 
   return <main className="shared-route-page" onCopy={(event) => event.preventDefault()} onCut={(event) => event.preventDefault()} onDragStart={(event) => event.preventDefault()}>
     <section className="shared-route-hero-copy">
-      <h1>한눈에 보는 방문 동선</h1>
+      <h1>방문 동선</h1>
       <span><Clock3 aria-hidden="true" /> {toKoreanDate(snapshot.result.summary.calculatedAt, true)} 계산</span>
     </section>
 
@@ -83,7 +83,7 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
         </section>}
 
         {activeTab === "segments" && <section id="shared-route-segments-panel" role="tabpanel" aria-labelledby="shared-route-segments-tab" className="shared-route-segments shared-route-tab-panel">
-          <div className="shared-route-section-heading"><div><small>구간 별 상세</small></div></div>
+          <div className="shared-route-section-heading"><div><small>구간별 상세</small></div></div>
           <ol>
             {snapshot.result.segments.map((segment, index) => {
               const selected = selectedSegmentIndex === index;
@@ -102,9 +102,9 @@ export function SharedRouteView({ snapshot, expiresAt }: { snapshot: SharedRoute
     </section>
 
     <section className="shared-route-final-cta">
-      <div className="shared-route-final-cta-copy"><p>나만의 방문 장소를 추가해 보세요.</p><strong>RouteFit에서 내 동선 만들기</strong></div>
+      <div className="shared-route-final-cta-copy"><p>방문할 장소를 추가해 동선을 계산해 보세요.</p><strong>RouteFit에서 동선 만들기</strong></div>
       <Link href="/" className="shared-route-final-cta-button">내 동선 계산하기</Link>
     </section>
-    <p className="shared-route-expiry">이 공유 링크는 {toKoreanDate(expiresAt)}까지 제공됩니다.</p>
+    <p className="shared-route-expiry">이 링크는 {toKoreanDate(expiresAt)}까지 열 수 있습니다.</p>
   </main>;
 }

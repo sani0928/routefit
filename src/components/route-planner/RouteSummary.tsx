@@ -133,13 +133,13 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     <a className="route-guide-link" href="/guide">1분 체험 가이드</a>
   </div>;
   if (isCalculating) {
-    const title = isLocatingCurrentLocation ? "현재 위치를 확인하고 있어요" : "최적 경로를 계산하고 있어요";
+    const title = isLocatingCurrentLocation ? "현재 위치를 확인하고 있어요" : "동선을 계산하고 있어요";
     const message = isLocatingCurrentLocation
       ? "출발지를 최신 위치로 갱신하는 중이에요."
-      : isCalculationTakingLong ? "최적의 동선을 열심히 찾고 있어요!" : "실시간 교통정보를 반영하는 중이에요.";
+      : isCalculationTakingLong ? "방문 순서를 계산하고 있어요." : "실시간 교통정보를 반영하고 있어요.";
     return (
       <section className="route-summary-panel route-summary-empty route-summary-ready route-summary-calculating">
-        {renderReadyStatusHeader(isLocatingCurrentLocation ? "위치 확인 중" : "동선 계산중", "calculating")}
+        {renderReadyStatusHeader(isLocatingCurrentLocation ? "위치 확인 중" : "동선 계산 중", "calculating")}
         <div className="route-ready-card route-ready-calculating-card">
           <div className="route-ready-icon">{isLocatingCurrentLocation ? <LocateFixed aria-hidden="true" /> : <Route aria-hidden="true" />}</div>
           <div>
@@ -149,7 +149,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
         </div>
         <div className="route-ready-status">
           <span>{isLocatingCurrentLocation ? "위치 확인 중" : isCalculationTakingLong ? "계산 진행 중" : "분석 중"}</span>
-          <strong>{isLocatingCurrentLocation ? "현재 위치를 확인한 뒤 계산을 시작할게요." : isCalculationTakingLong ? "잠시 후 결과를 보여드릴게요." : "잠시만 기다려 주세요."}</strong>
+          <strong>{isLocatingCurrentLocation ? "현재 위치를 확인한 뒤 계산을 시작합니다." : isCalculationTakingLong ? "계산이 조금 더 걸리고 있습니다." : "잠시만 기다려 주세요."}</strong>
         </div>
       </section>
     );
@@ -176,17 +176,17 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
   if (!result) {
     return (
       <section className="route-summary-panel route-summary-empty route-summary-ready">
-        {renderReadyStatusHeader("계산 준비중")}
+        {renderReadyStatusHeader("계산 준비 중")}
         <div className="route-ready-card">
           <div className="route-ready-icon"><Route aria-hidden="true" /></div>
           <div>
-            <h2>최적 경로를 계산해 보세요</h2>
+            <h2>동선을 계산해 보세요</h2>
             <p>{placeCount}곳의 순서와 이동 시간을 확인할 수 있어요.</p>
           </div>
         </div>
         <div className="route-ready-status">
           <span>준비됨</span>
-          <strong>계산 버튼을 누르면 경로 계산을 시작합니다.</strong>
+          <strong>계산 버튼을 누르면 방문 순서와 이동 경로를 계산합니다.</strong>
         </div>
       </section>
     );
@@ -327,7 +327,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
     <div className="result-header">
       <div className="result-header-leading">
         {onClearResult && <button type="button" className={`route-summary-clear${isClearResultPending ? " is-pending" : ""}`} aria-label="계산 결과 초기화" onClick={handleClearResult}><RotateCcw aria-hidden="true" /><span>초기화</span></button>}
-        <div className="result-eyebrow">{isRouteStale ? <span className="status-orb stale" /> : (isCompletionTransitioning || wasCalculatingRef.current) ? <span className="route-summary-status-transition is-settling" aria-hidden="true"><span className="route-summary-status-orbit is-calculating"><i /></span><span className="route-summary-complete-mark"><svg viewBox="0 0 20 20" fill="none"><polyline points="4 10 8 14 16 6" /></svg></span></span> : <span key={result.summary.calculatedAt} className={`route-summary-complete-mark${hasCompletedTransition ? " is-settled" : ""}`} aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><polyline points="4 10 8 14 16 6" /></svg></span>}{isRouteStale ? "재계산 필요" : "최적화 완료"}</div>
+      <div className="result-eyebrow">{isRouteStale ? <span className="status-orb stale" /> : (isCompletionTransitioning || wasCalculatingRef.current) ? <span className="route-summary-status-transition is-settling" aria-hidden="true"><span className="route-summary-status-orbit is-calculating"><i /></span><span className="route-summary-complete-mark"><svg viewBox="0 0 20 20" fill="none"><polyline points="4 10 8 14 16 6" /></svg></span></span> : <span key={result.summary.calculatedAt} className={`route-summary-complete-mark${hasCompletedTransition ? " is-settled" : ""}`} aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><polyline points="4 10 8 14 16 6" /></svg></span>}{isRouteStale ? "재계산 필요" : "계산 완료"}</div>
       </div>
       <span className="result-time">계산 {formatCalculationTime(result.summary.calculationDurationMilliseconds)}</span>
     </div>
@@ -344,7 +344,7 @@ export function RouteSummary({ result, placeCount, fixedVisitOrders, isCalculati
       <div className="route-hero"><img className="route-hero-logo" src="/icons/logo.png" alt="RouteFit" /><div className="route-hero-heading"><p>예상 소요 시간</p></div><div className="route-hero-overview"><div className={`route-hero-duration${totalDurationMilliseconds >= 60 * 60_000 ? " duration-long" : ""}`}><strong>{formatTime(totalDurationMilliseconds)}</strong>{totalStayDurationMinutes > 0 && <span className="stay-time-summary">머무는 시간 {formatTime(totalStayDurationMinutes * 60_000)} 포함</span>}</div><div className="route-hero-details"><span><small>총 이동 거리</small>{formatDistance(result.summary.totalDistanceMeters)}</span><span><small>예상 통행료</small>{result.summary.totalTollFare.toLocaleString()}원</span></div></div><div className="route-hero-times"><span><small>출발</small><div className="route-hero-time-control"><div className={`route-hero-time-editor${hasEditedDepartureTime ? " is-edited" : ""}`}><input aria-label="출발 시각, 시와 분을 네 자리로 입력" inputMode="numeric" enterKeyHint="done" maxLength={9} value={formatDepartureTimeInput(editedDepartureTime ?? `${calculatedDepartureTime.hour}${calculatedDepartureTime.minute}`)} onChange={handleDepartureTimeChange} onBlur={normalizeDepartureTime} onFocus={handleDepartureTimeFocus} onKeyDown={handleDepartureTimeKeyDown} /></div>{hasEditedDepartureTime && <button type="button" className="route-hero-time-reset" aria-label="수정한 출발 시간 초기화" title="계산 시각으로 되돌리기" onClick={() => setEditedDepartureTime(null)}><RotateCcw aria-hidden="true" /></button>}</div></span><i aria-hidden="true">→</i><span><small>도착 예정</small><time>{formatTrafficReferenceTime(estimatedArrivalTime.toISOString())}</time></span></div></div>
 
     {onShare && <button type="button" className="route-share-action" disabled={isRouteStale || isSharing} onClick={onShare} title={isRouteStale ? "최신 계산 결과에서만 공유할 수 있습니다." : undefined}>
-      <ExternalLink aria-hidden="true" />{isSharing ? "공유 링크 생성 중" : "내 동선 공유하기"}
+      <ExternalLink aria-hidden="true" />{isSharing ? "공유 링크 만드는 중" : "동선 공유하기"}
     </button>}
 
     <div className="route-result-tabs" role="tablist" aria-label="계산 결과 보기">

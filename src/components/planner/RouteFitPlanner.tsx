@@ -1141,7 +1141,7 @@ export function RouteFitPlanner() {
             <div><img className="routefit-logo" src="/icons/logo.png" alt="루트핏 RouteFit" /></div>
             <MemberHeader authConfigured={member.authConfigured} isAdmin={member.isAdmin} onLoginIntroOpen={() => setIsLoginIntroOpen(true)} onSessionChange={loadMember} />
           </div>
-          <h1 className="planner-desktop-tagline">여러 장소의 동선 최적화, 더 간편하게.</h1>
+          <h1 className="planner-desktop-tagline">여러 장소의 방문 순서와 동선을 한 번에.</h1>
         </header>
         <div key={listManagerOpen ? "saved-places" : "visit-places"} className={`planner-content-page${listManagerOpen ? " planner-content-page-lists map-list-manager" : ""}`}>
         {listManagerOpen ? (
@@ -1170,17 +1170,17 @@ export function RouteFitPlanner() {
             <div className="mobile-list-auth-gate" role="status">
               <img src="/icons/sorry.png" alt="" aria-hidden="true" />
               <strong>장소 리스트는 회원 전용입니다.</strong>
-              <p>로그인한 뒤 다양한 장소를 관리해 보세요.</p>
+              <p>로그인하면 장소 리스트를 만들고 관리할 수 있어요.</p>
             </div>
           )
         ) : <>
-        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} isSaveDialogOpen={Boolean(saveTarget)} onSearchSubmit={openSearchResults} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} onResultsLoaded={refreshQuickSearchMembership} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산">경로 최적화 계산</button>} />
+        <LocationSearch onAdd={addPlace} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} isSaveDialogOpen={Boolean(saveTarget)} onSearchSubmit={openSearchResults} onSearchFocus={prepareSearchFocus} onSavedPlacesOpen={handleSavedPlacesOpen} onSearchClear={() => closeSearchResults({ preserveMobileSheetHeight: true })} onResultsLoaded={refreshQuickSearchMembership} showClearAction={searchQuery !== null} mobileAction={<button type="button" className="mobile-search-calculate" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="동선 계산">동선 계산</button>} />
         {searchQuery ? <SearchResultsSheet query={searchQuery} currentLocation={searchCurrentLocation} mapCenter={mapCenter} mapCenterFilter={searchMapCenter} mapCenterRequestId={searchMapCenterRequest} isCurrentLocationLocating={searchCurrentLocationLocating} isPlaceAdded={isSearchResultAdded} onAdd={addSearchResultToRoute} onRemove={removeSearchResultFromRoute} onSave={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} onResultsChange={setSearchMapResults} onLoadingChange={setSearchResultsLoading} onResultFocus={focusSearchResult} onSearchContextChange={() => { setFocusedSearchResult(null); setSearchMapResults([]); setHasVisibleSearchResult(true); setSearchResultsLoading(true); setSearchResultsFocusRequest((current) => current + 1); }} onSortChange={handleSearchSortChange} onRequestCurrentLocation={requestSearchCurrentLocation} /> : <>
         <PlaceList places={places} returnToStart={returnToStart} fixedVisitOrders={fixedVisitOrders} onFixedVisitOrderChange={toggleFixedVisitOrder} onReturnChange={setReturn} onReset={resetPlanner} onRemove={removePlace} onReorder={reorderPlace} onStayDurationChange={setStayDuration} onSavePlace={member.authenticated ? openSavePlaceDialog : undefined} placeLists={member.placeLists} savedListIdsByProviderId={savedListIdsByProviderId} currentLocationActive={currentLocationActive} currentLocationLocating={currentLocationLocating} onCurrentLocationToggle={toggleCurrentLocation} onSavedPlacesOpen={member.authenticated ? openListManager : undefined} onMobileInputFocus={prepareSheetInputFocus} mobileSheetExpanded={mobileSheetState === "expanded"} isLoading={isWorkspaceLoading} />
           <div className="planner-footer">
             <div className="route-primary-group">
               <div className="route-calculate-control optimize-action">
-                <button className="primary route-calculate-action" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="경로 최적화 계산" title="경로 최적화 계산">경로 최적화 계산</button>
+                <button className="primary route-calculate-action" onClick={optimize} disabled={places.length < 2 || currentLocationLocating || isRouteCalculationInProgress} aria-label="동선 계산" title="동선 계산">동선 계산</button>
               </div>
             </div>
           </div>
@@ -1264,7 +1264,7 @@ export function RouteFitPlanner() {
       </aside>
       <SavePlaceDialog place={saveTarget} lists={member.placeLists} initialSelectedListIds={savedListIdsForSaveTarget} onSave={(selectedListIds, initiallySelectedListIds) => void savePlace(selectedListIds, initiallySelectedListIds)} onClose={() => setSaveTarget(null)} />
       <LoginIntroDialog open={isLoginIntroOpen} onClose={() => setIsLoginIntroOpen(false)} />
-      {shareDialogUrl && <div className="route-share-dialog-backdrop" role="presentation"><section className="route-share-dialog" role="dialog" aria-modal="true" aria-label="공유 링크 복사"><strong>공유 링크를 복사하였습니다.</strong><p>링크를 직접 복사할 수 있습니다.</p><input value={shareDialogUrl} readOnly onFocus={(event) => event.currentTarget.select()} aria-label="공유 링크" /><div><button type="button" onClick={() => void copySharedRouteLink(shareDialogUrl)}>링크 다시 복사</button><button type="button" onClick={() => setShareDialogUrl(null)}>닫기</button></div></section></div>}
+      {shareDialogUrl && <div className="route-share-dialog-backdrop" role="presentation"><section className="route-share-dialog" role="dialog" aria-modal="true" aria-label="공유 링크 복사"><strong>공유 링크를 복사했습니다.</strong><p>아래 링크를 다시 복사할 수 있어요.</p><input value={shareDialogUrl} readOnly onFocus={(event) => event.currentTarget.select()} aria-label="공유 링크" /><div><button type="button" onClick={() => void copySharedRouteLink(shareDialogUrl)}>링크 다시 복사</button><button type="button" onClick={() => setShareDialogUrl(null)}>닫기</button></div></section></div>}
     </main>
     </>
   );
