@@ -24,7 +24,7 @@ export function MemberHeader({ authConfigured, isAdmin, onLoginIntroOpen, onSess
     const result = await authClient.signOut();
     if (result.error) return notify.error("로그아웃에 실패했습니다.");
     onSessionChange();
-    notify.success("안전하게 로그아웃되었습니다.");
+    notify.success("로그아웃했습니다.");
   }
 
   if (isPending) return <div className="member-auth-skeleton" />;

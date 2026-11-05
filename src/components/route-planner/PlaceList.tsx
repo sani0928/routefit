@@ -588,7 +588,7 @@ export function PlaceList({
         ) : places.length === 0 ? (
           <div className="place-empty-state">
             <img src="/icons/nothing.png" alt="" aria-hidden="true" />
-            <p>동선을 최적화 할 장소를 추가하세요.</p>
+            <p>동선을 계산할 장소를 추가하세요.</p>
           </div>
         ) : (
         <DragDropProvider

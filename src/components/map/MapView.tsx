@@ -152,9 +152,9 @@ function createCurrentLocationPopupContent(address?: string) {
   name.textContent = "현재 위치";
   const addressLine = document.createElement("p");
   addressLine.className = "map-place-popup-address";
-  addressLine.textContent = address ?? "주소 정보를 확인하는 중입니다.";
+  addressLine.textContent = address ?? "주소 확인 중";
   const notice = document.createElement("small");
-  notice.textContent = "GPS 기반 위치이므로 실제 주소와 다소 차이가 있을 수 있습니다.";
+  notice.textContent = "GPS 위치라 실제 주소와 다를 수 있습니다.";
   container.append(name, addressLine, notice);
   return container;
 }

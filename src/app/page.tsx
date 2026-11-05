@@ -6,7 +6,7 @@ const WEB_APPLICATION_JSON_LD = {
   name: "RouteFit",
   alternateName: "루트핏",
   url: "https://www.routefit.co.kr/",
-  description: "여러 방문 장소의 이동 경로를 쉽고 빠르게 최적화하는 서비스",
+  description: "여러 방문 장소의 순서와 이동 경로를 계산하는 서비스",
   applicationCategory: "UtilitiesApplication",
   operatingSystem: "Web browser",
   inLanguage: "ko-KR",

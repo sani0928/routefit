@@ -24,7 +24,7 @@ export function InteractiveGuide() {
   const [stage, setStage] = useState<GuideStage>("places");
   const [mobilePage, setMobilePage] = useState(0);
   const [faqMessages, setFaqMessages] = useState<GuideFaqMessage[]>([
-    { id: "welcome", role: "answer", content: "궁금한 점을 물어보세요. 루트핏 사용법을 간단히 알려드릴게요." },
+    { id: "welcome", role: "answer", content: "궁금한 점을 물어보세요. 루트핏 사용법을 알려드릴게요." },
   ]);
   const [faqLeavingIds, setFaqLeavingIds] = useState<string[]>([]);
   const [isFaqTyping, setIsFaqTyping] = useState(false);
@@ -117,7 +117,7 @@ export function InteractiveGuide() {
   return <main className="guide-page">
     <section className="guide-step guide-step-intro" id="guide-intro">
       <header className="guide-nav"><a className="guide-brand" href="/" aria-label="루트핏 RouteFit 홈으로 이동"><img src="/icons/logo.png" alt="루트핏 RouteFit" /></a><a className="guide-nav-start" href="/">내 동선 계산하기</a></header>
-      <div className="guide-hero"><span className="guide-kicker">1분 체험 가이드</span><h1>오늘 갈 곳을 추가하고,<br />최적의 동선을 찾아봐요.</h1><p>루트핏은 여러 방문 장소를 순서대로 모아, 이동 경로를 한눈에 확인하도록 돕습니다.<br />아래 화면에서 실제 사용 흐름을 미리 체험해 보세요.</p><div className="guide-flow" aria-label="RouteFit 가이드 순서"><span className="active"><b>1</b>소개</span><ChevronRight /><span><b>2</b>체험</span><ChevronRight /><span><b>3</b>활용</span><ChevronRight /><span><b>4</b>자주 묻는 질문</span></div></div>
+      <div className="guide-hero"><span className="guide-kicker">1분 체험 가이드</span><h1>오늘 갈 곳을 추가하고,<br />방문 순서를 정해 보세요.</h1><p>루트핏은 여러 방문 장소의 순서와 이동 경로를 계산합니다.<br />아래 화면에서 사용 흐름을 미리 체험해 보세요.</p><div className="guide-flow" aria-label="RouteFit 가이드 순서"><span className="active"><b>1</b>소개</span><ChevronRight /><span><b>2</b>체험</span><ChevronRight /><span><b>3</b>활용</span><ChevronRight /><span><b>4</b>자주 묻는 질문</span></div></div>
     </section>
 
     <GuideWorkspace places={places} resultPlaces={resultPlaces} stage={stage} routePath={routePath} visitPlaceCount={visitPlaces.length} routeEstimate={routeEstimate} suggestedPlaces={suggestedGuidePlaces} onAddPlace={addSuggestedPlace} onRemovePlace={removePlace} onCalculate={calculateRoute} onResetResult={resetResult} />
@@ -127,7 +127,7 @@ export function InteractiveGuide() {
         <div className="guide-gesture-copy"><span className="guide-kicker">간단한 조작 팁</span><h2 id="gesture-title">카드를 가로로 밀어보세요.</h2><p>모바일에서는 좌우로 스와이프해 빠른 기능을 이용할 수 있어요.</p><button type="button" onClick={() => guideSwipe.setOffset((current) => current === 0 ? -getGestureRevealWidth() : 0)}>{guideSwipe.offset === 0 ? "동작 보기" : "카드 닫기"}<ChevronRight /></button></div>
         <div className="guide-swipe-demo"><div className="guide-swipe-stage"><div className="guide-swipe-actions"><button type="button" aria-label="장소 삭제"><Trash2 /></button><button type="button" aria-label="방문 순서 보장"><LockKeyhole /></button></div><div className="guide-swipe-card" style={{ transform: `translateX(${guideSwipe.offset}px)` }} {...guideSwipe.handlers}><span className="guide-swipe-grip"><GripVertical /></span><b>2</b><span><strong>방문 장소</strong><small>가로로 밀면 빠른 기능 확인</small></span><span className="guide-swipe-hand"><Hand /></span></div></div><small className="guide-swipe-hint"><Info /> 가로로 밀면 빠른 기능이 나타납니다.</small></div>
       </div>
-      <div className="guide-use-cases"><div><span className="guide-kicker">여러 장소를 방문하는 모든 날</span><h2>외근과 약속 사이, 이동 순서<br />더 가볍게 정해 보세요.</h2><p>RouteFit은 여러 방문 장소를 한 번에 정리하고 이동 경로를 확인할 수 있어, 목적이 다른 하루 일정에도 유용합니다.</p></div><GuideUseCaseCarousel /></div>
+      <div className="guide-use-cases"><div><span className="guide-kicker">여러 장소를 방문하는 날</span><h2>외근과 약속 사이,<br />방문 순서를 정해 보세요.</h2><p>RouteFit으로 방문 장소를 모아 이동 경로를 확인하세요.</p></div><GuideUseCaseCarousel /></div>
     </section>
 
     <GuideFaq messages={faqMessages} leavingIds={faqLeavingIds} isTyping={isFaqTyping} items={guideFaqItems} onSelect={selectFaq} />

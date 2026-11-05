@@ -13,8 +13,8 @@ export function GuideFaq({ messages, leavingIds, isTyping, items, onSelect }: Gu
     <div className="guide-faq">
       <div className="guide-faq-heading">
         <span className="guide-kicker">자주 묻는 질문</span>
-        <h2 id="guide-faq-title">궁금한 점을 물어보세요.</h2>
-        <p>이동 동선부터 회원 혜택까지, 자주 묻는 질문을 모아뒀어요.</p>
+        <h2 id="guide-faq-title">궁금한 점을 확인해 보세요.</h2>
+        <p>동선 계산과 회원 기능에 관한 질문을 모았습니다.</p>
       </div>
       <div className="guide-faq-messenger">
         <div className="guide-faq-chat" aria-live="polite" aria-label="자주 묻는 질문 답변" tabIndex={0}>
@@ -24,7 +24,7 @@ export function GuideFaq({ messages, leavingIds, isTyping, items, onSelect }: Gu
         <div className="guide-faq-questions">{items.map((item) => <button type="button" key={item.id} onClick={() => onSelect(item)}>{item.question}</button>)}</div>
       </div>
     </div>
-    <div className="guide-final-cta"><div><h2>이제 시작해 볼까요?</h2><p>RouteFit은 PC와 모바일, 모두 편하게 사용할 수 있어요.</p></div><a href="/">RouteFit 시작하기</a></div>
+    <div className="guide-final-cta"><div><h2>이제 동선을 계산해 보세요.</h2><p>RouteFit은 PC와 모바일에서 사용할 수 있어요.</p></div><a href="/">RouteFit 시작하기</a></div>
   </section>;
 }
 

@@ -47,20 +47,20 @@ export function GuideWorkspace({
     <div className={`guide-workspace${stage === "result" ? " is-result" : ""}`}>
       <GuideMapPreview places={places} resultPlaces={resultPlaces} routePath={routePath} withRoute={stage === "result"} />
       {stage === "result" ? <div className="guide-panel guide-result-panel">
-        <div className="guide-result-heading"><span><Check /> 최적화 완료</span><button type="button" onClick={onResetResult}><Undo2 /> 다시 해보기</button></div>
+        <div className="guide-result-heading"><span><Check /> 계산 완료</span><button type="button" onClick={onResetResult}><Undo2 /> 다시 해보기</button></div>
         <div className="guide-result-card"><small>예상 소요 시간</small><strong>{routeEstimate.travelMinutes}분</strong><div><span>총 이동 거리 <b>{routeEstimate.distanceKm.toFixed(1)}km</b></span><span>방문 장소 <b>{visitPlaceCount}곳</b></span></div></div>
         <div className="guide-panel-heading result-title"><div><h2>추천 방문 순서</h2></div></div>
         <ol className="guide-result-order">{resultPlaces.map((place, index) => <li key={place.id}><b>{index + 1}</b><span>{place.name}</span></li>)}</ol>
-        <p className="guide-success-note"><Check /> 지도 위에서 경로를 직접 확인해보세요.</p>
+        <p className="guide-success-note"><Check /> 지도에서 경로를 확인해 보세요.</p>
         <a className="guide-real-start" href="/">내 장소로 계산 시작하기</a>
       </div> : <div className="guide-panel">
         <div className="guide-panel-chrome"><span className="active" /><span className={stage === "calculating" ? "active" : ""} /><span /></div>
         <div className="guide-panel-heading"><div><h2>방문 장소 추가</h2></div><span>{visitPlaceCount}곳 추가됨</span></div>
-        <p className="guide-panel-copy">검색창은 실제 서비스에서 장소를 찾는 위치입니다.<br />추가한 순서대로 방문 장소가 배치됩니다.</p>
+        <p className="guide-panel-copy">검색창에서 장소나 주소를 찾을 수 있어요.<br />추가한 순서대로 방문 장소가 표시됩니다.</p>
         <div className="guide-search" role="img" aria-label="장소, 주소 검색창 예시"><span className="guide-search-placeholder">장소, 주소 검색</span><span className="guide-search-submit"><Search /></span></div>
         <div className="guide-suggestions" aria-label="예시 장소 추가"><span>예시로 추가</span>{suggestedPlaces.filter((place) => !places.some((current) => current.id === place.id)).map((place) => <button type="button" key={place.id} onClick={() => onAddPlace(place)}><MapPin />{place.name}</button>)}</div>
         <ol className="guide-place-list">{places.map((place, index) => <li key={place.id} data-guide-place-id={place.id} className={`guide-place-item${index === 0 ? " is-start" : ""}`}><div className="guide-place-card"><b>{index + 1}</b><span><strong>{place.name}</strong><small>{index === 0 ? "출발 기준 위치" : "방문할 장소"}</small></span>{index > 0 && <button type="button" className="guide-place-delete" onClick={() => onRemovePlace(place.id)} aria-label={`${place.name} 삭제`}><Trash2 /></button>}</div></li>)}</ol>
-        {stage === "calculating" ? <div className="guide-calculating" aria-live="polite" aria-label="경로 최적화 계산 중"><span /></div> : <button className="guide-calculate" type="button" disabled={!canCalculate} onClick={onCalculate}><Route />{canCalculate ? "경로 최적화 계산" : "장소를 2곳 이상 추가해 보세요."}</button>}
+        {stage === "calculating" ? <div className="guide-calculating" aria-live="polite" aria-label="동선 계산 중"><span /></div> : <button className="guide-calculate" type="button" disabled={!canCalculate} onClick={onCalculate}><Route />{canCalculate ? "동선 계산" : "장소를 2곳 이상 추가해 보세요."}</button>}
       </div>}
     </div>
   </section>;
